@@ -1,17 +1,15 @@
 <script lang="ts" setup>
+import NavBar from './components/NavBar.vue'
 import { ref } from 'vue';
-import Form from './components/Form.vue';
-const message = ref('Hello World');
+const message = ref('Ciencias de la computacion 2');
 
-function addTask(newTask: string) {
-    console.log('New task added:', newTask);
-}
 
 </script>
 <template>
     <main>
         <h1>{{ message }}</h1>
-        <Form @add-task="addTask"/>
+        <NavBar />
+        <router-view />
     </main>
 </template>
 
