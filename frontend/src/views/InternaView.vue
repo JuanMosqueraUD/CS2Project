@@ -1,19 +1,22 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref } from 'vue';
+import IntLineal from '../components/IntLineal.vue';
 const mode = ref('')
 </script>
 
 
 <template>
   <div>
-    <h1>Búsquedas Internas</h1>
+    <h1 class="title">Búsquedas Internas</h1>
     <p>Selecciona un algoritmo:</p>
-    <button @click="mode = 'lineal'">Lineal</button>
-    <button @click="mode = 'binaria'">Binaria</button>
-    <button @click="mode = 'hash'">Hash</button>
+    <div class="grid">
+      <button @click="mode = 'lineal'">Lineal</button>
+      <button @click="mode = 'binaria'">Binaria</button>
+      <button @click="mode = 'Funciones hash'">Hash</button>
+    </div>
 
     <div v-if="mode === 'lineal'">
-      <p>🔹 Aquí se renderizaría la animación/explicación de búsqueda lineal</p>
+      <IntLineal/>
     </div>
     <div v-if="mode === 'binaria'">
       <p>🔹 Aquí se renderizaría la búsqueda binaria</p>

@@ -6,17 +6,31 @@ const message = ref('Ciencias de la computacion 2');
 
 </script>
 <template>
-    <main>
-        <h1>{{ message }}</h1>
+    <main class="container">
+        <div id="header">
+        <h1 class="title">{{ message }}</h1>
+        <p class="subtitle">
+            Juan Pablo Mosquera Marin
+        </p>
+        </div>
         <NavBar />
-        <router-view />
+        <router-view id="main-content" />
     </main>
 </template>
 
-<style scoped>
-main {
-    max-width: 800px;
-    margin: 1rem auto;
+<style>
+
+.subtitle{
+    text-align: center;
+
+}
+
+#header {
+    background-color: #243953;
+}
+
+.title {
+    text-align: center;
 }
 </style>
 

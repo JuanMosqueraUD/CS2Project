@@ -1,19 +1,17 @@
-<script>
+<script setup lang="ts">
+
+import { ref } from 'vue';
+
+const mode = ref('');
 
 </script>
 
 <template>
   <div>
-    <h1>Visualizador de estructuras de datos</h1>
-    <p>Selecciona un método de resolución de colisiones:</p>
-    <button @click="mode = 'encadenamiento'">Encadenamiento</button>
-    <button @click="mode = 'direccionAbierta'">Dirección Abierta</button>
+    <h1 class="title">Visualizador de estructuras de datos</h1>
+    <p>Este proyecto tiene como objetivo visualizar diferentes estructuras de datos 
+      y sus algoritmos asociados de búsqueda.</p>
 
-    <div v-if="mode === 'encadenamiento'">
-      <p>🔹 Aquí se renderizaría la animación/explicación de encadenamiento</p>
-    </div>
-    <div v-if="mode === 'direccionAbierta'">
-      <p>🔹 Aquí se renderizaría la animación/explicación de dirección abierta</p>
-    </div>
   </div>
 </template>
+

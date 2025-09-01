@@ -4,7 +4,7 @@
 
 <template>
   <div>
-    <h1>Colisiones</h1>
+    <h1 class="title">Colisiones</h1>
     <p>Selecciona un método de resolución de colisiones:</p>
     <button @click="mode = 'encadenamiento'">Encadenamiento</button>
     <button @click="mode = 'direccionAbierta'">Dirección Abierta</button>
@@ -18,6 +18,3 @@
   </div>
 </template>
 
-<style>
-
-</style>

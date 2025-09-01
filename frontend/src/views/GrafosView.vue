@@ -6,7 +6,7 @@ import { ref } from 'vue'
 
 <template>
   <div>
-    <h1>Grafos</h1>
+    <h1 class="title">Grafos</h1>
     <p>Selecciona un algoritmo:</p>
     <button >BFS</button>
     <button >DFS</button>
