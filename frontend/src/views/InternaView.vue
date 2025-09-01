@@ -7,7 +7,6 @@ const mode = ref('')
 
 <template>
   <div>
-    <h1 class="title">Búsquedas Internas</h1>
     <p>Selecciona un algoritmo:</p>
     <div class="grid">
       <button @click="mode = 'lineal'">Lineal</button>

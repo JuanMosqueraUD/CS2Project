@@ -5,7 +5,6 @@
 
 <template>
   <div>
-    <h1 class="title">Búsquedas Externas</h1>
     <p>Selecciona un algoritmo:</p>
     <button @click="mode = 'arbolB'">Árbol B</button>
     <button @click="mode = 'arbolBMas'">Árbol B+</button>

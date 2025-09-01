@@ -6,15 +6,12 @@ const message = ref('Ciencias de la computacion 2');
 
 </script>
 <template>
-    <main class="container">
-        <div id="header">
-        <h1 class="title">{{ message }}</h1>
-        <p class="subtitle">
-            Juan Pablo Mosquera Marin
-        </p>
-        </div>
+    <main >
+        <div id="header" class="container">
+        <h1 class="title">{{ message }}</h1> 
         <NavBar />
         <router-view id="main-content" />
+        </div>
     </main>
 </template>
 
@@ -25,12 +22,9 @@ const message = ref('Ciencias de la computacion 2');
 
 }
 
-#header {
-    background-color: #243953;
-}
-
 .title {
     text-align: center;
+    background-color: #243953;
 }
 </style>
 
