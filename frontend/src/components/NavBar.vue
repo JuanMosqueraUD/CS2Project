@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue';
+import NavBarSearch from './NavBarSearch.vue';
 
 const mode = ref('');
 
@@ -14,8 +15,7 @@ const mode = ref('');
   </nav>
 
   <div v-if="mode === 'Busquedas'">
-    <button @click="mode = 'Interna'" href="#" class="contrast"> Internas</button>
-    <button @click="mode = 'Externa'" href="#" class="contrast"> Externas</button>
+    <NavBarSearch />
   </div>
 
   <div v-if="mode === 'Grafos'">
@@ -24,7 +24,7 @@ const mode = ref('');
 
 </template>
 
-<style scoped>
+<style>
 .nav {
   display: flex;
   gap: 1rem;
