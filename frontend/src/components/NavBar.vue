@@ -8,14 +8,17 @@ const mode = ref('');
 
 
 <template>
-  <nav class="nav">
-    <router-link to="/" href="# " class="contrast"> Home</router-link>
-    <button @click="mode = 'Busquedas'" href="#" class="contrast"> Busquedas</button>
-    <button @click="mode = 'Grafos'" href="#" class="contrast"> Grafos</button>
+  <nav class="grid">
+    <li><strong>Algoritmo:</strong></li>
+    <button @click="mode = 'Busquedas'" class="outline contrast"> Busquedas</button>
+    <button @click="mode = 'Grafos'" class="outline contrast"> Grafos</button>
   </nav>
 
   <div v-if="mode === 'Busquedas'">
-    <NavBarSearch />
+    <div class ="grid" id="subnav">
+      <button class="outline contrast">Interna</button>
+      <button class="outline contrast">Externa</button>
+    </div>
   </div>
 
   <div v-if="mode === 'Grafos'">
@@ -25,11 +28,8 @@ const mode = ref('');
 </template>
 
 <style>
-.nav {
-  display: flex;
-  gap: 1rem;
-  padding: 1rem;
-  color: rgb(0, 0, 0);
-  
+#subnav {
+  margin-top: 0.8rem;
 }
+
 </style>

@@ -24,7 +24,6 @@ const message = ref('Ciencias de la computacion 2');
 
 .title {
     text-align: center;
-    background-color: #243953;
 }
 </style>
 
