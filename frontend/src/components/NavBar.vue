@@ -3,6 +3,9 @@ import { ref } from 'vue';
 import NavBarSearch from './NavBarSearch.vue';
 
 const mode = ref('');
+const searchMode = ref('');
+const internalAlgorithm = ref('');
+const hashFunction = ref('');
 
 </script>
 
@@ -14,10 +17,30 @@ const mode = ref('');
     <button @click="mode = 'Grafos'" class="outline contrast"> Grafos</button>
   </nav>
 
-  <div v-if="mode === 'Busquedas'">
-    <div class ="grid" id="subnav">
-      <button class="outline contrast">Interna</button>
-      <button class="outline contrast">Externa</button>
+  <div v-if="mode === 'Busquedas'" id ="subnav">
+    <div id="general-nav">
+      <button @click="searchMode = 'Interna'" class="outline contrast">Interna</button>
+      <button @click="searchMode = 'Externa'" class="outline contrast">Externa</button>
+    </div>
+
+    <!-- Búsqueda Interna -->
+    <div v-if="searchMode === 'Interna'" class="internal-search">
+      <div id="general-nav">
+        <button @click="internalAlgorithm = 'Secuencial'" class="outline contrast">Secuencial</button>
+        <button @click="internalAlgorithm = 'Binaria'" class="outline contrast">Binaria</button>
+        <button @click="internalAlgorithm = 'Hash'" class="outline contrast">Hash</button>
+      </div>
+
+      <!-- Opciones de Hash -->
+      <div v-if="internalAlgorithm === 'Hash'" class="hash-options">
+        <h4>Función Hash:</h4>
+        <div id="general-nav">
+          <button @click="hashFunction = 'Mod'" class="outline contrast">Módulo</button>
+          <button @click="hashFunction = 'Cuadrado'" class="outline contrast">Cuadrado</button>
+          <button @click="hashFunction = 'Truncamiento'" class="outline contrast">Truncamiento</button>
+          <button @click="hashFunction = 'Plegamiento'" class="outline contrast">Plegamiento</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -29,7 +52,31 @@ const mode = ref('');
 
 <style>
 #subnav {
-  margin-top: 0.8rem;
+  margin-top: 1rem;
 }
 
+.internal-search {
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+
+.hash-options {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--primary);
+  border-radius: 0.5rem;
+}
+
+.hash-options h4 {
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+#general-nav {
+  gap: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
 </style>
