@@ -1,6 +1,5 @@
 <script setup>
 import { ref } from 'vue';
-import NavBarSearch from './NavBarSearch.vue';
 
 const mode = ref('');
 const searchMode = ref('');
@@ -26,14 +25,18 @@ const hashFunction = ref('');
     <!-- Búsqueda Interna -->
     <div v-if="searchMode === 'Interna'" class="internal-search">
       <div id="general-nav">
-        <button @click="internalAlgorithm = 'Secuencial'" class="outline contrast">Secuencial</button>
-        <button @click="internalAlgorithm = 'Binaria'" class="outline contrast">Binaria</button>
-        <button @click="internalAlgorithm = 'Hash'" class="outline contrast">Hash</button>
+        <button class="outline contrast">
+          <router-link to="/lineal" class="outline contrast">Búsqueda Lineal</router-link>
+        </button>
+        <button class="outline contrast">
+          <router-link to="/binaria" class="outline contrast">Búsqueda Binaria</router-link>
+        </button>
+        <button @click="internalAlgorithm = 'Hash'" class="outline contrast">Funciones Hash</button>
       </div>
 
       <!-- Opciones de Hash -->
       <div v-if="internalAlgorithm === 'Hash'" class="hash-options">
-        <h4>Función Hash:</h4>
+        <h4>Función:</h4>
         <div id="general-nav">
           <button @click="hashFunction = 'Mod'" class="outline contrast">Módulo</button>
           <button @click="hashFunction = 'Cuadrado'" class="outline contrast">Cuadrado</button>
