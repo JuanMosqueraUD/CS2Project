@@ -6,9 +6,10 @@ const estructura = ref([]);
 const resultado = ref(null);
 const errorMessage = ref("");
 
-function isValidNumber(value) {
-  // Verificar si es un número válido (entero o decimal)
-  return !isNaN(value) && !isNaN(parseFloat(value)) && value.trim() !== "";
+function isValidPositiveInteger(value) {
+  // Verificar si es un número entero positivo
+  const num = parseInt(value);
+  return !isNaN(num) && num > 0 && num.toString() === value.trim();
 }
 
 function insertar() {
@@ -17,12 +18,12 @@ function insertar() {
     return;
   }
 
-  if (!isValidNumber(valor.value)) {
-    errorMessage.value = "Por favor ingresa solo números válidos";
+  if (!isValidPositiveInteger(valor.value)) {
+    errorMessage.value = "Por favor ingresa solo números enteros positivos";
     return;
   }
 
-  const numero = parseFloat(valor.value);
+  const numero = parseInt(valor.value);
   
   if (estructura.value.includes(numero)) {
     errorMessage.value = "El número ya existe en la estructura";
@@ -41,12 +42,12 @@ function buscar() {
     return;
   }
 
-  if (!isValidNumber(valor.value)) {
-    errorMessage.value = "Por favor ingresa solo números válidos";
+  if (!isValidPositiveInteger(valor.value)) {
+    errorMessage.value = "Por favor ingresa solo números enteros positivos";
     return;
   }
 
-  const numero = parseFloat(valor.value);
+  const numero = parseInt(valor.value);
   resultado.value = estructura.value.includes(numero);
   errorMessage.value = "";
 }
@@ -57,12 +58,12 @@ function eliminar() {
     return;
   }
 
-  if (!isValidNumber(valor.value)) {
-    errorMessage.value = "Por favor ingresa solo números válidos";
+  if (!isValidPositiveInteger(valor.value)) {
+    errorMessage.value = "Por favor ingresa solo números enteros positivos";
     return;
   }
 
-  const numero = parseFloat(valor.value);
+  const numero = parseInt(valor.value);
   const index = estructura.value.indexOf(numero);
   
   if (index !== -1) {
@@ -80,12 +81,12 @@ function eliminar() {
 // Función para validar entrada en tiempo real
 function validateInput(event) {
   const value = event.target.value;
-  // Permitir números, punto decimal y signo negativo
-  const validChars = /^-?\d*\.?\d*$/;
+  // Permitir solo números enteros positivos
+  const validChars = /^\d*$/;
   
   if (!validChars.test(value)) {
     event.target.value = value.slice(0, -1);
-    errorMessage.value = "Solo se permiten números";
+    errorMessage.value = "Solo se permiten números enteros positivos";
   } else {
     errorMessage.value = "";
   }
@@ -93,7 +94,7 @@ function validateInput(event) {
 </script>
 
 <template>
-  <div class="p-6">
+
     <!-- Botón para volver al inicio -->
     <div class="mb-4">
       <router-link to="/" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
@@ -107,45 +108,47 @@ function validateInput(event) {
       <input
         v-model="valor"
         type="number"
-        step="any"
-        placeholder="Número a insertar/buscar/eliminar"
-        class="border px-2 py-1 rounded"
+        min="1"
+        step="1"
+        placeholder="Número entero positivo"
         @input="validateInput"
       />
-      <button @click="insertar">
-        Insertar
-      </button>
-      <button @click="buscar">
-        Buscar
-      </button>
-      <button @click="eliminar">
-        Eliminar
-      </button>
+      <div id="general-nav">
+        <button @click="insertar" class="outline contrast">Insertar</button>
+        <button @click="buscar" class="outline contrast">Buscar</button>
+        <button @click="eliminar" class="outline contrast">Eliminar</button>
+      </div>
     </div>
 
     <!-- Mensaje de error -->
-    <div v-if="errorMessage" class="mb-4">
-      <p class="text-red-400">⚠️ {{ errorMessage }}</p>
+    <div v-if="errorMessage">
+      <p>{{ errorMessage }}</p>
     </div>
 
     <!-- Resultado -->
-    <div v-if="resultado !== null" class="mb-4">
-      <p v-if="resultado" class="text-green-400">✅ Elemento encontrado</p>
-      <p v-else class="text-red-400">❌ Elemento no encontrado</p>
+    <div v-if="resultado !== null">
+      <p v-if="resultado">✅ Elemento encontrado</p>
+      <p v-else>❌ Elemento no encontrado</p>
     </div>
 
     <!-- Visualización de estructura -->
-    <h2 class="text-lg font-semibold">Estructura actual:</h2>
-    <ul class="flex gap-2 mt-2">
+    <h2 >Estructura actual:</h2>
+    <ul>
       <li
-        v-for="(item, index) in estructura"
-        :key="index"
-        class="bg-gray-700 px-3 py-1 rounded"
-      >
+        v-for="(item, index) in estructura":key="index">
         {{ item }}
       </li>
     </ul>
-  </div>
+
 </template>
 
+
+<style>
+#general-nav {
+  gap: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+</style>
 
