@@ -1,39 +1,115 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import * as utils from "../utils/funciones.ts";
+import * as funciones from "../utils/funciones.ts";
+// ...existing code...
 
 const valor = ref("");
-const estructura = ref([]);
-const resultado = ref(null);
+const estructura = ref<(number | null)[]>([]);
+const resultado = ref(null as null | boolean);
 const indexBuscado = ref(-1);
 const errorMessage = ref("");
 
+// Nueva estado de configuración de la estructura
+const estructuraCreada = ref(false);
+const capacidad = ref<number | null>(null); // 'rango' ahora es capacidad (n espacios)
+const digitosClave = ref<number | null>(null); // tamaño de las claves = número de dígitos
+
+function crearEstructura() {
+  errorMessage.value = "";
+  if (capacidad.value === null || digitosClave.value === null) {
+    errorMessage.value = "Por favor completa la capacidad y la cantidad de dígitos.";
+    return;
+  }
+  if (capacidad.value <= 0) {
+    errorMessage.value = "La capacidad debe ser un entero positivo.";
+    return;
+  }
+  if (digitosClave.value <= 0) {
+    errorMessage.value = "La cantidad de dígitos debe ser un entero positivo.";
+    return;
+  }
+
+  estructura.value = Array(capacidad.value).fill(null);
+  estructuraCreada.value = true;
+}
 
 const insertar = () => {
-  if (valor.value !== "" && !estructura.value.includes(valor.value) && valor.value > 0) {
-    estructura.value.push(parseInt(valor.value));
-    valor.value = "";
-  } else {
-    alert("Por favor ingresa un número válido.");
+
+  if (valor.value === "") {
+    errorMessage.value = "Ingresa un número para insertar.";
+    return;
   }
+
+  const num = parseInt(valor.value);
+  if (isNaN(num)) {
+    errorMessage.value = "Ingresa un número válido.";
+    return;
+  }
+
+  // Validar cantidad de dígitos
+  if (digitosClave.value !== null) {
+    const min = Math.pow(10, digitosClave.value - 1);
+    const max = Math.pow(10, digitosClave.value) - 1;
+    // Si digitosClave == 1, min = 1 (aceptamos 0? asumimos que no); ajustable según preferencia
+    if (num < min || num > max) {
+      errorMessage.value = `La clave debe tener exactamente ${digitosClave.value} dígitos.`;
+      return;
+    }
+  }
+
+  // Validar capacidad: buscar primer slot vacío (null)
+  if (capacidad.value !== null) {
+    const firstEmpty = estructura.value.findIndex((v) => v === null);
+    if (firstEmpty === -1) {
+      errorMessage.value = "Se alcanzó la capacidad máxima de la estructura.";
+      return;
+    }
+  }
+
+  // Evitar duplicados
+  if (estructura.value.includes(num)) {
+    errorMessage.value = "El elemento ya existe en la estructura.";
+    return;
+  }
+
+  // Insertar en el primer slot vacío
+  const insertIndex = estructura.value.findIndex((v) => v === null);
+  if (insertIndex !== -1) {
+    estructura.value[insertIndex] = num;
+  }
+  valor.value = "";
+  errorMessage.value = "";
 };
 
 
 function buscar() {
+
   if (!valor.value) {
     errorMessage.value = "Por favor ingresa un valor para buscar";
     return;
   }
 
-  if (parseInt(valor.value) < 0) {
-    errorMessage.value = "Por favor ingresa solo números enteros positivos";
+  const numero = parseInt(valor.value);
+  if (isNaN(numero)) {
+    errorMessage.value = "Ingresa un número válido.";
     return;
   }
-  const numero = parseInt(valor.value);
-  const index = utils.busquedaLineal(estructura.value, numero);
+
+  // Validar cantidad de dígitos en búsqueda
+  if (digitosClave.value !== null) {
+    const min = Math.pow(10, digitosClave.value - 1);
+    const max = Math.pow(10, digitosClave.value) - 1;
+    if (numero < min || numero > max) {
+      errorMessage.value = `La clave debe tener exactamente ${digitosClave.value} dígitos.`;
+      return;
+    }
+  }
+
+  const index = estructura.value.findIndex((v) => v === numero);
   if (index !== -1) {
     indexBuscado.value = index + 1; // +1 para posición humana (1-based)
     resultado.value = true;
+    errorMessage.value = "";
     return;
   }
   resultado.value = false;
@@ -41,20 +117,36 @@ function buscar() {
 }
 
 function eliminar() {
+  if (!estructuraCreada.value) {
+    errorMessage.value = "Primero debes crear la estructura.";
+    return;
+  }
+
   if (!valor.value) {
     errorMessage.value = "Por favor ingresa un valor para eliminar";
     return;
   }
 
-  if (valor.value < 0) {
-    errorMessage.value = "Por favor ingresa solo números enteros positivos";
+  const num = parseInt(valor.value);
+  if (isNaN(num)) {
+    errorMessage.value = "Ingresa un número válido.";
     return;
   }
 
-  const index = utils.busquedaLineal(estructura.value, parseInt(valor.value));
+  // Validar cantidad de dígitos en eliminación
+  if (digitosClave.value !== null) {
+    const min = Math.pow(10, digitosClave.value - 1);
+    const max = Math.pow(10, digitosClave.value) - 1;
+    if (num < min || num > max) {
+      errorMessage.value = `La clave debe tener exactamente ${digitosClave.value} dígitos.`;
+      return;
+    }
+  }
+
+  const index = estructura.value.findIndex((v) => v === num);
 
   if (index !== -1) {
-    estructura.value.splice(index, 1);
+    estructura.value[index] = null; // liberar slot
     resultado.value = null;
     errorMessage.value = "";
   } else {
@@ -66,13 +158,14 @@ function eliminar() {
 }
 
 // Función para validar entrada en tiempo real
-function validateInput(event) {
-  const value = event.target.value;
-  // Permitir solo números enteros positivos
+function validateInput(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const value = target.value;
+  // Permitir solo números enteros positivos (incluye 0)
   const validChars = /^\d*$/;
   
   if (!validChars.test(value)) {
-    event.target.value = value.slice(0, -1);
+  target.value = value.slice(0, -1);
     errorMessage.value = "Solo se permiten números enteros positivos";
   } else {
     errorMessage.value = "";
@@ -92,12 +185,23 @@ function validateInput(event) {
     </div>
 
     <h1>Búsqueda Interna - Lineal</h1>
-    <!-- Controles -->
-    <div>
+    <!-- Controles de creación de estructura (se ocultan cuando ya creada) -->
+    <div class="create-structure" v-if="!estructuraCreada">
+      <h3>Crear estructura</h3>
+      <div>
+        <input v-model.number="capacidad" type="number" placeholder="Capacidad (n espacios)" @input="validateInput" />
+        <input v-model.number="digitosClave" type="number" placeholder="Cantidad de dígitos por clave" @input="validateInput" />
+        <button @click="crearEstructura">Crear estructura</button>
+      </div>
+    </div>
+
+    <!-- Controles de operación (solo visibles si estructura creada) -->
+    <div v-if="estructuraCreada">
+      <p>Estructura creada. Capacidad: {{ capacidad }}, Dígitos por clave: {{ digitosClave }}</p>
       <input
         v-model="valor"
         type="number"
-        min="1"
+        min="0"
         step="1"
         placeholder="Número entero positivo"
         @input="validateInput"
@@ -121,13 +225,13 @@ function validateInput(event) {
     </div>
 
     <!-- Visualización de estructura -->
-    <h2 >Estructura actual:</h2>
-    <ul>
-      <li
-        v-for="(item, index) in estructura":key="index">
-        {{ item }}
-      </li>
-    </ul>
+    <h2>Estructura actual:</h2>
+    <div class="structure-grid">
+      <div v-for="(slot, i) in estructura" :key="i" class="slot">
+        <div class="pos">{{ i + 1 }}</div>
+        <div class="value">{{ slot !== null ? slot : '' }}</div>
+      </div>
+    </div>
 
 </template>
 
@@ -138,6 +242,39 @@ function validateInput(event) {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
+}
+
+.create-structure {
+  margin-bottom: 1rem;
+}
+
+.create-structure input {
+  margin-right: 0.5rem;
+}
+
+.structure-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 8px;
+  margin-top: 1rem;
+}
+
+.slot {
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  padding: 8px;
+  text-align: center;
+  background: #fafafa;
+}
+
+.slot .pos {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.slot .value {
+  font-weight: 600;
+  margin-top: 6px;
 }
 </style>
 
