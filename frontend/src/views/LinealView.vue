@@ -1,40 +1,23 @@
-<script setup>
+<script setup lang="ts">
 import { ref } from "vue";
+import * as utils from "../utils/funciones.ts";
 
 const valor = ref("");
 const estructura = ref([]);
 const resultado = ref(null);
+const indexBuscado = ref(-1);
 const errorMessage = ref("");
 
-function isValidPositiveInteger(value) {
-  // Verificar si es un número entero positivo
-  const num = parseInt(value);
-  return !isNaN(num) && num > 0 && num.toString() === value.trim();
-}
 
-function insertar() {
-  if (!valor.value) {
-    errorMessage.value = "Por favor ingresa un valor";
-    return;
+const insertar = () => {
+  if (valor.value !== "" && !estructura.value.includes(valor.value) && valor.value > 0) {
+    estructura.value.push(parseInt(valor.value));
+    valor.value = "";
+  } else {
+    alert("Por favor ingresa un número válido.");
   }
+};
 
-  if (!isValidPositiveInteger(valor.value)) {
-    errorMessage.value = "Por favor ingresa solo números enteros positivos";
-    return;
-  }
-
-  const numero = parseInt(valor.value);
-  
-  if (estructura.value.includes(numero)) {
-    errorMessage.value = "El número ya existe en la estructura";
-    return;
-  }
-
-  estructura.value.push(numero);
-  resultado.value = null;
-  errorMessage.value = "";
-  valor.value = "";
-}
 
 function buscar() {
   if (!valor.value) {
@@ -42,13 +25,18 @@ function buscar() {
     return;
   }
 
-  if (!isValidPositiveInteger(valor.value)) {
+  if (parseInt(valor.value) < 0) {
     errorMessage.value = "Por favor ingresa solo números enteros positivos";
     return;
   }
-
   const numero = parseInt(valor.value);
-  resultado.value = estructura.value.includes(numero);
+  const index = utils.busquedaLineal(estructura.value, numero);
+  if (index !== -1) {
+    indexBuscado.value = index + 1; // +1 para posición humana (1-based)
+    resultado.value = true;
+    return;
+  }
+  resultado.value = false;
   errorMessage.value = "";
 }
 
@@ -58,14 +46,13 @@ function eliminar() {
     return;
   }
 
-  if (!isValidPositiveInteger(valor.value)) {
+  if (valor.value < 0) {
     errorMessage.value = "Por favor ingresa solo números enteros positivos";
     return;
   }
 
-  const numero = parseInt(valor.value);
-  const index = estructura.value.indexOf(numero);
-  
+  const index = utils.busquedaLineal(estructura.value, parseInt(valor.value));
+
   if (index !== -1) {
     estructura.value.splice(index, 1);
     resultado.value = null;
@@ -91,12 +78,14 @@ function validateInput(event) {
     errorMessage.value = "";
   }
 }
+
+
 </script>
 
 <template>
 
     <!-- Botón para volver al inicio -->
-    <div class="mb-4">
+    <div class="btn-back">
       <router-link to="/" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
         ← Volver al inicio
       </router-link>
@@ -127,8 +116,8 @@ function validateInput(event) {
 
     <!-- Resultado -->
     <div v-if="resultado !== null">
-      <p v-if="resultado">✅ Elemento encontrado</p>
-      <p v-else>❌ Elemento no encontrado</p>
+      <p v-if="resultado">Elemento encontrado en la posicion {{ indexBuscado }}</p>
+      <p v-else>Elemento no encontrado</p>
     </div>
 
     <!-- Visualización de estructura -->
