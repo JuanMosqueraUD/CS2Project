@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import * as funciones from "../utils/funciones.ts";
-// ...existing code...
 
 const valor = ref("");
 const estructura = ref<(number | null)[]>([]);
 const resultado = ref(null as null | boolean);
 const indexBuscado = ref(-1);
 const errorMessage = ref("");
-
 // Nueva estado de configuración de la estructura
 const estructuraCreada = ref(false);
 const capacidad = ref<number | null>(null); // 'rango' ahora es capacidad (n espacios)
@@ -45,38 +43,25 @@ const insertar = () => {
     errorMessage.value = "Ingresa un número válido.";
     return;
   }
-
-  // Validar cantidad de dígitos
-  if (digitosClave.value !== null) {
-    const min = Math.pow(10, digitosClave.value - 1);
-    const max = Math.pow(10, digitosClave.value) - 1;
-    // Si digitosClave == 1, min = 1 (aceptamos 0? asumimos que no); ajustable según preferencia
-    if (num < min || num > max) {
-      errorMessage.value = `La clave debe tener exactamente ${digitosClave.value} dígitos.`;
-      return;
-    }
+  if (!funciones.validarDigitosClave(num, digitosClave.value)) {
+    errorMessage.value = `La clave debe tener exactamente ${digitosClave.value} dígitos.`;
+    return;
   }
 
   // Validar capacidad: buscar primer slot vacío (null)
   if (capacidad.value !== null) {
-    const firstEmpty = estructura.value.findIndex((v) => v === null);
+    const firstEmpty = funciones.busquedaLineal(estructura.value, null);
     if (firstEmpty === -1) {
       errorMessage.value = "Se alcanzó la capacidad máxima de la estructura.";
       return;
     }
+    if(funciones.busquedaLineal(estructura.value, num) !== -1){
+      errorMessage.value = "El elemento ya existe en la estructura.";
+      return;
+    }
+    estructura.value[firstEmpty] = num;
   }
 
-  // Evitar duplicados
-  if (estructura.value.includes(num)) {
-    errorMessage.value = "El elemento ya existe en la estructura.";
-    return;
-  }
-
-  // Insertar en el primer slot vacío
-  const insertIndex = estructura.value.findIndex((v) => v === null);
-  if (insertIndex !== -1) {
-    estructura.value[insertIndex] = num;
-  }
   valor.value = "";
   errorMessage.value = "";
 };
@@ -227,7 +212,7 @@ function validateInput(event: Event) {
     <!-- Visualización de estructura -->
     <h2>Estructura actual:</h2>
     <div class="structure-grid">
-      <div v-for="(slot, i) in estructura" :key="i" class="slot">
+      <div v-for="(slot, i) in estructura" :key="i" :class="['slot', slot !== null ? 'occupied' : 'empty']">
         <div class="pos">{{ i + 1 }}</div>
         <div class="value">{{ slot !== null ? slot : '' }}</div>
       </div>
@@ -260,21 +245,45 @@ function validateInput(event: Event) {
 }
 
 .slot {
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  padding: 8px;
+  position: relative;
+  border: 1px solid #e2e8f0; /* light gray-blue */
+  border-radius: 8px;
+  padding: 12px 8px 10px 8px;
   text-align: center;
-  background: #fafafa;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
 }
 
 .slot .pos {
-  font-size: 0.85rem;
-  color: #666;
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(15, 23, 42, 0.06);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: #334155;
 }
 
 .slot .value {
-  font-weight: 600;
-  margin-top: 6px;
+  font-weight: 700;
+  margin-top: 14px;
+  font-size: 1.1rem;
+  color: #0f172a; /* darker for contrast */
+}
+
+.slot.empty {
+  opacity: 0.7;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+
+.slot.occupied {
+  box-shadow: 0 1px 0 rgba(2,6,23,0.04) inset;
+  background: linear-gradient(180deg, #eef2ff 0%, #ffffff 100%);
+  border-color: #c7d2fe;
+}
+
+.slot.empty .value {
+  color: #94a3b8; /* muted */
 }
 </style>
 
