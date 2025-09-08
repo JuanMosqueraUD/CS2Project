@@ -33,6 +33,7 @@ function crearEstructura() {
 
 const insertar = () => {
 
+  resultado.value = null;
   if (valor.value === "") {
     errorMessage.value = "Ingresa un número para insertar.";
     return;
@@ -81,16 +82,12 @@ function buscar() {
   }
 
   // Validar cantidad de dígitos en búsqueda
-  if (digitosClave.value !== null) {
-    const min = Math.pow(10, digitosClave.value - 1);
-    const max = Math.pow(10, digitosClave.value) - 1;
-    if (numero < min || numero > max) {
-      errorMessage.value = `La clave debe tener exactamente ${digitosClave.value} dígitos.`;
-      return;
-    }
+  if (funciones.validarDigitosClave(numero, digitosClave.value) === false) {
+    errorMessage.value = `La clave debe tener exactamente ${digitosClave.value} dígitos.`;
+    return;
   }
 
-  const index = estructura.value.findIndex((v) => v === numero);
+  const index = funciones.busquedaLineal(estructura.value, numero);
   if (index !== -1) {
     indexBuscado.value = index + 1; // +1 para posición humana (1-based)
     resultado.value = true;
@@ -98,10 +95,11 @@ function buscar() {
     return;
   }
   resultado.value = false;
-  errorMessage.value = "";
+  errorMessage.value = "clave no encontrada";
 }
 
 function eliminar() {
+  errorMessage.value = "";
   if (!estructuraCreada.value) {
     errorMessage.value = "Primero debes crear la estructura.";
     return;
@@ -119,16 +117,12 @@ function eliminar() {
   }
 
   // Validar cantidad de dígitos en eliminación
-  if (digitosClave.value !== null) {
-    const min = Math.pow(10, digitosClave.value - 1);
-    const max = Math.pow(10, digitosClave.value) - 1;
-    if (num < min || num > max) {
-      errorMessage.value = `La clave debe tener exactamente ${digitosClave.value} dígitos.`;
-      return;
-    }
+  if (funciones.validarDigitosClave(num, digitosClave.value) === false) {
+    errorMessage.value = `La clave debe tener exactamente ${digitosClave.value} dígitos.`;
+    return;
   }
 
-  const index = estructura.value.findIndex((v) => v === num);
+  const index = funciones.busquedaLineal(estructura.value, num);
 
   if (index !== -1) {
     estructura.value[index] = null; // liberar slot
@@ -164,8 +158,8 @@ function validateInput(event: Event) {
 
     <!-- Botón para volver al inicio -->
     <div class="btn-back">
-      <router-link to="/" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700">
-        ← Volver al inicio
+      <router-link to="/" class="outline contrast">
+         Volver al inicio
       </router-link>
     </div>
 
