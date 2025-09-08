@@ -38,10 +38,10 @@ const hashFunction = ref('');
       <div v-if="internalAlgorithm === 'Hash'" class="hash-options">
         <h4>Función:</h4>
         <div id="general-nav">
-          <button @click="hashFunction = 'Mod'" class="outline contrast">Módulo</button>
-          <button @click="hashFunction = 'Cuadrado'" class="outline contrast">Cuadrado</button>
-          <button @click="hashFunction = 'Truncamiento'" class="outline contrast">Truncamiento</button>
-          <button @click="hashFunction = 'Plegamiento'" class="outline contrast">Plegamiento</button>
+          <button @click="hashFunction = 'Mod'" class="outline contrast">Función Módulo</button>
+          <button @click="hashFunction = 'Cuadrado'" class="outline contrast">Función Cuadrado</button>
+          <button @click="hashFunction = 'Truncamiento'" class="outline contrast">Función Truncamiento</button>
+          <button @click="hashFunction = 'Plegamiento'" class="outline contrast">Función Plegamiento</button>
         </div>
       </div>
     </div>

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { ref } from "vue";
 import * as funciones from "../utils/funciones.ts";
 
@@ -18,6 +18,7 @@ function crearEstructura() {
     errorMessage.value = "Por favor completa la capacidad y la cantidad de dígitos.";
     return;
   }
+
   if (capacidad.value <= 0) {
     errorMessage.value = "La capacidad debe ser un entero positivo.";
     return;
@@ -33,13 +34,13 @@ function crearEstructura() {
 
 const insertar = () => {
   resultado.value = null;
+
   const num = parseInt(valor.value);
   const res = funciones.validarInput(num,digitosClave.value);
   if (res.isError) {
     errorMessage.value = res.msg;
     return;
   }
-  
   // Validar capacidad: buscar primer slot vacío (null)
   if (capacidad.value !== null) {
     const firstEmpty = funciones.busquedaLineal(estructura.value, null);
@@ -47,17 +48,16 @@ const insertar = () => {
       errorMessage.value = "Se alcanzó la capacidad máxima de la estructura.";
       return;
     }
-    if(funciones.busquedaLineal(estructura.value, num) !== -1){
+    if(funciones.busquedaBinaria(estructura.value, num) !== -1){
       errorMessage.value = "El elemento ya existe en la estructura.";
       return;
     }
     estructura.value[firstEmpty] = num;
   }
-
+  estructura.value = funciones.ordenarLista(estructura.value);
   valor.value = "";
   errorMessage.value = "";
 };
-
 
 function buscar() {
   errorMessage.value = "";
@@ -70,7 +70,7 @@ function buscar() {
     return;
   }
 
-  const index = funciones.busquedaLineal(estructura.value, num);
+  const index = funciones.busquedaBinaria(estructura.value, num);
   if (index !== -1) {
     indexBuscado.value = index + 1; // +1 para posición humana (1-based)
     resultado.value = true;
@@ -91,7 +91,7 @@ function eliminar() {
     return;
   }
 
-  const index = funciones.busquedaLineal(estructura.value, num);
+  const index = funciones.busquedaBinaria(estructura.value, num);
 
   if (index !== -1) {
     estructura.value[index] = null; // liberar slot
@@ -101,9 +101,10 @@ function eliminar() {
     resultado.value = false;
     errorMessage.value = "";
   }
-  
+  estructura.value = funciones.ordenarLista(estructura.value);
   valor.value = "";
 }
+
 
 // Función para validar entrada en tiempo real
 function validateInput(event: Event) {
@@ -123,6 +124,7 @@ function validateInput(event: Event) {
 </script>
 
 <template>
+
     <!-- Botón para volver al inicio -->
     <div class="btn-back">
       <router-link to="/" class="outline contrast">
@@ -130,7 +132,7 @@ function validateInput(event: Event) {
       </router-link>
     </div>
 
-    <h1>Búsqueda lineal</h1>
+    <h1>Búsqueda Binaria</h1>
     <!-- Controles de creación de estructura (se ocultan cuando ya creada) -->
     <div class="create-structure" v-if="!estructuraCreada">
       <h3>Crear estructura</h3>
@@ -169,6 +171,7 @@ function validateInput(event: Event) {
       <p v-if="resultado">Elemento encontrado en la posicion {{ indexBuscado }}</p>
     </div>
 
+    
     <!-- Visualización de estructura -->
     <h2>Estructura actual:</h2>
     <div class="structure-grid">
@@ -178,71 +181,5 @@ function validateInput(event: Event) {
       </div>
     </div>
 
+
 </template>
-
-
-<style>
-#general-nav {
-  gap: 1rem;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.create-structure {
-  margin-bottom: 1rem;
-}
-
-.create-structure input {
-  margin-right: 0.5rem;
-}
-
-.structure-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-  gap: 8px;
-  margin-top: 1rem;
-}
-
-.slot {
-  position: relative;
-  border: 1px solid #e2e8f0; /* light gray-blue */
-  border-radius: 8px;
-  padding: 12px 8px 10px 8px;
-  text-align: center;
-  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
-}
-
-.slot .pos {
-  position: absolute;
-  top: 6px;
-  left: 6px;
-  background: rgba(15, 23, 42, 0.06);
-  padding: 2px 6px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  color: #334155;
-}
-
-.slot .value {
-  font-weight: 700;
-  margin-top: 14px;
-  font-size: 1.1rem;
-  color: #0f172a; /* darker for contrast */
-}
-
-.slot.empty {
-  opacity: 0.7;
-  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
-}
-
-.slot.occupied {
-  box-shadow: 0 1px 0 rgba(2,6,23,0.04) inset;
-  background: linear-gradient(180deg, #eef2ff 0%, #ffffff 100%);
-  border-color: #c7d2fe;
-}
-
-.slot.empty .value {
-  color: #94a3b8; /* muted */
-}
-</style>
