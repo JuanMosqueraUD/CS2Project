@@ -4,11 +4,13 @@ import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from "../views/HomeView.vue";
 import LinealView from "../views/LinealView.vue";
 import BinariaView from "../views/BinariaView.vue";
+import HashMod from '../views/HashMod.vue';
 
 const routes = [
   { path: "/", name: "home", component: HomeView },
   { path: "/lineal", name: "lineal", component: LinealView },
   { path: "/binaria", name: "binaria", component: BinariaView },
+  { path: "/hashmod", name: "hashmod", component: HashMod },
 ]
 
 const router = createRouter({

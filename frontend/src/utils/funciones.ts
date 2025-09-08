@@ -70,3 +70,8 @@ export function ordenarLista(lista: (number | null)[]): Array<number | null> {
   });
   return lista;
 }
+
+
+export function HashModulo(clave: number, capacidad: number): number {
+  return (clave % capacidad);
+}
