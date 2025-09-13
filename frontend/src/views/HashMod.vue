@@ -2,6 +2,15 @@
 import { ref } from "vue";
 import * as funciones from "../utils/funciones.ts";
 
+type EstrategiaColision =
+  |  ""
+  | "lineal"
+  | "cuadratica"
+  | "doble-hash"
+  | "arreglos"
+  | "listas-anidadas"
+  | "encadenamiento";
+
 const valor = ref("");
 const estructura = ref<(number | null)[]>([]);
 const resultado = ref(null as null | boolean);
@@ -11,6 +20,7 @@ const errorMessage = ref("");
 const estructuraCreada = ref(false);
 const capacidad = ref<number | null>(null); // 'rango' ahora es capacidad (n espacios)
 const digitosClave = ref<number | null>(null); // tamaño de las claves = número de dígitos
+const estrategiaColision = ref<EstrategiaColision>("");
 
 function crearEstructura() {
   errorMessage.value = "";
@@ -46,7 +56,7 @@ const insertar = () => {
     errorMessage.value = "El elemento ya existe en la estructura.";
     return;
    } else {
-    errorMessage.value = "Colisión detectada.";
+    errorMessage.value = `Colisión detectada (método: ${estrategiaColision.value}).`;
     return;
    }
   }
@@ -70,7 +80,7 @@ const buscar = () => {
     resultado.value = true;
     indexBuscado.value = index;
   } else {
-    errorMessage.value = "El elemento esta en colision o no existe.";
+    errorMessage.value = `El elemento está en colisión o no existe (método: ${estrategiaColision.value}).`;
     return;
   }
 
@@ -92,7 +102,7 @@ const eliminar = () => {
   if(estructura.value[index] === num){
     estructura.value[index] = null;
   } else {
-    errorMessage.value = "El elemento esta en colision o no existe.";
+    errorMessage.value = `El elemento está en colisión o no existe (método: ${estrategiaColision.value}).`;
     return;
   }
   valor.value = "";
@@ -134,13 +144,30 @@ function validateInput(event: Event) {
       <div>
         <input v-model.number="capacidad" type="number" placeholder="Capacidad (n espacios)" @input="validateInput" />
         <input v-model.number="digitosClave" type="number" placeholder="Cantidad de dígitos por clave" @input="validateInput" />
+        
+        <details class="dropdown">
+          <summary>Método de colisión: <strong>{{ estrategiaColision }}</strong></summary>
+          <ul>
+            <li><a href="#" @click.prevent="estrategiaColision = 'lineal'">Lineal</a></li>
+            <li><a href="#" @click.prevent="estrategiaColision = 'cuadratica'">Cuadrática</a></li>
+            <li><a href="#" @click.prevent="estrategiaColision = 'doble-hash'">Doble función hash</a></li>
+            <li><a href="#" @click.prevent="estrategiaColision = 'arreglos'">Arreglos</a></li>
+            <li><a href="#" @click.prevent="estrategiaColision = 'listas-anidadas'">Listas anidadas</a></li>
+            <li><a href="#" @click.prevent="estrategiaColision = 'encadenamiento'">Encadenamiento</a></li>
+          </ul>
+        </details>
+
         <button @click="crearEstructura">Crear estructura</button>
       </div>
     </div>
 
     <!-- Controles de operación (solo visibles si estructura creada) -->
     <div v-if="estructuraCreada">
-      <p>Estructura creada. Capacidad: {{ capacidad }}, Dígitos por clave: {{ digitosClave }}</p>
+      <p>
+        Estructura creada. Capacidad: {{ capacidad }}, Dígitos por clave: {{ digitosClave }}
+        <br />
+        Método de colisión seleccionado: <strong>{{ estrategiaColision }}</strong>
+      </p>
       <input
         v-model="valor"
         type="number"

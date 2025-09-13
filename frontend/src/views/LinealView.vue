@@ -53,7 +53,7 @@ const insertar = () => {
     }
     estructura.value[firstEmpty] = num;
   }
-
+  estructura.value = funciones.ordenarLista(estructura.value);
   valor.value = "";
   errorMessage.value = "";
 };
@@ -101,7 +101,8 @@ function eliminar() {
     resultado.value = false;
     errorMessage.value = "";
   }
-  
+  estructura.value = funciones.ordenarLista(estructura.value);
+  errorMessage.value = "";
   valor.value = "";
 }
 
