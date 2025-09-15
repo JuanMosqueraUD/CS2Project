@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import * as funciones from "../utils/funciones.ts";
 
 type EstrategiaColision =
@@ -11,6 +11,10 @@ type EstrategiaColision =
   | "listas-anidadas"
   | "encadenamiento";
 
+type FuncionHash = 'mod' | 'cuadrado' | 'truncamiento' | 'plegamiento';
+
+const props = defineProps<{ funcion?: string | null }>();
+
 const valor = ref("");
 const estructura = ref<(number | null)[]>([]);
 const resultado = ref(null as null | boolean);
@@ -20,7 +24,27 @@ const errorMessage = ref("");
 const estructuraCreada = ref(false);
 const capacidad = ref<number | null>(null); // 'rango' ahora es capacidad (n espacios)
 const digitosClave = ref<number | null>(null); // tamaño de las claves = número de dígitos
-const estrategiaColision = ref<EstrategiaColision>("");
+const estrategiaColision = ref<EstrategiaColision>("lineal");
+const funcionHash = ref<FuncionHash>('mod');
+
+// inicializar desde prop si viene
+if (props.funcion) {
+  const lower = String(props.funcion).toLowerCase();
+  if (lower === 'mod' || lower === 'cuadrado' || lower === 'truncamiento' || lower === 'plegamiento') {
+    funcionHash.value = lower as FuncionHash;
+  }
+}
+
+watch(
+  () => props.funcion,
+  (n) => {
+    if (!n) return;
+    const lower = String(n).toLowerCase();
+    if (lower === 'mod' || lower === 'cuadrado' || lower === 'truncamiento' || lower === 'plegamiento') {
+      funcionHash.value = lower as FuncionHash;
+    }
+  }
+);
 
 function crearEstructura() {
   errorMessage.value = "";
@@ -50,13 +74,26 @@ const insertar = () => {
     errorMessage.value = res.msg;
     return;
   }
-  const index = funciones.HashModulo(num, capacidad.value!);
+  
+  // Elegir índice según función hash indicada (por ahora implementado 'mod')
+  let index = 0;
+  if (funcionHash.value === 'mod') {
+    index = funciones.HashModulo(num, capacidad.value!);
+  } else {
+    // placeholders para implementación futura
+    index = funciones.HashModulo(num, capacidad.value!);
+  }
+  if (funcionHash.value === 'cuadrado') {
+    // placeholders para implementación futura
+    index = funciones.HashCuadrado(num, capacidad.value!);
+  }
+
   if(estructura.value[index] !== null){
    if(estructura.value[index] == num){
     errorMessage.value = "El elemento ya existe en la estructura.";
     return;
    } else {
-    errorMessage.value = `Colisión detectada (método: ${estrategiaColision.value}).`;
+    errorMessage.value = `Colisión detectada (función: ${estrategiaColision.value}).`;
     return;
    }
   }
@@ -75,12 +112,19 @@ const buscar = () => {
     errorMessage.value = res.msg;
     return;
   }
-  const index = funciones.HashModulo(num, capacidad.value!);
+
+  let index = 0;
+  if (funcionHash.value === 'mod') {
+    index = funciones.HashModulo(num, capacidad.value!);
+  } else {
+    index = funciones.HashModulo(num, capacidad.value!);
+  }
+
   if(estructura.value[index] === num){
     resultado.value = true;
     indexBuscado.value = index;
   } else {
-    errorMessage.value = `El elemento está en colisión o no existe (método: ${estrategiaColision.value}).`;
+    errorMessage.value = `El elemento está en colisión o no existe (función: ${funcionHash.value}).`;
     return;
   }
 
@@ -98,11 +142,17 @@ const eliminar = () => {
     return;
   }
 
-  const index = funciones.HashModulo(num, capacidad.value!);
+  let index = 0;
+  if (funcionHash.value === 'mod') {
+    index = funciones.HashModulo(num, capacidad.value!);
+  } else {
+    index = funciones.HashModulo(num, capacidad.value!);
+  }
+
   if(estructura.value[index] === num){
     estructura.value[index] = null;
   } else {
-    errorMessage.value = `El elemento está en colisión o no existe (método: ${estrategiaColision.value}).`;
+    errorMessage.value = `El elemento está en colisión o no existe (función: ${funcionHash.value}).`;
     return;
   }
   valor.value = "";
@@ -137,7 +187,7 @@ function validateInput(event: Event) {
       </router-link>
     </div>
 
-    <h1>Búsqueda Funcion Hash Modulo</h1>
+    <h1>Búsqueda Funcion Hash ({{ funcionHash }})</h1>
     <!-- Controles de creación de estructura (se ocultan cuando ya creada) -->
     <div class="create-structure" v-if="!estructuraCreada">
       <h3>Crear estructura</h3>
@@ -146,12 +196,11 @@ function validateInput(event: Event) {
         <input v-model.number="digitosClave" type="number" placeholder="Cantidad de dígitos por clave" @input="validateInput" />
         
         <details class="dropdown">
-          <summary>Método de colisión: <strong>{{ estrategiaColision }}</strong></summary>
+          <summary role="button">Método de colisión: <strong>{{ estrategiaColision }}</strong></summary>
           <ul>
             <li><a href="#" @click.prevent="estrategiaColision = 'lineal'">Lineal</a></li>
             <li><a href="#" @click.prevent="estrategiaColision = 'cuadratica'">Cuadrática</a></li>
             <li><a href="#" @click.prevent="estrategiaColision = 'doble-hash'">Doble función hash</a></li>
-            <li><a href="#" @click.prevent="estrategiaColision = 'arreglos'">Arreglos</a></li>
             <li><a href="#" @click.prevent="estrategiaColision = 'listas-anidadas'">Listas anidadas</a></li>
             <li><a href="#" @click.prevent="estrategiaColision = 'encadenamiento'">Encadenamiento</a></li>
           </ul>

@@ -75,3 +75,13 @@ export function ordenarLista(lista: (number | null)[]): Array<number | null> {
 export function HashModulo(clave: number, capacidad: number): number {
   return (clave % capacidad);
 }
+
+export function HashCuadrado(clave: number, capacidad: number): number {
+  const cuadrado = clave * clave;
+  const cuadradoStr = cuadrado.toString().padStart(capacidad.toString().length * 2, '0');
+  const digitos = capacidad.toString().length - 1; // cantidad de ceros
+  const totalLen = cuadradoStr.length;
+  const start = Math.floor((totalLen - digitos) / 2);
+  const medio = cuadradoStr.substring(start, start + digitos);
+  return parseInt(medio) % capacidad;
+}

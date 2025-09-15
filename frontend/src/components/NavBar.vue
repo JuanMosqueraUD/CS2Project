@@ -39,11 +39,17 @@ const hashFunction = ref('');
         <h4>Función:</h4>
         <div id="general-nav">
           <button class="outline contrast">
-            <router-link to="/hashmod" class="outline contrast">Función Módulo</router-link>
+            <router-link :to="{ name: 'hashmod', query: { funcion: 'mod' } }" class="outline contrast">Función Módulo</router-link>
           </button>
-          <button @click="hashFunction = 'Cuadrado'" class="outline contrast">Función Cuadrado</button>
-          <button @click="hashFunction = 'Truncamiento'" class="outline contrast">Función Truncamiento</button>
-          <button @click="hashFunction = 'Plegamiento'" class="outline contrast">Función Plegamiento</button>
+          <button class="outline contrast">
+            <router-link :to="{ name: 'hashmod', query: { funcion: 'cuadrado' } }" class="outline contrast">Función Cuadrado</router-link>
+          </button>
+          <button class="outline contrast">
+            <router-link :to="{ name: 'hashmod', query: { funcion: 'truncamiento' } }" class="outline contrast">Función Truncamiento</router-link>
+          </button>
+          <button class="outline contrast">
+            <router-link :to="{ name: 'hashmod', query: { funcion: 'plegamiento' } }" class="outline contrast">Función Plegamiento</router-link>
+          </button>
         </div>
       </div>
     </div>
