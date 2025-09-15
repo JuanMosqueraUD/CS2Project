@@ -79,13 +79,16 @@ const insertar = () => {
   let index = 0;
   if (funcionHash.value === 'mod') {
     index = funciones.HashModulo(num, capacidad.value!);
-  } else {
-    // placeholders para implementación futura
-    index = funciones.HashModulo(num, capacidad.value!);
   }
   if (funcionHash.value === 'cuadrado') {
-    // placeholders para implementación futura
+
     index = funciones.HashCuadrado(num, capacidad.value!);
+  }
+  if (funcionHash.value === 'truncamiento') {
+    index = funciones.HashTruncamiento(num, capacidad.value!);
+  }
+  if (funcionHash.value === 'plegamiento') {
+    index = funciones.HashPlegamiento(num, capacidad.value!);
   }
 
   if(estructura.value[index] !== null){
@@ -119,6 +122,18 @@ const buscar = () => {
   } else {
     index = funciones.HashModulo(num, capacidad.value!);
   }
+  if (funcionHash.value === 'cuadrado') {
+    // placeholders para implementación futura
+    index = funciones.HashCuadrado(num, capacidad.value!);
+  }
+  if (funcionHash.value === 'truncamiento') {
+    // placeholders para implementación futura
+    index = funciones.HashTruncamiento(num, capacidad.value!);
+  }
+  if (funcionHash.value === 'plegamiento') {
+    index = funciones.HashPlegamiento(num, capacidad.value!);  
+  }
+
 
   if(estructura.value[index] === num){
     resultado.value = true;
@@ -147,6 +162,17 @@ const eliminar = () => {
     index = funciones.HashModulo(num, capacidad.value!);
   } else {
     index = funciones.HashModulo(num, capacidad.value!);
+  }
+  if (funcionHash.value === 'cuadrado') {
+    // placeholders para implementación futura
+    index = funciones.HashCuadrado(num, capacidad.value!);
+  }
+  if (funcionHash.value === 'truncamiento') { 
+    // placeholders para implementación futura
+    index = funciones.HashTruncamiento(num, capacidad.value!);
+  }
+  if (funcionHash.value === 'plegamiento') { 
+    index = funciones.HashPlegamiento(num, capacidad.value!);  
   }
 
   if(estructura.value[index] === num){

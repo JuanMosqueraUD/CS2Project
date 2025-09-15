@@ -85,3 +85,31 @@ export function HashCuadrado(clave: number, capacidad: number): number {
   const medio = cuadradoStr.substring(start, start + digitos);
   return parseInt(medio) % capacidad;
 }
+
+export function HashPlegamiento(clave: number, capacidad: number): number {
+  // Plegamiento: separa la clave en grupos de 'digitos' y suma los grupos
+  const digitos = capacidad.toString().length;
+  const claveStr = clave.toString().padStart(Math.ceil(clave.toString().length / digitos) * digitos, '0');
+  let suma = 0;
+  for (let i = 0; i < claveStr.length; i += digitos) {
+    suma += parseInt(claveStr.substring(i, i + digitos));
+  }
+  return suma % capacidad;
+}
+
+export function HashTruncamiento(clave: number, capacidad: number): number {
+  // Truncamiento: toma los dígitos pares de la clave según la cantidad de dígitos de la capacidad
+  const digitos = capacidad.toString().length;
+  const claveStr = clave.toString();
+  let resultado = '';
+  let count = 0;
+  for (let i = 0; i < claveStr.length && count < digitos; i++) {
+    if ((i + 1) % 2 === 0) { // dígitos en posiciones pares (1-based)
+      resultado += claveStr[i];
+      count++;
+    }
+  }
+  // Si no hay suficientes dígitos pares, rellena con ceros a la izquierda
+  resultado = resultado.padStart(digitos, '0');
+  return parseInt(resultado) % capacidad;
+}
