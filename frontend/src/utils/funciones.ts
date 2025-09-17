@@ -87,29 +87,46 @@ export function HashCuadrado(clave: number, capacidad: number): number {
 }
 
 export function HashPlegamiento(clave: number, capacidad: number): number {
-  // Plegamiento: separa la clave en grupos de 'digitos' y suma los grupos
-  const digitos = capacidad.toString().length;
-  const claveStr = clave.toString().padStart(Math.ceil(clave.toString().length / digitos) * digitos, '0');
+  // Cantidad de ceros de la capacidad decide el tamaño de grupo y cuántos dígitos devolver
+  // 10 -> 1, 100 -> 2, 1000 -> 3
+  const ceros = Math.max(1, capacidad.toString().length - 1);
+  const claveStr = Math.abs(clave).toString();
+
+  // Separar la clave en grupos de 'ceros' dígitos de izquierda a derecha.
+  // El último grupo puede ser más corto (sobrante permitido)
   let suma = 0;
-  for (let i = 0; i < claveStr.length; i += digitos) {
-    suma += parseInt(claveStr.substring(i, i + digitos));
+  for (let i = 0; i < claveStr.length; i += ceros) {
+    const grupo = claveStr.substring(i, i + ceros);
+    suma += parseInt(grupo, 10);
   }
-  return suma % capacidad;
+
+  // Tomar los 'ceros' dígitos menos significativos del resultado de la suma
+  const sumaStr = suma.toString();
+  const ultimos = sumaStr.slice(-ceros); // si ceros > len, devuelve todo (está bien)
+  const valor = parseInt(ultimos, 10);
+
+  // Asegurar índice válido
+  return capacidad > 0 ? (valor % capacidad) : 0;
 }
 
 export function HashTruncamiento(clave: number, capacidad: number): number {
-  // Truncamiento: toma los dígitos pares de la clave según la cantidad de dígitos de la capacidad
-  const digitos = capacidad.toString().length;
-  const claveStr = clave.toString();
-  let resultado = '';
-  let count = 0;
-  for (let i = 0; i < claveStr.length && count < digitos; i++) {
-    if ((i + 1) % 2 === 0) { // dígitos en posiciones pares (1-based)
-      resultado += claveStr[i];
-      count++;
-    }
+  // cantidad de ceros en la capacidad (10->1, 100->2, 1000->3, ...)
+  const ceros = Math.max(1, capacidad.toString().length - 1);
+  const claveStr = Math.abs(clave).toString();
+
+  // Tomar dígitos en posiciones pares (contadas 1-based): 2,4,6,...
+  // En índice 0-based corresponde a 1,3,5,...
+  let seleccion = "";
+  for (let i = 1; i < claveStr.length && seleccion.length < ceros; i += 2) {
+    seleccion += claveStr[i];
   }
-  // Si no hay suficientes dígitos pares, rellena con ceros a la izquierda
-  resultado = resultado.padStart(digitos, '0');
-  return parseInt(resultado) % capacidad;
+
+  // Si no alcanzan los dígitos, completa con ceros a la izquierda
+  if (seleccion.length === 0) seleccion = "0";
+  if (seleccion.length < ceros) seleccion = seleccion.padStart(ceros, "0");
+  if (seleccion.length > ceros) seleccion = seleccion.slice(0, ceros);
+
+  const valor = parseInt(seleccion, 10);
+  if (!Number.isFinite(valor)) return 0;
+  return valor % capacidad;
 }

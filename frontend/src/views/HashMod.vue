@@ -52,6 +52,12 @@ function crearEstructura() {
     errorMessage.value = "Por favor completa la capacidad y la cantidad de dígitos.";
     return;
   }
+  // Solo permitir 10, 100, 1000 en funciones hash
+  const permitidas = [10, 100, 1000];
+  if (!permitidas.includes(capacidad.value)) {
+    errorMessage.value = "Capacidad inválida. Solo se permite 10, 100 o 1000 en funciones hash.";
+    return;
+  }
   if (capacidad.value <= 0) {
     errorMessage.value = "La capacidad debe ser un entero positivo.";
     return;
@@ -120,7 +126,7 @@ const buscar = () => {
   if (funcionHash.value === 'mod') {
     index = funciones.HashModulo(num, capacidad.value!);
   } else {
-    index = funciones.HashModulo(num, capacidad.value!);
+    index = funciones.HashModulo(num, capacidad.value!) ;
   }
   if (funcionHash.value === 'cuadrado') {
     // placeholders para implementación futura
@@ -137,7 +143,7 @@ const buscar = () => {
 
   if(estructura.value[index] === num){
     resultado.value = true;
-    indexBuscado.value = index;
+    indexBuscado.value = index + 1; // +1 para posición humana (1-based)
   } else {
     errorMessage.value = `El elemento está en colisión o no existe (función: ${funcionHash.value}).`;
     return;
@@ -218,7 +224,16 @@ function validateInput(event: Event) {
     <div class="create-structure" v-if="!estructuraCreada">
       <h3>Crear estructura</h3>
       <div>
-        <input v-model.number="capacidad" type="number" placeholder="Capacidad (n espacios)" @input="validateInput" />
+        <!-- Reemplazo: capacidad por dropdown de Pico CSS -->
+        <details class="dropdown">
+          <summary>Capacidad: <strong>{{ capacidad ?? 'Selecciona' }}</strong></summary>
+          <ul>
+            <li><a href="#" @click.prevent="capacidad = 10">10</a></li>
+            <li><a href="#" @click.prevent="capacidad = 100">100</a></li>
+            <li><a href="#" @click.prevent="capacidad = 1000">1000</a></li>
+          </ul>
+        </details>
+        
         <input v-model.number="digitosClave" type="number" placeholder="Cantidad de dígitos por clave" @input="validateInput" />
         
         <details class="dropdown">
