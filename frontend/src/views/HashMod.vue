@@ -46,6 +46,7 @@ watch(
   }
 );
 
+
 function crearEstructura() {
   errorMessage.value = "";
   if (capacidad.value === null || digitosClave.value === null) {
