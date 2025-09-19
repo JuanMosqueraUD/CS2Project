@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import * as funciones from "../utils/funciones.ts";
+import { sondeoLineal, sondeoPorCuadrados, sondeoDobleHash } from "../utils/colisiones.ts";
 
 type EstrategiaColision =
   |  ""
@@ -72,6 +73,28 @@ function crearEstructura() {
   estructuraCreada.value = true;
 }
 
+function siguienteIndice(base: number, capacidad: number, estrategia: string, intento: number): number {
+  if (estrategia === 'lineal') {
+    return sondeoLineal(base) % capacidad;
+  }
+  if (estrategia === 'cuadratica') {
+    return sondeoPorCuadrados(base, Math.max(1, intento)) % capacidad;
+  }
+  if (estrategia === 'doble-hash') {
+    return sondeoDobleHash(base) % capacidad;
+  }
+  // por defecto, lineal
+  return sondeoLineal(base) % capacidad;
+}
+
+function indiceInicial(num: number): number {
+  if (funcionHash.value === 'mod') return funciones.HashModulo(num, capacidad.value!);
+  if (funcionHash.value === 'cuadrado') return funciones.HashCuadrado(num, capacidad.value!);
+  if (funcionHash.value === 'truncamiento') return funciones.HashTruncamiento(num, capacidad.value!);
+  if (funcionHash.value === 'plegamiento') return funciones.HashPlegamiento(num, capacidad.value!);
+  return funciones.HashModulo(num, capacidad.value!);
+}
+
 const insertar = () => {
   resultado.value = null;
 
@@ -82,35 +105,45 @@ const insertar = () => {
     return;
   }
   
-  // Elegir índice según función hash indicada (por ahora implementado 'mod')
-  let index = 0;
-  if (funcionHash.value === 'mod') {
-    index = funciones.HashModulo(num, capacidad.value!);
-  }
-  if (funcionHash.value === 'cuadrado') {
+  const cap = capacidad.value!;
+  let index = indiceInicial(num);
 
-    index = funciones.HashCuadrado(num, capacidad.value!);
-  }
-  if (funcionHash.value === 'truncamiento') {
-    index = funciones.HashTruncamiento(num, capacidad.value!);
-  }
-  if (funcionHash.value === 'plegamiento') {
-    index = funciones.HashPlegamiento(num, capacidad.value!);
-  }
-
-  if(estructura.value[index] !== null){
-   if(estructura.value[index] == num){
-    errorMessage.value = "El elemento ya existe en la estructura.";
+  // si está vacío, insertar sin colisión
+  if (estructura.value[index] === null) {
+    estructura.value[index] = num;
+    errorMessage.value = `Insertado en la posición ${index + 1}.`;
+    valor.value = "";
     return;
-   } else {
-    errorMessage.value = `Colisión detectada (función: ${estrategiaColision.value}).`;
-    return;
-   }
   }
-  estructura.value[index] = num;
 
-  valor.value = "";
-  errorMessage.value = "";
+  // si el mismo número ya está, reportar duplicado
+  if (estructura.value[index] === num) {
+    errorMessage.value = `El elemento ya existe en la posición ${index + 1}.`;
+    return;
+  }
+
+  // resolver colisiones según estrategia seleccionada
+  let intentos = 1; // para cuadrática, 1-based
+  let pasos = 0;
+  const maxPasos = cap; // evitar bucle infinito
+  const primeraColision = index; // guardamos dónde ocurrió la primera colisión
+
+  while (pasos < maxPasos) {
+    index = siguienteIndice(index, cap, estrategiaColision.value, intentos);
+    if (estructura.value[index] === null) {
+      estructura.value[index] = num;
+      errorMessage.value = `Colisión en la posición ${primeraColision + 1}. Reubicado a ${index + 1} usando "${estrategiaColision.value}".`;
+      valor.value = "";
+      return;
+    }
+    if (estructura.value[index] === num) {
+      errorMessage.value = `El elemento ya existe (detectado durante resolución) en la posición ${index + 1}.`;
+      return;
+    }
+    intentos++; pasos++;
+  }
+
+  errorMessage.value = "Tabla llena o no se encontró posición libre tras resolver colisiones.";
 };
 
 const buscar = () => {
@@ -118,40 +151,25 @@ const buscar = () => {
 
   const num = parseInt(valor.value);
   const res = funciones.validarInput(num,digitosClave.value);
-  if (res.isError) {
-    errorMessage.value = res.msg;
-    return;
-  }
+  if (res.isError) { errorMessage.value = res.msg; return; }
 
-  let index = 0;
-  if (funcionHash.value === 'mod') {
-    index = funciones.HashModulo(num, capacidad.value!);
-  } else {
-    index = funciones.HashModulo(num, capacidad.value!) ;
-  }
-  if (funcionHash.value === 'cuadrado') {
-    // placeholders para implementación futura
-    index = funciones.HashCuadrado(num, capacidad.value!);
-  }
-  if (funcionHash.value === 'truncamiento') {
-    // placeholders para implementación futura
-    index = funciones.HashTruncamiento(num, capacidad.value!);
-  }
-  if (funcionHash.value === 'plegamiento') {
-    index = funciones.HashPlegamiento(num, capacidad.value!);  
-  }
+  const cap = capacidad.value!;
+  let index = indiceInicial(num);
+  let intentos = 1;
+  let pasos = 0;
+  const maxPasos = cap;
 
-
-  if(estructura.value[index] === num){
-    resultado.value = true;
-    indexBuscado.value = index + 1; // +1 para posición humana (1-based)
-  } else {
-    errorMessage.value = `El elemento está en colisión o no existe (función: ${funcionHash.value}).`;
-    return;
+  while (pasos < maxPasos) {
+    const v = estructura.value[index];
+    if (v === null) { // hueco vacío: no está
+      errorMessage.value = `El elemento no existe (se encontró hueco).`;
+      return;
+    }
+    if (v === num) { resultado.value = true; indexBuscado.value = index+1; errorMessage.value = ""; return; }
+    index = siguienteIndice(index, cap, estrategiaColision.value, intentos);
+    intentos++; pasos++;
   }
-
-  valor.value = "";
-  errorMessage.value = "";
+  errorMessage.value = `No se encontró el elemento tras escanear toda la tabla.`;
 };
 
 const eliminar = () => {
@@ -159,37 +177,25 @@ const eliminar = () => {
 
   const num = parseInt(valor.value);
   const res = funciones.validarInput(num,digitosClave.value);
-  if (res.isError) {
-    errorMessage.value = res.msg;
-    return;
-  }
+  if (res.isError) { errorMessage.value = res.msg; return; }
 
-  let index = 0;
-  if (funcionHash.value === 'mod') {
-    index = funciones.HashModulo(num, capacidad.value!);
-  } else {
-    index = funciones.HashModulo(num, capacidad.value!);
-  }
-  if (funcionHash.value === 'cuadrado') {
-    // placeholders para implementación futura
-    index = funciones.HashCuadrado(num, capacidad.value!);
-  }
-  if (funcionHash.value === 'truncamiento') { 
-    // placeholders para implementación futura
-    index = funciones.HashTruncamiento(num, capacidad.value!);
-  }
-  if (funcionHash.value === 'plegamiento') { 
-    index = funciones.HashPlegamiento(num, capacidad.value!);  
-  }
+  const cap = capacidad.value!;
+  let index = indiceInicial(num);
+  let intentos = 1;
+  let pasos = 0;
+  const maxPasos = cap;
 
-  if(estructura.value[index] === num){
-    estructura.value[index] = null;
-  } else {
-    errorMessage.value = `El elemento está en colisión o no existe (función: ${funcionHash.value}).`;
-    return;
+  while (pasos < maxPasos) {
+    const v = estructura.value[index];
+    if (v === null) { // hueco vacío: no está
+      errorMessage.value = `El elemento no existe (se encontró hueco).`;
+      return;
+    }
+    if (v === num) { estructura.value[index] = null; valor.value = ""; errorMessage.value = ""; return; }
+    index = siguienteIndice(index, cap, estrategiaColision.value, intentos);
+    intentos++; pasos++;
   }
-  valor.value = "";
-  errorMessage.value = "";
+  errorMessage.value = `No se encontró el elemento tras escanear toda la tabla.`;
 };
 
 // Función para validar entrada en tiempo real
@@ -238,7 +244,7 @@ function validateInput(event: Event) {
         <input v-model.number="digitosClave" type="number" placeholder="Cantidad de dígitos por clave" @input="validateInput" />
         
         <details class="dropdown">
-          <summary role="button">Método de colisión: <strong>{{ estrategiaColision }}</strong></summary>
+          <summary>Método de colisión: <strong>{{ estrategiaColision }}</strong></summary>
           <ul>
             <li><a href="#" @click.prevent="estrategiaColision = 'lineal'">Lineal</a></li>
             <li><a href="#" @click.prevent="estrategiaColision = 'cuadratica'">Cuadrática</a></li>

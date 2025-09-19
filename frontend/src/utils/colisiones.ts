@@ -21,3 +21,12 @@ export function sondeoPorCuadrados(posicion: number, veces: number): number {
 	return posicion + incremento;
 }
 
+/**
+ * Estrategia de resolución de colisiones: doble hash (simplificada).
+ * Independientemente de la función hash original, el paso es constante (+2).
+ * Nota: Quien la use debe aplicar el módulo con la capacidad de la tabla para envolver.
+ */
+export function sondeoDobleHash(posicion: number): number {
+  return posicion + 2;
+}
+
