@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { ref, watch, computed } from "vue";
 import * as funciones from "../utils/funciones.ts";
 import { sondeoLineal, sondeoPorCuadrados, sondeoDobleHash } from "../utils/colisiones.ts";
 
@@ -213,6 +213,22 @@ function validateInput(event: Event) {
   }
 }
 
+const displayIndices = computed<number[]>(() => {
+  if (!estructuraCreada.value || capacidad.value == null) return [];
+  const n = estructura.value.length;
+  if (n <= 30) return Array.from({ length: n }, (_, i) => i); // para capacidades pequeñas, mostrar todo
+  if (n === 0) return [];
+  const occupied = estructura.value
+    .map((v, i) => (v !== null ? i : -1))
+    .filter((i) => i >= 0)
+    .sort((a, b) => a - b);
+  const set = new Set<number>();
+  set.add(0);
+  set.add(n - 1);
+  for (const i of occupied) set.add(i);
+  return Array.from(set).sort((a, b) => a - b);
+});
+
 </script>
 
 
@@ -294,9 +310,13 @@ function validateInput(event: Event) {
     <!-- Visualización de estructura -->
     <h2>Estructura actual:</h2>
     <div class="structure-grid">
-      <div v-for="(slot, i) in estructura" :key="i" :class="['slot', slot !== null ? 'occupied' : 'empty']">
+      <div
+        v-for="i in displayIndices"
+        :key="i"
+        :class="['slot', estructura[i] !== null ? 'occupied' : 'empty']"
+      >
         <div class="pos">{{ i + 1 }}</div>
-        <div class="value">{{ slot !== null ? slot : '' }}</div>
+        <div class="value">{{ estructura[i] !== null ? estructura[i] : '' }}</div>
       </div>
     </div>
 

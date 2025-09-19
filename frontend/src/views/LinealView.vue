@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import * as funciones from "../utils/funciones.ts";
 
 const valor = ref("");
@@ -54,8 +54,13 @@ const insertar = () => {
     estructura.value[firstEmpty] = num;
   }
   estructura.value = funciones.ordenarLista(estructura.value);
+  const finalIdx = funciones.busquedaLineal(estructura.value, num);
+  if (finalIdx !== -1) {
+    errorMessage.value = `Insertado en la posición ${finalIdx + 1}.`;
+  } else {
+    errorMessage.value = "";
+  }
   valor.value = "";
-  errorMessage.value = "";
 };
 
 
@@ -96,13 +101,12 @@ function eliminar() {
   if (index !== -1) {
     estructura.value[index] = null; // liberar slot
     resultado.value = null;
-    errorMessage.value = "";
+    errorMessage.value = `Eliminado de la posición ${index + 1}.`;
   } else {
     resultado.value = false;
     errorMessage.value = "";
   }
   estructura.value = funciones.ordenarLista(estructura.value);
-  errorMessage.value = "";
   valor.value = "";
 }
 
@@ -121,6 +125,22 @@ function validateInput(event: Event) {
   }
 }
 
+// Mostrar solo primero, último y ocupados cuando la capacidad es grande
+const displayIndices = computed<number[]>(() => {
+  if (!estructuraCreada.value || capacidad.value == null) return [];
+  const n = estructura.value.length;
+  if (n <= 30) return Array.from({ length: n }, (_, i) => i);
+  if (n === 0) return [];
+  const occupied = estructura.value
+    .map((v, i) => (v !== null ? i : -1))
+    .filter((i) => i >= 0)
+    .sort((a, b) => a - b);
+  const set = new Set<number>();
+  set.add(0);
+  set.add(n - 1);
+  for (const i of occupied) set.add(i);
+  return Array.from(set).sort((a, b) => a - b);
+});
 </script>
 
 <template>
@@ -173,9 +193,9 @@ function validateInput(event: Event) {
     <!-- Visualización de estructura -->
     <h2>Estructura actual:</h2>
     <div class="structure-grid">
-      <div v-for="(slot, i) in estructura" :key="i" :class="['slot', slot !== null ? 'occupied' : 'empty']">
+      <div v-for="i in displayIndices" :key="i" :class="['slot', estructura[i] !== null ? 'occupied' : 'empty']">
         <div class="pos">{{ i + 1 }}</div>
-        <div class="value">{{ slot !== null ? slot : '' }}</div>
+        <div class="value">{{ estructura[i] !== null ? estructura[i] : '' }}</div>
       </div>
     </div>
 
