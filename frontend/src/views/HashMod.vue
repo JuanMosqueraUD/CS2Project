@@ -18,6 +18,8 @@ const props = defineProps<{ funcion?: string | null }>();
 
 const valor = ref("");
 const estructura = ref<(number | null)[]>([]);
+// Segunda estructura para la estrategia de arreglos/listas anidadas
+const estructuraSecundaria = ref<(number | null)[]>([]);
 const resultado = ref(null as null | boolean);
 const indexBuscado = ref(-1);
 const errorMessage = ref("");
@@ -27,6 +29,8 @@ const capacidad = ref<number | null>(null); // 'rango' ahora es capacidad (n esp
 const digitosClave = ref<number | null>(null); // tamaño de las claves = número de dígitos
 const estrategiaColision = ref<EstrategiaColision>("lineal");
 const funcionHash = ref<FuncionHash>('mod');
+// Mostrar la estructura anidada solo cuando se use al menos una vez
+const seUsoEstructuraSecundaria = ref(false);
 
 // inicializar desde prop si viene
 if (props.funcion) {
@@ -70,6 +74,9 @@ function crearEstructura() {
   }
 
   estructura.value = Array(capacidad.value).fill(null);
+  // Precrear estructura secundaria (se oculta hasta usarla)
+  estructuraSecundaria.value = Array(capacidad.value).fill(null);
+  seUsoEstructuraSecundaria.value = false;
   estructuraCreada.value = true;
 }
 
@@ -108,7 +115,38 @@ const insertar = () => {
   const cap = capacidad.value!;
   let index = indiceInicial(num);
 
-  // si está vacío, insertar sin colisión
+  // Estrategia especial: listas/arreglos anidadas (segunda estructura paralela)
+  if (estrategiaColision.value === 'listas-anidadas' || estrategiaColision.value === 'arreglos') {
+    // si está vacío en primaria, insertar sin colisión
+    if (estructura.value[index] === null) {
+      estructura.value[index] = num;
+      errorMessage.value = `Insertado en la posición ${index + 1}.`;
+      valor.value = "";
+      return;
+    }
+    // duplicado en primaria
+    if (estructura.value[index] === num) {
+      errorMessage.value = `El elemento ya existe en la posición ${index + 1}.`;
+      return;
+    }
+    // colisión: usar secundaria en el mismo índice
+    if (estructuraSecundaria.value[index] === null) {
+      estructuraSecundaria.value[index] = num;
+      seUsoEstructuraSecundaria.value = true;
+      errorMessage.value = `Colisión en ${index + 1}. Insertado en estructura anidada (columna 2) posición ${index + 1}.`;
+      valor.value = "";
+      return;
+    }
+    if (estructuraSecundaria.value[index] === num) {
+      errorMessage.value = `El elemento ya existe en la estructura anidada en la posición ${index + 1}.`;
+      return;
+    }
+    // Sin espacio en el índice (primaria y secundaria ocupadas)
+    errorMessage.value = `Colisión múltiple en índice ${index + 1}: la estructura anidada está llena en ese índice.`;
+    return;
+  }
+
+  // si está vacío, insertar sin colisión (otras estrategias)
   if (estructura.value[index] === null) {
     estructura.value[index] = num;
     errorMessage.value = `Insertado en la posición ${index + 1}.`;
@@ -155,6 +193,19 @@ const buscar = () => {
 
   const cap = capacidad.value!;
   let index = indiceInicial(num);
+  // Estrategia listas/arreglos anidadas: buscar en primaria y luego secundaria del mismo índice
+  if (estrategiaColision.value === 'listas-anidadas' || estrategiaColision.value === 'arreglos') {
+    const vPrim = estructura.value[index];
+    if (vPrim === num) {
+      resultado.value = true; indexBuscado.value = index + 1; errorMessage.value = ""; return;
+    }
+    const vSec = estructuraSecundaria.value[index];
+    if (vSec === num) {
+      resultado.value = true; indexBuscado.value = index + 1; errorMessage.value = "(Encontrado en estructura anidada)"; return;
+    }
+    errorMessage.value = `El elemento no existe en primaria ni en estructura anidada para el índice ${index + 1}.`;
+    return;
+  }
   let intentos = 1;
   let pasos = 0;
   const maxPasos = cap;
@@ -181,6 +232,17 @@ const eliminar = () => {
 
   const cap = capacidad.value!;
   let index = indiceInicial(num);
+  // Estrategia listas/arreglos anidadas: eliminar de primaria o secundaria del mismo índice
+  if (estrategiaColision.value === 'listas-anidadas' || estrategiaColision.value === 'arreglos') {
+    if (estructura.value[index] === num) {
+      estructura.value[index] = null; valor.value = ""; errorMessage.value = `Eliminado de la posición ${index + 1}.`; return;
+    }
+    if (estructuraSecundaria.value[index] === num) {
+      estructuraSecundaria.value[index] = null; valor.value = ""; errorMessage.value = `Eliminado de la estructura anidada en posición ${index + 1}.`; return;
+    }
+    errorMessage.value = `El elemento no existe en primaria ni en estructura anidada en índice ${index + 1}.`;
+    return;
+  }
   let intentos = 1;
   let pasos = 0;
   const maxPasos = cap;
@@ -218,14 +280,18 @@ const displayIndices = computed<number[]>(() => {
   const n = estructura.value.length;
   if (n <= 30) return Array.from({ length: n }, (_, i) => i); // para capacidades pequeñas, mostrar todo
   if (n === 0) return [];
-  const occupied = estructura.value
+  // Para capacidades grandes, mostrar primero, último y ocupados. Si hay estructura secundaria, incluir sus ocupados también
+  const occupiedPrim = estructura.value
     .map((v, i) => (v !== null ? i : -1))
-    .filter((i) => i >= 0)
-    .sort((a, b) => a - b);
+    .filter((i) => i >= 0);
+  const occupiedSec = (estrategiaColision.value === 'listas-anidadas' || estrategiaColision.value === 'arreglos')
+    ? estructuraSecundaria.value.map((v, i) => (v !== null ? i : -1)).filter((i) => i >= 0)
+    : [];
   const set = new Set<number>();
   set.add(0);
   set.add(n - 1);
-  for (const i of occupied) set.add(i);
+  for (const i of occupiedPrim) set.add(i);
+  for (const i of occupiedSec) set.add(i);
   return Array.from(set).sort((a, b) => a - b);
 });
 
@@ -265,7 +331,7 @@ const displayIndices = computed<number[]>(() => {
             <li><a href="#" @click.prevent="estrategiaColision = 'lineal'">Lineal</a></li>
             <li><a href="#" @click.prevent="estrategiaColision = 'cuadratica'">Cuadrática</a></li>
             <li><a href="#" @click.prevent="estrategiaColision = 'doble-hash'">Doble función hash</a></li>
-            <li><a href="#" @click.prevent="estrategiaColision = 'listas-anidadas'">Listas anidadas</a></li>
+            <li><a href="#" @click.prevent="estrategiaColision = 'arreglos'">Arreglos anidados</a></li>
             <li><a href="#" @click.prevent="estrategiaColision = 'encadenamiento'">Encadenamiento</a></li>
           </ul>
         </details>
@@ -309,16 +375,87 @@ const displayIndices = computed<number[]>(() => {
     
     <!-- Visualización de estructura -->
     <h2>Estructura actual:</h2>
-    <div class="structure-grid">
-      <div
-        v-for="i in displayIndices"
-        :key="i"
-        :class="['slot', estructura[i] !== null ? 'occupied' : 'empty']"
-      >
-        <div class="pos">{{ i + 1 }}</div>
-        <div class="value">{{ estructura[i] !== null ? estructura[i] : '' }}</div>
+    <div class="structure-grids" :class="{ dual: (estrategiaColision === 'listas-anidadas' || estrategiaColision === 'arreglos') && seUsoEstructuraSecundaria }">
+      <!-- Grilla primaria -->
+      <div class="structure-grid">
+        <div
+          v-for="i in displayIndices"
+          :key="'prim-'+i"
+          :class="['slot', estructura[i] !== null ? 'occupied' : 'empty']"
+        >
+          <div class="pos">{{ i + 1 }}</div>
+          <div class="value">{{ estructura[i] !== null ? estructura[i] : '' }}</div>
+        </div>
+      </div>
+      <!-- Grilla secundaria: solo si se usó alguna vez -->
+      <div v-if="(estrategiaColision === 'listas-anidadas' || estrategiaColision === 'arreglos') && seUsoEstructuraSecundaria" class="structure-grid secondary">
+        <div
+          v-for="i in displayIndices"
+          :key="'sec-'+i"
+          :class="['slot', estructuraSecundaria[i] !== null ? 'occupied' : 'empty']"
+        >
+          <div class="pos">{{ i + 1 }}</div>
+          <div class="value">{{ estructuraSecundaria[i] !== null ? estructuraSecundaria[i] : '' }}</div>
+        </div>
       </div>
     </div>
 
 
 </template>
+
+<style scoped>
+.structure-grids {
+  display: grid;
+  gap: 16px;
+}
+.structure-grids.dual {
+  grid-template-columns: 1fr 1fr;
+  align-items: start;
+}
+.structure-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  gap: 8px;
+  margin-top: 1rem;
+}
+.structure-grid.secondary .slot {
+  border-color: #86efac; /* verde suave */
+  background: linear-gradient(180deg, #f0fff4 0%, #ffffff 100%);
+}
+.slot {
+  position: relative;
+  border: 1px solid #e2e8f0; /* light gray-blue */
+  border-radius: 8px;
+  padding: 12px 8px 10px 8px;
+  text-align: center;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+}
+.slot .pos {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(15, 23, 42, 0.06);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: #334155;
+}
+.slot .value {
+  font-weight: 700;
+  margin-top: 14px;
+  font-size: 1.1rem;
+  color: #0f172a; /* darker for contrast */
+}
+.slot.empty {
+  opacity: 0.7;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+.slot.occupied {
+  box-shadow: 0 1px 0 rgba(2,6,23,0.04) inset;
+  background: linear-gradient(180deg, #eef2ff 0%, #ffffff 100%);
+  border-color: #c7d2fe;
+}
+.slot.empty .value {
+  color: #94a3b8; /* muted */
+}
+</style>
