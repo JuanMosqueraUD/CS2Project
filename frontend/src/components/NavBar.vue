@@ -5,7 +5,7 @@ const mode = ref('');
 const searchMode = ref('');
 const internalAlgorithm = ref('');
 const hashFunction = ref('');
-
+const residuosOpen = ref(false);
 </script>
 
 
@@ -32,6 +32,7 @@ const hashFunction = ref('');
           <router-link to="/binaria" class="outline contrast">Búsqueda Binaria</router-link>
         </button>
         <button @click="internalAlgorithm = 'Hash'" class="outline contrast">Funciones Hash</button>
+        <button @click="internalAlgorithm = 'Residuos'" class="outline contrast">Residuos</button>
       </div>
 
       <!-- Opciones de Hash -->
@@ -49,6 +50,25 @@ const hashFunction = ref('');
           </button>
           <button class="outline contrast">
             <router-link :to="{ name: 'hashmod', query: { funcion: 'plegamiento' } }" class="outline contrast">Función Plegamiento</router-link>
+          </button>
+        </div>
+      </div>
+
+      <!-- Opciones de Residuos -->
+      <div v-if="internalAlgorithm === 'Residuos'" class="hash-options">
+        <h4>Residuos:</h4>
+        <div id="general-nav">
+          <button class="outline contrast">
+            <router-link :to="{ name: 'residuo-digital' }" class="outline contrast">Árbol Digital</router-link>
+          </button>
+          <button class="outline contrast">
+            <router-link :to="{ name: 'residuo-simple' }" class="outline contrast">Árbol de Residuos</router-link>
+          </button>
+          <button class="outline contrast">
+            <router-link :to="{ name: 'residuo-multiple' }" class="outline contrast">Árbol de Residuos Múltiples</router-link>
+          </button>
+          <button class="outline contrast">
+            <router-link :to="{ name: 'residuo-huffman' }" class="outline contrast">Árbol de Huffman</router-link>
           </button>
         </div>
       </div>
@@ -70,7 +90,6 @@ const hashFunction = ref('');
   margin-top: 1rem;
   flex-wrap: wrap;
 }
-
 
 .hash-options {
   margin-top: 1rem;
