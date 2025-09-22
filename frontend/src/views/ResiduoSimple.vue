@@ -34,7 +34,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch, onBeforeUnmount } from 'vue';
 import { letterToCode } from '../utils/digitalTree';
-import { type RSNode, insertRS, searchRS } from '../utils/residueTree';
+import { type RSNode, insertRS, searchRS, deleteRS } from '../utils/residueTree';
 import { DataSet, Network, type Options } from 'vis-network/standalone';
 import 'vis-network/styles/vis-network.css';
 
@@ -169,8 +169,15 @@ onBeforeUnmount(() => { if (network) { network.destroy(); network = null; } });
 watch([root, highlightPath, useGraph], () => { nextTick(() => { if (useGraph.value) renderGraph(); }); }, { deep: true });
 
 function remove() {
-  // For simple residual tree, nodes are only letters at leaves; removing can be done by search + manual clearing approach later if needed.
-  message.value = 'Borrado aún no implementado en Árbol por Residuos (Simple)';
+  message.value = '';
+  highlightPath.value = [];
+  if (!input.value) { message.value = 'Ingresa una letra A-Z'; return; }
+  if (!letterToCode(input.value)) { message.value = 'Solo se permiten letras A-Z'; return; }
+  const res = deleteRS(root.value, input.value);
+  root.value = res.root;
+  highlightPath.value = res.path;
+  message.value = res.deleted ? `Borrado ${input.value.toUpperCase()}` : `No se encontró ${input.value.toUpperCase()} para borrar`;
+  input.value = '';
 }
 </script>
 

@@ -39,7 +39,7 @@ export function searchRS(
     }
     const step: 'L' | 'R' = code[i] === '1' ? 'R' : 'L';
     path.push(step);
-  const conn: RSNode = node; // connector expected or null
+    const conn: RSNode = node; // connector expected or null
     node = step === 'L' ? conn.left : conn.right;
   }
   if (isLeaf(node)) {
@@ -140,4 +140,65 @@ export function insertRS(
   if (!current.left) current.left = leaf;
   else if (!current.right) current.right = leaf;
   return { root, path, status: 'inserted' };
+}
+
+export function deleteRS(
+  root: RSNode | null,
+  letter: string
+): { root: RSNode | null; deleted: boolean; path: Array<'L' | 'R'> } {
+  const code = letterToCode(letter);
+  if (!code || !root) return { root, deleted: false, path: [] };
+  const target = letter.toUpperCase();
+
+  // Traverse keeping stack for pruning: entries contain node and step taken to reach child
+  const stack: Array<{ node: RSNode; step: 'L' | 'R' | null }> = [{ node: root, step: null }];
+  let current: RSNode | null = root;
+  const path: Array<'L' | 'R'> = [];
+  for (let i = 0; i < code.length && current; i++) {
+    if (isLeaf(current)) break;
+    const cur: RSNode = current as RSNode; // connector
+    const step: 'L' | 'R' = code[i] === '1' ? 'R' : 'L';
+    path.push(step);
+    const next: RSNode | null = step === 'L' ? cur.left : cur.right;
+    if (!next) return { root, deleted: false, path: [] };
+    stack.push({ node: next, step });
+    current = next;
+  }
+
+  if (!current || !isLeaf(current) || current.key !== target) {
+    return { root, deleted: false, path: [] };
+  }
+
+  // Remove the leaf
+  if (stack.length === 1) {
+    // Only root in stack; if root itself is leaf (not expected normally), delete tree
+    return { root: null, deleted: true, path };
+  }
+  // parent is the previous frame's node
+  const parentFrame = stack[stack.length - 2];
+  const parent = parentFrame.node;
+  const lastStep = path[path.length - 1];
+  if (lastStep === 'L') parent.left = null; else parent.right = null;
+
+  // Prune empty connectors upward
+  for (let i = stack.length - 2; i >= 0; i--) {
+    const frame = stack[i];
+    const node: RSNode = frame.node as RSNode;
+    if (isLeaf(node)) break; // should not prune a leaf
+    const n: RSNode = node;
+    const hasChildren = !!n.left || !!n.right;
+    if (hasChildren) break;
+    // node is an empty connector; remove it from its parent
+    if (i === 0) {
+      // node is root
+      root = null;
+      break;
+    }
+    const pframe = stack[i - 1];
+    const parentNode = pframe.node;
+    const stepToThis = path[i - 1];
+    if (stepToThis === 'L') parentNode.left = null; else parentNode.right = null;
+  }
+
+  return { root, deleted: true, path };
 }
