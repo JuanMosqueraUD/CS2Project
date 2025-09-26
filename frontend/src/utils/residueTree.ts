@@ -48,6 +48,28 @@ export function searchRS(
   return { found: false, path };
 }
 
+// DFS por clave para robustecer duplicados y borrado
+export function searchRSByKey(
+  root: RSNode | null,
+  letter: string
+): { found: boolean; path: Array<'L' | 'R'>; node: RSNode | null; parent: RSNode | null } {
+  if (!root) return { found: false, path: [], node: null, parent: null };
+  const target = letter.toUpperCase();
+  type Frame = { node: RSNode; parent: RSNode | null; path: Array<'L' | 'R'> };
+  const stack: Frame[] = [{ node: root, parent: null, path: [] }];
+  while (stack.length) {
+    const { node, parent, path } = stack.pop()!;
+    if (isLeaf(node) && node.key === target) {
+      return { found: true, path, node, parent };
+    }
+    if (isConnector(node)) {
+      if (node.right) stack.push({ node: node.right, parent: node, path: [...path, 'R'] });
+      if (node.left) stack.push({ node: node.left, parent: node, path: [...path, 'L'] });
+    }
+  }
+  return { found: false, path: [], node: null, parent: null };
+}
+
 export function insertRS(
   root: RSNode | null,
   letter: string
@@ -65,8 +87,8 @@ export function insertRS(
     return { root: r, path, status: 'inserted' };
   }
 
-  // Check duplicate
-  const s = searchRS(root, letter);
+  // Check duplicate por clave en todo el árbol (más robusto)
+  const s = searchRSByKey(root, letter);
   if (s.found) return { root, path: s.path, status: 'duplicate' };
 
   function reinsertInto(connector: RSNode, leafNode: RSNode, bitIndex: number) {
@@ -146,58 +168,52 @@ export function deleteRS(
   root: RSNode | null,
   letter: string
 ): { root: RSNode | null; deleted: boolean; path: Array<'L' | 'R'> } {
-  const code = letterToCode(letter);
-  if (!code || !root) return { root, deleted: false, path: [] };
-  const target = letter.toUpperCase();
+  if (!root) return { root: null, deleted: false, path: [] };
+  const found = searchRSByKey(root, letter);
+  if (!found.found || !found.node) return { root, deleted: false, path: [] };
 
-  // Traverse keeping stack for pruning: entries contain node and step taken to reach child
-  const stack: Array<{ node: RSNode; step: 'L' | 'R' | null }> = [{ node: root, step: null }];
-  let current: RSNode | null = root;
-  const path: Array<'L' | 'R'> = [];
-  for (let i = 0; i < code.length && current; i++) {
-    if (isLeaf(current)) break;
-    const cur: RSNode = current as RSNode; // connector
-    const step: 'L' | 'R' = code[i] === '1' ? 'R' : 'L';
-    path.push(step);
-    const next: RSNode | null = step === 'L' ? cur.left : cur.right;
-    if (!next) return { root, deleted: false, path: [] };
-    stack.push({ node: next, step });
-    current = next;
-  }
+  const path = found.path;
+  const node = found.node;
+  const parent = found.parent;
 
-  if (!current || !isLeaf(current) || current.key !== target) {
-    return { root, deleted: false, path: [] };
-  }
-
-  // Remove the leaf
-  if (stack.length === 1) {
-    // Only root in stack; if root itself is leaf (not expected normally), delete tree
+  // Remove leaf
+  if (!parent) {
+    // root era hoja
     return { root: null, deleted: true, path };
   }
-  // parent is the previous frame's node
-  const parentFrame = stack[stack.length - 2];
-  const parent = parentFrame.node;
-  const lastStep = path[path.length - 1];
-  if (lastStep === 'L') parent.left = null; else parent.right = null;
+  if (parent.left === node) parent.left = null;
+  else if (parent.right === node) parent.right = null;
 
-  // Prune empty connectors upward
-  for (let i = stack.length - 2; i >= 0; i--) {
-    const frame = stack[i];
-    const node: RSNode = frame.node as RSNode;
-    if (isLeaf(node)) break; // should not prune a leaf
-    const n: RSNode = node;
-    const hasChildren = !!n.left || !!n.right;
-    if (hasChildren) break;
-    // node is an empty connector; remove it from its parent
-    if (i === 0) {
-      // node is root
-      root = null;
-      break;
+  // Podar conectores vacíos subiendo desde el padre
+  // Recorremos de abajo hacia arriba recomputando padres mediante la ruta
+  function getNodeByPath(r: RSNode | null, p: Array<'L' | 'R'>): RSNode | null {
+    let n: RSNode | null = r;
+    for (const step of p) {
+      if (!n) return n;
+      if (isConnector(n)) {
+        n = step === 'L' ? n.left : n.right;
+      } else {
+        // encontramos una hoja antes de consumir todo el path
+        return n;
+      }
     }
-    const pframe = stack[i - 1];
-    const parentNode = pframe.node;
-    const stepToThis = path[i - 1];
-    if (stepToThis === 'L') parentNode.left = null; else parentNode.right = null;
+    return n;
+  }
+
+  // Caminamos hacia arriba y eliminamos conectores sin hijos
+  for (let i = path.length - 1; i >= 0; i--) {
+    const parentPath = path.slice(0, i);
+    const curr = getNodeByPath(root, parentPath);
+    if (!curr || !isConnector(curr)) break;
+    const hasChildren = !!curr.left || !!curr.right;
+    if (hasChildren) break;
+    // Eliminar este conector del padre de él
+    if (i === 0) { root = null; break; }
+    const grandParentPath = path.slice(0, i - 1);
+    const gp = getNodeByPath(root, grandParentPath);
+    if (!gp || !isConnector(gp)) break;
+    const stepToCurr = path[i - 1];
+    if (stepToCurr === 'L') gp.left = null; else gp.right = null;
   }
 
   return { root, deleted: true, path };

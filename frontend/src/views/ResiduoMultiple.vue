@@ -55,6 +55,9 @@ const useGraph = ref(true);
 const arity = computed(() => 2 ** Math.min(3, Math.max(1, m.value)));
 const graphEl = ref<HTMLDivElement | null>(null);
 let network: Network | null = null;
+let wheelHandlerRef: ((e: WheelEvent) => void) | null = null;
+let wheelAttachedTo: HTMLDivElement | null = null;
+let networkContainer: HTMLDivElement | null = null;
 
 function onInput(e: Event) {
   const t = e.target as HTMLInputElement;
@@ -128,15 +131,54 @@ function computeTargetId(): string | null {
 function renderGraph() {
   if (!graphEl.value || !root.value) return;
   const data = buildGraphData(root.value);
-  const options: Options = { autoResize: true, layout: { improvedLayout: true, hierarchical: { enabled: true, direction: 'UD', sortMethod: 'directed', levelSeparation: 80, nodeSpacing: 120, treeSpacing: 100 } }, physics: false, edges: { smooth: { enabled: true, type: 'cubicBezier', roundness: 0.4 } }, interaction: { hover: true, zoomView: true, dragView: true }, nodes: { size: 24 } };
-  if (network) { network.setData({ nodes: new DataSet(data.nodes), edges: new DataSet(data.edges) }); }
-  else { network = new Network(graphEl.value, { nodes: data.nodes, edges: data.edges }, options); }
+  const options: Options = { autoResize: true, layout: { improvedLayout: true, hierarchical: { enabled: true, direction: 'UD', sortMethod: 'directed', levelSeparation: 80, nodeSpacing: 120, treeSpacing: 100 } }, physics: false, edges: { smooth: { enabled: true, type: 'cubicBezier', roundness: 0.4 } }, interaction: { hover: true, zoomView: false, dragView: true, keyboard: { enabled: false } }, nodes: { size: 24 } };
+  // If the container element changed (due to v-if toggling), recreate the network
+  if (network && networkContainer !== graphEl.value) {
+    try { network.destroy(); } catch {}
+    network = null;
+    networkContainer = null;
+  }
+  const currentScale = network ? (network as any).getScale?.() ?? 1.0 : 1.0;
+  if (network) {
+    network.setData({ nodes: new DataSet(data.nodes), edges: new DataSet(data.edges) });
+  } else {
+    network = new Network(graphEl.value, { nodes: data.nodes, edges: data.edges }, options);
+    networkContainer = graphEl.value;
+  }
+
+  // Prevent wheel-based zooming inside the canvas even if vis tries to handle it
+  if (graphEl.value && wheelAttachedTo !== graphEl.value) {
+    // remove from old container if any
+    if (wheelAttachedTo && wheelHandlerRef) {
+      wheelAttachedTo.removeEventListener('wheel', wheelHandlerRef as any);
+    }
+    wheelHandlerRef = (e: WheelEvent) => { e.preventDefault(); };
+    graphEl.value.addEventListener('wheel', wheelHandlerRef, { passive: false });
+    wheelAttachedTo = graphEl.value;
+  }
   const targetId = computeTargetId();
-  if (targetId) { try { network.selectNodes([targetId]); network.focus(targetId, { animation: { duration: 400, easingFunction: 'easeInOutQuad' }, scale: 1.0 }); } catch {} }
+  if (targetId) { try { network.selectNodes([targetId]); network.focus(targetId, { animation: { duration: 400, easingFunction: 'easeInOutQuad' }, scale: currentScale }); } catch {} }
 }
 
 onMounted(() => { nextTick(() => { if (useGraph.value && root.value) renderGraph(); }); });
-onBeforeUnmount(() => { if (network) { network.destroy(); network = null; } });
+onBeforeUnmount(() => {
+  if (wheelAttachedTo && wheelHandlerRef) {
+    wheelAttachedTo.removeEventListener('wheel', wheelHandlerRef as any);
+    wheelHandlerRef = null;
+    wheelAttachedTo = null;
+  }
+  if (network) { network.destroy(); network = null; networkContainer = null; }
+});
+// Destroy network when graph hidden (root null or useGraph toggled off)
+watch([root, useGraph], () => {
+  if (!useGraph.value || !root.value) {
+    if (network) { try { network.destroy(); } catch {} network = null; networkContainer = null; }
+    if (wheelAttachedTo && wheelHandlerRef) {
+      try { wheelAttachedTo.removeEventListener('wheel', wheelHandlerRef as any); } catch {}
+      wheelAttachedTo = null; wheelHandlerRef = null;
+    }
+  }
+});
 watch([root, pathIdx, useGraph, m], () => { nextTick(() => { if (useGraph.value) renderGraph(); }); }, { deep: true });
 </script>
 

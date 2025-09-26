@@ -32,7 +32,7 @@ const residuosOpen = ref(false);
           <router-link to="/binaria" class="outline contrast">Búsqueda Binaria</router-link>
         </button>
         <button @click="internalAlgorithm = 'Hash'" class="outline contrast">Funciones Hash</button>
-        <button @click="internalAlgorithm = 'Residuos'" class="outline contrast">Residuos</button>
+        <button @click="internalAlgorithm = 'Residuos'" class="outline contrast">Otras</button>
       </div>
 
       <!-- Opciones de Hash -->

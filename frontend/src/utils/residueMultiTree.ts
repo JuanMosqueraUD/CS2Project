@@ -89,6 +89,7 @@ export function insertRM(
   const path: number[] = [];
 
   if (!root) {
+    // reconstruir plantilla cuando el árbol estaba vacío
     root = buildRMTemplate(m);
   }
 
