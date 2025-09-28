@@ -73,6 +73,44 @@ const residuosOpen = ref(false);
         </div>
       </div>
     </div>
+
+    <!-- Búsqueda Externa -->
+    <div v-if="searchMode === 'Externa'" class="external-search">
+      <div id="general-nav">
+        <button class="outline contrast">
+          <router-link to="/external/lineal" class="outline contrast">Búsqueda Lineal</router-link>
+        </button>
+        <button class="outline contrast">
+          <router-link to="/external/binaria" class="outline contrast">Búsqueda Binaria</router-link>
+        </button>
+        <button @click="internalAlgorithm = 'ExternalHash'" class="outline contrast">Búsquedas Hash</button>
+        <button class="outline contrast">
+          <router-link to="/external/estructuras-dinamicas" class="outline contrast">Estructuras Dinámicas</router-link>
+        </button>
+      </div>
+
+      <!-- Opciones de Hash Externo -->
+      <div v-if="internalAlgorithm === 'ExternalHash'" class="hash-options">
+        <h4>Función Hash Externa:</h4>
+        <div id="general-nav">
+          <button class="outline contrast">
+            <router-link to="/external/hash/modulo" class="outline contrast">Módulo</router-link>
+          </button>
+          <button class="outline contrast">
+            <router-link to="/external/hash/cuadratica" class="outline contrast">Cuadrática</router-link>
+          </button>
+          <button class="outline contrast">
+            <router-link to="/external/hash/plegamiento" class="outline contrast">Plegamiento</router-link>
+          </button>
+          <button class="outline contrast">
+            <router-link to="/external/hash/truncamiento" class="outline contrast">Truncamiento</router-link>
+          </button>
+          <button class="outline contrast">
+            <router-link to="/external/hash/cambio-base" class="outline contrast">Cambio de Base</router-link>
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div v-if="mode === 'Grafos'">
@@ -87,6 +125,11 @@ const residuosOpen = ref(false);
 }
 
 .internal-search {
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.external-search {
   margin-top: 1rem;
   flex-wrap: wrap;
 }

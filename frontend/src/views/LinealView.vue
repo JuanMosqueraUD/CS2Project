@@ -125,6 +125,70 @@ function validateInput(event: Event) {
   }
 }
 
+// Funciones de exportación e importación
+import { 
+  createExportData, 
+  generateExportFileName, 
+  downloadJsonFile, 
+  validateLinearImport 
+} from "../utils/importExportUtils.ts";
+
+function exportarEstructura() {
+  if (!estructuraCreada.value) {
+    errorMessage.value = "Primero debes crear una estructura para exportar.";
+    return;
+  }
+
+  const config = {
+    capacidad: capacidad.value,
+    digitosClave: digitosClave.value
+  };
+
+  const exportData = createExportData('lineal', config, estructura.value);
+  const filename = generateExportFileName('lineal');
+  
+  downloadJsonFile(exportData, filename);
+  errorMessage.value = "Estructura exportada exitosamente.";
+}
+
+function importarEstructura(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const importData = JSON.parse(e.target?.result as string);
+      
+      // Usar la utilidad común para validación
+      const validation = validateLinearImport(importData);
+      if (!validation.isValid) {
+        errorMessage.value = validation.error!;
+        return;
+      }
+      
+      // Importar exitosamente
+      capacidad.value = importData.config.capacidad;
+      digitosClave.value = importData.config.digitosClave;
+      estructura.value = importData.data;
+      estructuraCreada.value = true;
+      resultado.value = null;
+      indexBuscado.value = -1;
+      
+      errorMessage.value = `Estructura importada exitosamente. Capacidad: ${capacidad.value}, Dígitos: ${digitosClave.value}`;
+      
+    } catch (error) {
+      errorMessage.value = "Error al leer el archivo. Asegúrate de que sea un JSON válido.";
+    }
+  };
+  
+  reader.readAsText(file);
+  // Limpiar el input para permitir seleccionar el mismo archivo otra vez
+  target.value = '';
+}
+
 // Mostrar solo primero, último y ocupados cuando la capacidad es grande
 const displayIndices = computed<number[]>(() => {
   if (!estructuraCreada.value || capacidad.value == null) return [];
@@ -160,11 +224,25 @@ const displayIndices = computed<number[]>(() => {
         <input v-model.number="digitosClave" type="number" placeholder="Cantidad de dígitos por clave" @input="validateInput" />
         <button @click="crearEstructura">Crear estructura</button>
       </div>
+      
+      <div class="import-option">
+        <p><strong>O importar estructura existente:</strong></p>
+        <label for="import-file-initial" class="secondary file-upload-btn">📥 Importar desde archivo</label>
+        <input id="import-file-initial" type="file" accept=".json" @change="importarEstructura" style="display: none;">
+      </div>
     </div>
 
     <!-- Controles de operación (solo visibles si estructura creada) -->
     <div v-if="estructuraCreada">
       <p>Estructura creada. Capacidad: {{ capacidad }}, Dígitos por clave: {{ digitosClave }}</p>
+      
+      <!-- Controles de exportación e importación -->
+      <div class="import-export-controls">
+        <button @click="exportarEstructura" class="secondary">📤 Exportar Estructura</button>
+        <label for="import-file" class="secondary file-upload-btn">📥 Importar Estructura</label>
+        <input id="import-file" type="file" accept=".json" @change="importarEstructura" style="display: none;">
+      </div>
+      
       <input
         v-model="valor"
         type="number"
@@ -216,6 +294,33 @@ const displayIndices = computed<number[]>(() => {
 
 .create-structure input {
   margin-right: 0.5rem;
+}
+
+.import-export-controls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.import-option {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.file-upload-btn {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.file-upload-btn:hover {
+  opacity: 0.8;
 }
 
 .structure-grid {

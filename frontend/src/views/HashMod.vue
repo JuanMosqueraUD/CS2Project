@@ -255,6 +255,82 @@ function validateInput(event: Event) {
 
 const anyNestedLayers = computed(() => arreglosLayers.value.some(layer => layer.some(v => v !== null)));
 
+// Funciones de exportación e importación
+import { 
+  createExportData, 
+  generateExportFileName, 
+  downloadJsonFile, 
+  validateHashImport 
+} from "../utils/importExportUtils.ts";
+
+function exportarEstructura() {
+  if (!estructuraCreada.value) {
+    errorMessage.value = "Primero debes crear una estructura para exportar.";
+    return;
+  }
+
+  const config = {
+    capacidad: capacidad.value,
+    digitosClave: digitosClave.value,
+    funcionHash: funcionHash.value,
+    estrategiaColision: estrategiaColision.value
+  };
+
+  const data = {
+    estructura: estructura.value,
+    buckets: buckets.value,
+    arreglosLayers: arreglosLayers.value
+  };
+
+  const exportData = createExportData('hash', config, data);
+  const filename = generateExportFileName('hash', config);
+  
+  downloadJsonFile(exportData, filename);
+  errorMessage.value = "Estructura exportada exitosamente.";
+}
+
+function importarEstructura(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const importData = JSON.parse(e.target?.result as string);
+      
+      // Usar la utilidad común para validación
+      const validation = validateHashImport(importData);
+      if (!validation.isValid) {
+        errorMessage.value = validation.error!;
+        return;
+      }
+      
+      // Importar exitosamente
+      capacidad.value = importData.config.capacidad;
+      digitosClave.value = importData.config.digitosClave;
+      funcionHash.value = importData.config.funcionHash;
+      estrategiaColision.value = importData.config.estrategiaColision;
+      estructura.value = importData.data.estructura;
+      buckets.value = importData.data.buckets;
+      arreglosLayers.value = importData.data.arreglosLayers;
+      estructuraCreada.value = true;
+      resultado.value = null;
+      indexBuscado.value = -1;
+      
+      errorMessage.value = `Estructura hash importada exitosamente. Función: ${funcionHash.value}, Estrategia: ${estrategiaColision.value}`;
+      
+    } catch (error) {
+      errorMessage.value = "Error al leer el archivo. Asegúrate de que sea un JSON válido.";
+    }
+  };
+  
+  reader.readAsText(file);
+  // Limpiar el input para permitir seleccionar el mismo archivo otra vez
+  target.value = '';
+}
+
 const displayIndices = computed<number[]>(() => {
   if (!estructuraCreada.value || capacidad.value == null) return [];
   const n = estructura.value.length;
@@ -308,13 +384,28 @@ const displayIndices = computed<number[]>(() => {
       </details>
       <button @click="crearEstructura">Crear estructura</button>
     </div>
+    
+    <div class="import-option">
+      <p><strong>O importar estructura existente:</strong></p>
+      <label for="import-file-initial" class="secondary file-upload-btn">📥 Importar desde archivo</label>
+      <input id="import-file-initial" type="file" accept=".json" @change="importarEstructura" style="display: none;">
+      <p class="import-warning">⚠️ Al importar se mantendrán la función hash, estrategia de colisión y capacidad del archivo.</p>
+    </div>
   </div>
 
   <div v-if="estructuraCreada">
     <p>
       Estructura creada. Capacidad: {{ capacidad }}, Dígitos por clave: {{ digitosClave }}<br />
-      Método de colisión seleccionado: <strong>{{ estrategiaColision }}</strong>
+      Función hash: <strong>{{ funcionHash }}</strong>, Método de colisión: <strong>{{ estrategiaColision }}</strong>
     </p>
+    
+    <!-- Controles de exportación e importación -->
+    <div class="import-export-controls">
+      <button @click="exportarEstructura" class="secondary">📤 Exportar Estructura</button>
+      <label for="import-file" class="secondary file-upload-btn">📥 Importar Estructura</label>
+      <input id="import-file" type="file" accept=".json" @change="importarEstructura" style="display: none;">
+    </div>
+    
     <input v-model="valor" type="number" min="0" step="1" placeholder="Número entero positivo" @input="validateInput" />
     <div id="general-nav">
       <button @click="insertar" class="outline contrast">Insertar</button>
@@ -365,10 +456,102 @@ const displayIndices = computed<number[]>(() => {
 </template>
 
 <style scoped>
+#general-nav {
+  gap: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.create-structure {
+  margin-bottom: 1rem;
+}
+
+.create-structure input {
+  margin-right: 0.5rem;
+}
+
+.import-export-controls {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.import-option {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.import-warning {
+  font-size: 0.85rem;
+  color: #f59e0b;
+  margin-top: 0.5rem;
+  font-style: italic;
+}
+
+.file-upload-btn {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.file-upload-btn:hover {
+  opacity: 0.8;
+}
+
 .structure-grids.multi { display: grid; gap: 16px; }
 .structure-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px; margin-top: 1rem; }
 .structure-grid.secondary .slot { border-color: #86efac; background: linear-gradient(180deg, #f0fff4 0%, #ffffff 100%); }
 .grid-header { grid-column: 1 / -1; font-size: 0.85rem; font-weight: 600; color: #065f46; margin-bottom: 4px; }
+
+.slot {
+  position: relative;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 8px 10px 8px;
+  text-align: center;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+}
+
+.slot .pos {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(15, 23, 42, 0.06);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: #334155;
+}
+
+.slot .value {
+  font-weight: 700;
+  margin-top: 14px;
+  font-size: 1.1rem;
+  color: #0f172a;
+}
+
+.slot.empty {
+  opacity: 0.7;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+}
+
+.slot.occupied {
+  box-shadow: 0 1px 0 rgba(2,6,23,0.04) inset;
+  background: linear-gradient(180deg, #eef2ff 0%, #ffffff 100%);
+  border-color: #c7d2fe;
+}
+
+.slot.empty .value {
+  color: #94a3b8;
+}
+
 /* chips encadenamiento se mantienen */
 .bucket { margin-top: 8px; text-align: left; }
 .bucket-title { font-size: 0.75rem; color: #475569; margin-bottom: 4px; }

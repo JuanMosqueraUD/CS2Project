@@ -10,6 +10,12 @@ import ResiduoSimple from '../views/ResiduoSimple.vue';
 import ResiduoMultiple from '../views/ResiduoMultiple.vue';
 import ResiduoHuffman from '../views/ResiduoHuffman.vue';
 
+// Importar vistas de búsquedas externas
+import LinealExterna from '../views/external-searches/LinealExterna.vue';
+import BinariaExterna from '../views/external-searches/BinariaExterna.vue';
+import ModuloExterno from '../views/external-searches/hash/ModuloExterno.vue';
+import EstructurasDinamicas from '../views/external-searches/EstructurasDinamicas.vue';
+
 const routes = [
   { path: "/", name: "home", component: HomeView },
   { path: "/lineal", name: "lineal", component: LinealView },
@@ -31,6 +37,16 @@ const routes = [
   { path: "/residuos/simple", name: "residuo-simple", component: ResiduoSimple },
   { path: "/residuos/multiple", name: "residuo-multiple", component: ResiduoMultiple },
   { path: "/residuos/huffman", name: "residuo-huffman", component: ResiduoHuffman },
+  
+  // Rutas de Búsquedas Externas
+  { path: "/external/lineal", name: "external-lineal", component: LinealExterna },
+  { path: "/external/binaria", name: "external-binaria", component: BinariaExterna },
+  { path: "/external/hash/modulo", name: "external-hash-modulo", component: ModuloExterno },
+  { path: "/external/hash/cuadratica", name: "external-hash-cuadratica", component: ModuloExterno },
+  { path: "/external/hash/plegamiento", name: "external-hash-plegamiento", component: ModuloExterno },
+  { path: "/external/hash/truncamiento", name: "external-hash-truncamiento", component: ModuloExterno },
+  { path: "/external/hash/cambio-base", name: "external-hash-cambio-base", component: ModuloExterno },
+  { path: "/external/estructuras-dinamicas", name: "external-estructuras-dinamicas", component: EstructurasDinamicas },
 ]
 
 const router = createRouter({

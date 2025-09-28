@@ -13,6 +13,14 @@
       <input type="checkbox" v-model="useGraph" />
       <span>Vista gráfica</span>
     </label>
+    
+    <!-- Controles de exportación e importación -->
+    <div class="import-export-controls">
+      <button @click="exportarEstructura" class="secondary">📤 Exportar</button>
+      <label for="import-file" class="secondary file-upload-btn">📥 Importar</label>
+      <input id="import-file" type="file" accept=".json" @change="importarEstructura" style="display: none;">
+    </div>
+    
     <span v-if="message" class="message">{{ message }}</span>
   </section>
 
@@ -38,6 +46,12 @@ import type { PropType } from 'vue';
 import { type DTNode, insertNode, letterToCode, searchLetter, deleteLetter } from '../utils/digitalTree';
 import { DataSet, Network, type Options } from 'vis-network/standalone';
 import 'vis-network/styles/vis-network.css';
+import { 
+  createExportData, 
+  generateExportFileName, 
+  downloadJsonFile, 
+  validateResidueDigitalImport 
+} from "../utils/importExportUtils.ts";
 
 const input = ref('');
 const message = ref('');
@@ -232,6 +246,58 @@ function remove() {
   input.value = '';
 }
 
+// Funciones de exportación e importación
+function exportarEstructura() {
+  if (!root.value) {
+    message.value = "Primero debes insertar elementos para exportar la estructura.";
+    return;
+  }
+
+  const config = {
+    digitosClave: 1 // Los árboles digitales trabajan con letras (1 carácter)
+  };
+
+  const exportData = createExportData('residuo-digital', config, root.value);
+  const filename = generateExportFileName('residuo-digital');
+  
+  downloadJsonFile(exportData, filename);
+  message.value = "Estructura exportada exitosamente.";
+}
+
+function importarEstructura(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const importData = JSON.parse(e.target?.result as string);
+      
+      // Usar la utilidad común para validación
+      const validation = validateResidueDigitalImport(importData);
+      if (!validation.isValid) {
+        message.value = validation.error!;
+        return;
+      }
+      
+      // Importar exitosamente
+      root.value = importData.data;
+      highlightPath.value = [];
+      
+      message.value = "Estructura importada exitosamente.";
+      
+    } catch (error) {
+      message.value = "Error al leer el archivo. Asegúrate de que sea un JSON válido.";
+    }
+  };
+  
+  reader.readAsText(file);
+  // Limpiar el input para permitir seleccionar el mismo archivo otra vez
+  target.value = '';
+}
+
 interface TreeNodeProps { node: DTNode; highlightPath?: Array<'L' | 'R'> }
 
 const TreeNode = defineComponent<TreeNodeProps>({
@@ -273,6 +339,28 @@ const TreeNode = defineComponent<TreeNodeProps>({
 }
 .toggle { display: inline-flex; gap: 6px; align-items: center; }
 .message { color: #334155; }
+
+.import-export-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.file-upload-btn {
+  display: inline-block;
+  padding: 0.375rem 0.75rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+  text-decoration: none;
+  border: 1px solid;
+  font-size: 0.875rem;
+}
+
+.file-upload-btn:hover {
+  opacity: 0.8;
+}
+
 .tree-container { margin-top: 1rem; background: #0b1220; padding: 12px; border-radius: 10px; border: 1px solid #1f2a44; }
 .legend { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
 .badge { font-size: 0.75rem; border: 1px solid #334155; padding: 2px 6px; border-radius: 9999px; background: #0f172a; color: #cbd5e1; }
