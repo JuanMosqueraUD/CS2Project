@@ -9,6 +9,7 @@
     <button @click="insert" class="outline contrast">Insertar</button>
     <button @click="search" class="outline">Buscar</button>
     <button @click="remove" class="contrast">Borrar</button>
+    <button @click="resetTree" class="secondary outline" title="Reiniciar árbol">Reiniciar</button>
     <label class="toggle">
       <input type="checkbox" v-model="useGraph" />
       <span>Vista gráfica</span>
@@ -16,8 +17,8 @@
     
     <!-- Controles de exportación e importación -->
     <div class="import-export-controls">
-      <button @click="exportarEstructura" class="secondary">📤 Exportar</button>
-      <label for="import-file" class="secondary file-upload-btn">📥 Importar</label>
+      <button @click="exportarEstructura" class="secondary">Exportar</button>
+      <label for="import-file" class="secondary file-upload-btn">Importar</label>
       <input id="import-file" type="file" accept=".json" @change="importarEstructura" style="display: none;">
     </div>
     
@@ -43,7 +44,7 @@
 <script setup lang="ts">
 import { ref, defineComponent, h, type VNode, onMounted, watch, nextTick, onBeforeUnmount } from 'vue';
 import type { PropType } from 'vue';
-import { type DTNode, insertNode, letterToCode, searchLetter, deleteLetter } from '../utils/digitalTree';
+import { type DTNode, insertNode, letterToCode, searchLetter } from '../utils/digitalTree';
 import { DataSet, Network, type Options } from 'vis-network/standalone';
 import 'vis-network/styles/vis-network.css';
 import { 
@@ -67,7 +68,7 @@ function buildGraphData(node: DTNode, baseId = 'r'): { nodes: any[]; edges: any[
   const nodes: any[] = [];
   const edges: any[] = [];
 
-  function traverse(n: DTNode, id: string) {
+  function traverse(n: DTNode, id: string, level: number = 0) {
     nodes.push({
       id,
       label: n.key ?? '∅',
@@ -80,46 +81,68 @@ function buildGraphData(node: DTNode, baseId = 'r'): { nodes: any[]; edges: any[
       },
       font: { color: n.key ? '#ffffff' : '#93c5fd', face: 'Inter, system-ui, sans-serif', bold: { color: '#ffffff' } },
       borderWidth: 2,
+      level
     });
+    
     const hasLeft = !!n.left;
     const hasRight = !!n.right;
+    
+    // Always create left connection first (even if invisible) to maintain order
     if (hasLeft) {
       const lid = id + 'L';
       edges.push({ from: id, to: lid, arrows: '', color: { color: '#94a3b8', highlight: '#f59e0b' } });
       const leftNode = n.left as DTNode;
-      traverse(leftNode, lid);
+      traverse(leftNode, lid, level + 1);
+    } else if (hasRight) {
+      // Create invisible left placeholder to force right positioning
+      const phantomId = id + 'L_phantom';
+      nodes.push({
+        id: phantomId,
+        label: '',
+        shape: 'circle',
+        size: 1,
+        color: { background: 'transparent', border: 'transparent' },
+        font: { color: 'transparent' },
+        borderWidth: 0,
+        level: level + 1,
+        hidden: true
+      });
+      edges.push({ 
+        from: id, 
+        to: phantomId, 
+        arrows: '', 
+        color: { color: 'transparent' },
+        hidden: true
+      });
     }
+    
+    // Then create right connection
     if (hasRight) {
       const rid = id + 'R';
       edges.push({ from: id, to: rid, arrows: '', color: { color: '#94a3b8', highlight: '#f59e0b' } });
       const rightNode = n.right as DTNode;
-      traverse(rightNode, rid);
-    }
-    // If only one child exists, add a transparent placeholder on the missing side
-    if (hasLeft && !hasRight) {
-      const pid = id + 'R_';
+      traverse(rightNode, rid, level + 1);
+    } else if (hasLeft) {
+      // Create invisible right placeholder to force left positioning
+      const phantomId = id + 'R_phantom';
       nodes.push({
-        id: pid,
+        id: phantomId,
         label: '',
         shape: 'circle',
-        size: 18,
-        color: { background: 'rgba(0,0,0,0)', border: 'rgba(0,0,0,0)' },
-        font: { color: 'rgba(0,0,0,0)' },
+        size: 1,
+        color: { background: 'transparent', border: 'transparent' },
+        font: { color: 'transparent' },
         borderWidth: 0,
+        level: level + 1,
+        hidden: true
       });
-      edges.push({ from: id, to: pid, arrows: '', color: { color: 'rgba(0,0,0,0)' } });
-    } else if (!hasLeft && hasRight) {
-      const pid = id + 'L_';
-      nodes.push({
-        id: pid,
-        label: '',
-        shape: 'circle',
-        size: 18,
-        color: { background: 'rgba(0,0,0,0)', border: 'rgba(0,0,0,0)' },
-        font: { color: 'rgba(0,0,0,0)' },
-        borderWidth: 0,
+      edges.push({ 
+        from: id, 
+        to: phantomId, 
+        arrows: '', 
+        color: { color: 'transparent' },
+        hidden: true
       });
-      edges.push({ from: id, to: pid, arrows: '', color: { color: 'rgba(0,0,0,0)' } });
     }
   }
 
@@ -148,12 +171,20 @@ function renderGraph() {
         direction: 'UD',
         sortMethod: 'directed',
         levelSeparation: 80,
-        nodeSpacing: 150,
-        treeSpacing: 120,
+        nodeSpacing: 120,
+        treeSpacing: 100,
+        blockShifting: true,
+        edgeMinimization: true,
+        parentCentralization: true,
+        shakeTowards: 'leaves'
       }
     },
-    physics: false,
-    edges: { smooth: { enabled: true, type: 'cubicBezier', roundness: 0.4 } },
+    physics: {
+      enabled: false
+    },
+    edges: { 
+      smooth: { enabled: true, type: 'cubicBezier', roundness: 0.4 }
+    },
     interaction: { hover: true, zoomView: true, dragView: true },
     nodes: { size: 24 },
   };
@@ -232,17 +263,42 @@ function remove() {
   highlightPath.value = [];
   if (!input.value) { message.value = 'Ingresa una letra A-Z'; return; }
   if (!letterToCode(input.value)) { message.value = 'Solo se permiten letras A-Z'; return; }
-  const res = deleteLetter(root.value, input.value);
-  root.value = res.root;
-  highlightPath.value = res.path;
-  if (res.deleted) {
-    if (res.mode === 'leaf') message.value = `Borrado ${input.value.toUpperCase()} (hoja)`;
-    else if (res.mode === 'one-child') message.value = `Borrado ${input.value.toUpperCase()} (nodo con un hijo)`;
-    else if (res.mode === 'two-children') message.value = `Borrado lógico de ${input.value.toUpperCase()} (conservando estructura)`;
-    else message.value = `Borrado ${input.value.toUpperCase()}`;
-  } else {
+  
+  // Verificar que el elemento existe antes de intentar borrarlo
+  const searchRes = searchLetter(root.value, input.value);
+  if (!searchRes.found) {
     message.value = `No se encontró ${input.value.toUpperCase()} para borrar`;
+    input.value = '';
+    return;
   }
+  
+  // Recopilar todas las letras del árbol excepto la que se va a borrar
+  function collectAllLetters(node: DTNode | null): string[] {
+    if (!node) return [];
+    const letters: string[] = [];
+    if (node.key && node.key !== input.value.toUpperCase()) {
+      letters.push(node.key);
+    }
+    return letters.concat(collectAllLetters(node.left), collectAllLetters(node.right));
+  }
+  
+  const allLetters = collectAllLetters(root.value);
+  
+  // Reconstruir el árbol desde cero
+  root.value = null;
+  for (const letter of allLetters) {
+    const res = insertNode(root.value, letter);
+    root.value = res.root;
+  }
+  
+  message.value = `Borrado ${input.value.toUpperCase()} y árbol reconstruido`;
+  input.value = '';
+}
+
+function resetTree() {
+  root.value = null;
+  highlightPath.value = [];
+  message.value = 'Árbol reiniciado correctamente';
   input.value = '';
 }
 

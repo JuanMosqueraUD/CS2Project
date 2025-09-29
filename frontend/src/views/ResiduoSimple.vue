@@ -9,6 +9,7 @@
     <button @click="insert" class="outline contrast">Insertar</button>
     <button @click="search" class="outline">Buscar</button>
     <button @click="remove" class="contrast">Borrar</button>
+    <button @click="resetTree" class="secondary outline" title="Reiniciar árbol">Reiniciar</button>
     <label class="toggle">
       <input type="checkbox" v-model="useGraph" />
       <span>Vista gráfica</span>
@@ -16,8 +17,8 @@
     
     <!-- Controles de exportación e importación -->
     <div class="import-export-controls">
-      <button @click="exportarEstructura" class="secondary">📤 Exportar</button>
-      <label for="import-file" class="secondary file-upload-btn">📥 Importar</label>
+      <button @click="exportarEstructura" class="secondary">Exportar</button>
+      <label for="import-file" class="secondary file-upload-btn">Importar</label>
       <input id="import-file" type="file" accept=".json" @change="importarEstructura" style="display: none;">
     </div>
     
@@ -42,7 +43,7 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch, onBeforeUnmount } from 'vue';
 import { letterToCode } from '../utils/digitalTree';
-import { type RSNode, insertRS, searchRS, deleteRS } from '../utils/residueTree';
+import { type RSNode, insertRS, searchRS } from '../utils/residueTree';
 import { DataSet, Network, type Options } from 'vis-network/standalone';
 import 'vis-network/styles/vis-network.css';
 import { 
@@ -102,7 +103,7 @@ function buildGraphData(node: RSNode, baseId = 'r'): { nodes: any[]; edges: any[
   const nodes: any[] = [];
   const edges: any[] = [];
 
-  function traverse(n: RSNode, id: string) {
+  function traverse(n: RSNode, id: string, level: number = 0) {
     const isConnector = n.key === null;
     nodes.push({
       id,
@@ -116,28 +117,66 @@ function buildGraphData(node: RSNode, baseId = 'r'): { nodes: any[]; edges: any[
       },
       font: { color: isConnector ? '#93c5fd' : '#ffffff', face: 'Inter, system-ui, sans-serif', bold: { color: '#ffffff' } },
       borderWidth: 2,
+      level
     });
 
     const hasLeft = !!n.left;
     const hasRight = !!n.right;
+    
+    // Always create left connection first (even if invisible) to maintain order
     if (hasLeft) {
       const lid = id + 'L';
       edges.push({ from: id, to: lid, arrows: '', color: { color: '#94a3b8', highlight: '#f59e0b' } });
-      traverse(n.left as RSNode, lid);
+      traverse(n.left as RSNode, lid, level + 1);
+    } else if (hasRight) {
+      // Create invisible left placeholder to force right positioning
+      const phantomId = id + 'L_phantom';
+      nodes.push({
+        id: phantomId,
+        label: '',
+        shape: 'circle',
+        size: 1,
+        color: { background: 'transparent', border: 'transparent' },
+        font: { color: 'transparent' },
+        borderWidth: 0,
+        level: level + 1,
+        hidden: true
+      });
+      edges.push({ 
+        from: id, 
+        to: phantomId, 
+        arrows: '', 
+        color: { color: 'transparent' },
+        hidden: true
+      });
     }
+    
+    // Then create right connection
     if (hasRight) {
       const rid = id + 'R';
       edges.push({ from: id, to: rid, arrows: '', color: { color: '#94a3b8', highlight: '#f59e0b' } });
-      traverse(n.right as RSNode, rid);
-    }
-    if (hasLeft && !hasRight) {
-      const pid = id + 'R_';
-      nodes.push({ id: pid, label: '', shape: 'circle', size: 18, color: { background: 'rgba(0,0,0,0)', border: 'rgba(0,0,0,0)' }, font: { color: 'rgba(0,0,0,0)' }, borderWidth: 0 });
-        edges.push({ from: id, to: pid, arrows: '', color: { color: 'rgba(0,0,0,0)' } });
-    } else if (!hasLeft && hasRight) {
-      const pid = id + 'L_';
-      nodes.push({ id: pid, label: '', shape: 'circle', size: 18, color: { background: 'rgba(0,0,0,0)', border: 'rgba(0,0,0,0)' }, font: { color: 'rgba(0,0,0,0)' }, borderWidth: 0 });
-      edges.push({ from: id, to: pid, arrows: '', color: { color: 'rgba(0,0,0,0)' } });
+      traverse(n.right as RSNode, rid, level + 1);
+    } else if (hasLeft) {
+      // Create invisible right placeholder to force left positioning
+      const phantomId = id + 'R_phantom';
+      nodes.push({
+        id: phantomId,
+        label: '',
+        shape: 'circle',
+        size: 1,
+        color: { background: 'transparent', border: 'transparent' },
+        font: { color: 'transparent' },
+        borderWidth: 0,
+        level: level + 1,
+        hidden: true
+      });
+      edges.push({ 
+        from: id, 
+        to: phantomId, 
+        arrows: '', 
+        color: { color: 'transparent' },
+        hidden: true
+      });
     }
   }
 
@@ -159,10 +198,25 @@ function renderGraph() {
     autoResize: true,
     layout: {
       improvedLayout: true,
-      hierarchical: { enabled: true, direction: 'UD', sortMethod: 'directed', levelSeparation: 80, nodeSpacing: 150, treeSpacing: 120 }
+      hierarchical: {
+        enabled: true,
+        direction: 'UD',
+        sortMethod: 'directed',
+        levelSeparation: 80,
+        nodeSpacing: 120,
+        treeSpacing: 100,
+        blockShifting: true,
+        edgeMinimization: true,
+        parentCentralization: true,
+        shakeTowards: 'leaves'
+      }
     },
-    physics: false,
-    edges: { smooth: { enabled: true, type: 'cubicBezier', roundness: 0.4 } },
+    physics: {
+      enabled: false
+    },
+    edges: { 
+      smooth: { enabled: true, type: 'cubicBezier', roundness: 0.4 }
+    },
     interaction: { hover: true, zoomView: true, dragView: true },
     nodes: { size: 24 },
   };
@@ -187,10 +241,42 @@ function remove() {
   highlightPath.value = [];
   if (!input.value) { message.value = 'Ingresa una letra A-Z'; return; }
   if (!letterToCode(input.value)) { message.value = 'Solo se permiten letras A-Z'; return; }
-  const res = deleteRS(root.value, input.value);
-  root.value = res.root;
-  highlightPath.value = res.path;
-  message.value = res.deleted ? `Borrado ${input.value.toUpperCase()}` : `No se encontró ${input.value.toUpperCase()} para borrar`;
+  
+  // Verificar que el elemento existe antes de intentar borrarlo
+  const searchRes = searchRS(root.value, input.value);
+  if (!searchRes.found) {
+    message.value = `No se encontró ${input.value.toUpperCase()} para borrar`;
+    input.value = '';
+    return;
+  }
+  
+  // Recopilar todas las letras del árbol excepto la que se va a borrar
+  function collectAllLetters(node: RSNode | null): string[] {
+    if (!node) return [];
+    const letters: string[] = [];
+    if (node.key && node.key !== input.value.toUpperCase()) {
+      letters.push(node.key);
+    }
+    return letters.concat(collectAllLetters(node.left), collectAllLetters(node.right));
+  }
+  
+  const allLetters = collectAllLetters(root.value);
+  
+  // Reconstruir el árbol desde cero
+  root.value = null;
+  for (const letter of allLetters) {
+    const res = insertRS(root.value, letter);
+    root.value = res.root;
+  }
+  
+  message.value = `Borrado ${input.value.toUpperCase()} y árbol reconstruido`;
+  input.value = '';
+}
+
+function resetTree() {
+  root.value = null;
+  highlightPath.value = [];
+  message.value = 'Árbol reiniciado correctamente';
   input.value = '';
 }
 

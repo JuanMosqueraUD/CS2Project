@@ -3,13 +3,499 @@
     <router-link to="/" class="outline contrast">Volver al inicio</router-link>
   </div>
   <h1>Árbol de Huffman</h1>
-  <p class="muted">Vista placeholder. Aquí implementaremos la lógica de Árbol de Huffman.</p>
+
+  <section class="controls">
+    <input v-model="inputText" placeholder="Ingresa una cadena de texto" @input="onTextInput" />
+    <button @click="buildTree" class="outline contrast">Construir Árbol</button>
+    <button @click="recoverString" class="outline" :disabled="!huffmanResult">Recuperar Cadena</button>
+    
+    <div class="import-export-controls">
+      <button @click="exportarEstructura" class="secondary" :disabled="!huffmanResult">Exportar</button>
+      <label for="import-file" class="secondary file-upload-btn">Importar</label>
+      <input id="import-file" type="file" accept=".json" @change="importarEstructura" style="display: none;">
+    </div>
+    
+    <label class="toggle">
+      <input type="checkbox" v-model="useGraph" />
+      <span>Vista gráfica</span>
+    </label>
+    <span v-if="message" class="message">{{ message }}</span>
+  </section>
+
+  <!-- Frequency table -->
+  <section v-if="huffmanResult && huffmanResult.frequencies.length > 0" class="frequency-section">
+    <h3>Tabla de Frecuencias</h3>
+    <div class="frequency-grid">
+      <div class="frequency-header">
+        <span>Carácter</span>
+        <span>Frecuencia</span>
+        <span>Código</span>
+      </div>
+      <div v-for="freq in sortedFrequencies" :key="freq.char" class="frequency-row">
+        <span class="char">{{ freq.char === ' ' ? '[ESP]' : freq.char }}</span>
+        <span class="freq">{{ freq.frequency }}</span>
+        <span class="code">{{ freq.code || '-' }}</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- String recovery section -->
+  <section v-if="recoveryResult" class="recovery-section">
+    <div class="recovery-grid">
+      <div class="original-section">
+        <h4>Texto Original:</h4>
+        <div class="result-text">{{ recoveryResult.original }}</div>
+      </div>
+      
+      <div class="encoded-section">
+        <h4>Código Binario:</h4>
+        <div class="result-code">{{ recoveryResult.encoded }}</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Tree visualization -->
+  <section v-if="huffmanResult && huffmanResult.tree" class="tree-container">
+    <h3>Árbol de Huffman</h3>
+    <div class="legend">
+      <span class="badge leaf">Hoja (carácter)</span>
+      <span class="badge internal">Nodo interno</span>
+    </div>
+    <div v-if="useGraph" class="graph-wrapper">
+      <div ref="graphEl" class="graph"></div>
+    </div>
+    <div v-else class="muted">Activa "Vista gráfica" para ver el árbol.</div>
+  </section>
+
+  <p v-else class="muted">Ingresa una cadena de texto y construye el árbol para comenzar.</p>
 </template>
 
 <script setup lang="ts">
-// Lógica se implementará luego
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { 
+  type HuffmanResult, 
+  type HuffmanNode, 
+  type CharFrequency,
+  createHuffmanFromText,
+  encodeText
+} from '../utils/huffmanTree';
+import { DataSet, Network, type Options } from 'vis-network/standalone';
+import 'vis-network/styles/vis-network.css';
+
+const inputText = ref('');
+const message = ref('');
+const huffmanResult = ref<HuffmanResult | null>(null);
+const recoveryResult = ref<{ original: string; encoded: string } | null>(null);
+const useGraph = ref(true);
+
+const graphEl = ref<HTMLDivElement | null>(null);
+let network: Network | null = null;
+
+const sortedFrequencies = computed(() => {
+  if (!huffmanResult.value) return [];
+  return [...huffmanResult.value.frequencies].sort((a, b) => b.frequency - a.frequency);
+});
+
+function onTextInput() {
+  message.value = '';
+  huffmanResult.value = null;
+  recoveryResult.value = null;
+}
+
+function buildTree() {
+  message.value = '';
+  if (!inputText.value.trim()) {
+    message.value = 'Ingresa una cadena de texto válida';
+    return;
+  }
+  
+  huffmanResult.value = createHuffmanFromText(inputText.value);
+  message.value = `Árbol construido con ${huffmanResult.value.frequencies.length} caracteres únicos`;
+}
+
+function recoverString() {
+  if (!huffmanResult.value) return;
+  
+  const originalText = huffmanResult.value.originalText;
+  const encodedText = encodeText(originalText, huffmanResult.value.codes);
+  
+  recoveryResult.value = {
+    original: originalText,
+    encoded: encodedText
+  };
+  
+  message.value = `Cadena recuperada: "${originalText}" → ${encodedText}`;
+}
+
+function buildGraphData(node: HuffmanNode, baseId = 'r'): { nodes: any[]; edges: any[] } {
+  const nodes: any[] = [];
+  const edges: any[] = [];
+  
+  function traverse(n: HuffmanNode, id: string) {
+    const isLeaf = n.isLeaf && n.char !== null && n.char !== '';
+    const label = isLeaf ? (n.char === ' ' ? '[ESP]' : n.char) : `${n.frequency}`;
+    
+    nodes.push({
+      id,
+      label,
+      shape: 'circle',
+      color: {
+        background: isLeaf ? '#111827' : '#0f172a',
+        border: isLeaf ? '#374151' : '#1e293b',
+        highlight: { background: '#f59e0b', border: '#d97706' },
+        hover: { background: '#1f2937', border: '#4b5563' }
+      },
+      font: { 
+        color: isLeaf ? '#ffffff' : '#93c5fd', 
+        face: 'Inter, system-ui, sans-serif', 
+        bold: { color: '#ffffff' } 
+      },
+      borderWidth: 2,
+    });
+    
+    if (n.left) {
+      const lid = id + 'L';
+      edges.push({ 
+        from: id, 
+        to: lid, 
+        arrows: '', 
+        color: { color: '#94a3b8', highlight: '#f59e0b' },
+        label: '0',
+        font: { size: 12, color: '#6b7280' }
+      });
+      traverse(n.left, lid);
+    }
+    
+    if (n.right) {
+      const rid = id + 'R';
+      edges.push({ 
+        from: id, 
+        to: rid, 
+        arrows: '', 
+        color: { color: '#94a3b8', highlight: '#f59e0b' },
+        label: '1',
+        font: { size: 12, color: '#6b7280' }
+      });
+      traverse(n.right, rid);
+    }
+  }
+  
+  traverse(node, baseId);
+  return { nodes, edges };
+}
+
+function renderGraph() {
+  if (!graphEl.value || !huffmanResult.value || !huffmanResult.value.tree) return;
+  
+  const data = buildGraphData(huffmanResult.value.tree);
+  const options: Options = {
+    autoResize: true,
+    layout: {
+      improvedLayout: true,
+      hierarchical: { 
+        enabled: true, 
+        direction: 'UD', 
+        sortMethod: 'directed', 
+        levelSeparation: 80, 
+        nodeSpacing: 120, 
+        treeSpacing: 100 
+      }
+    },
+    physics: false,
+    edges: { smooth: { enabled: true, type: 'cubicBezier', roundness: 0.4 } },
+    interaction: { hover: true, zoomView: true, dragView: true },
+    nodes: { size: 24 }
+  };
+  
+  if (network) {
+    network.setData({ nodes: new DataSet(data.nodes), edges: new DataSet(data.edges) });
+  } else {
+    network = new Network(graphEl.value, { nodes: data.nodes, edges: data.edges }, options);
+  }
+}
+
+// Import/Export functions
+function exportarEstructura() {
+  if (!huffmanResult.value) {
+    message.value = 'Primero debes construir un árbol para exportar.';
+    return;
+  }
+
+  const exportData = {
+    type: 'huffman',
+    version: '1.0',
+    timestamp: new Date().toISOString(),
+    config: {
+      originalText: huffmanResult.value.originalText
+    },
+    data: {
+      frequencies: huffmanResult.value.frequencies,
+      tree: huffmanResult.value.tree
+    }
+  };
+
+  const dataStr = JSON.stringify(exportData, null, 2);
+  const dataBlob = new Blob([dataStr], { type: 'application/json' });
+  
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(dataBlob);
+  link.download = `huffman_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.json`;
+  link.click();
+  
+  message.value = 'Árbol de Huffman exportado exitosamente.';
+}
+
+function importarEstructura(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const importData = JSON.parse(e.target?.result as string);
+      
+      if (importData.type !== 'huffman') {
+        message.value = 'Este archivo no contiene un árbol de Huffman válido.';
+        return;
+      }
+      
+      if (!importData.data || !importData.data.frequencies || !importData.config) {
+        message.value = 'El archivo no tiene el formato esperado.';
+        return;
+      }
+      
+      // Reconstruct huffman result
+      huffmanResult.value = {
+        tree: importData.data.tree,
+        frequencies: importData.data.frequencies,
+        codes: new Map(importData.data.frequencies.map((f: CharFrequency) => [f.char, f.code || ''])),
+        originalText: importData.config.originalText || ''
+      };
+      
+      inputText.value = huffmanResult.value.originalText;
+      inputText.value = huffmanResult.value.originalText;
+      
+      message.value = `Árbol de Huffman importado exitosamente. Texto original: "${huffmanResult.value.originalText}"`;
+      
+    } catch (error) {
+      message.value = 'Error al leer el archivo. Asegúrate de que sea un JSON válido.';
+    }
+  };
+  
+  reader.readAsText(file);
+  target.value = '';
+}
+
+onMounted(() => {
+  nextTick(() => {
+    if (useGraph.value && huffmanResult.value) renderGraph();
+  });
+});
+
+onBeforeUnmount(() => {
+  if (network) {
+    network.destroy();
+    network = null;
+  }
+});
+
+watch([huffmanResult, useGraph], () => {
+  nextTick(() => {
+    if (useGraph.value) renderGraph();
+  });
+}, { deep: true });
 </script>
 
 <style scoped>
-.muted { color: #6b7280; }
+.controls {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.import-export-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.file-upload-btn {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.file-upload-btn:hover {
+  opacity: 0.8;
+}
+
+.toggle {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.message {
+  color: #334155;
+  font-weight: 500;
+}
+
+.frequency-section {
+  margin: 1.5rem 0;
+}
+
+.frequency-grid {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  gap: 0.5rem;
+  max-width: 400px;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #0f172a;
+}
+
+.frequency-header {
+  display: contents;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.frequency-header > span {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 2px solid #475569;
+}
+
+.frequency-row {
+  display: contents;
+}
+
+.frequency-row > span {
+  padding: 0.25rem 0.5rem;
+  border-bottom: 1px solid #374151;
+  color: #e2e8f0;
+}
+
+.char {
+  font-family: monospace;
+  font-weight: 600;
+  background: #1e293b;
+  border-radius: 4px;
+  color: #fbbf24;
+}
+
+.code {
+  font-family: monospace;
+  color: #34d399;
+  font-weight: 500;
+}
+
+.recovery-section {
+  margin: 1.5rem 0;
+}
+
+.recovery-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.original-section, .encoded-section {
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 1rem;
+  background: #0f172a;
+}
+
+.original-section h4, .encoded-section h4 {
+  margin: 0 0 0.75rem 0;
+  color: #f8fafc;
+}
+
+.result-text, .result-code {
+  background: #1e293b;
+  border: 1px solid #475569;
+  border-radius: 4px;
+  padding: 0.75rem;
+  word-break: break-all;
+  font-family: monospace;
+  font-size: 0.9rem;
+  color: #e2e8f0;
+  min-height: 2.5rem;
+}
+
+.result-code {
+  color: #34d399;
+}
+
+.tree-container {
+  margin-top: 1.5rem;
+  background: #0b1220;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #1f2a44;
+}
+
+.legend {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.badge {
+  font-size: 0.75rem;
+  border: 1px solid #334155;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  background: #0f172a;
+  color: #cbd5e1;
+}
+
+.badge.leaf {
+  background: #052f3a;
+  border-color: #155e75;
+  color: #a5f3fc;
+}
+
+.badge.internal {
+  background: #0f144a;
+  border-color: #4f46e5;
+  color: #c7d2fe;
+}
+
+.graph-wrapper {
+  display: flex;
+  justify-content: center;
+}
+
+.graph {
+  width: min(100%, 980px);
+  height: 520px;
+  border: 1px solid #1f2a44;
+  border-radius: 8px;
+  background: #0b1220;
+}
+
+.muted {
+  color: #6b7280;
+}
+
+@media (max-width: 768px) {
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .recovery-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
 </style>

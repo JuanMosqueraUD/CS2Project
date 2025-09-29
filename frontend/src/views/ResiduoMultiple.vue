@@ -33,6 +33,7 @@
       <input v-model="input" maxlength="1" placeholder="Letra (A-Z)" @input="onInput" />
       <button @click="insert" class="outline contrast" :disabled="!treeCreated">Insertar</button>
       <button @click="search" class="outline" :disabled="!treeCreated">Buscar</button>
+      <button @click="remove" class="contrast" :disabled="!treeCreated">Borrar</button>
       <label class="toggle">
         <input type="checkbox" v-model="useGraph" />
         <span>Vista gráfica</span>
@@ -87,7 +88,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import { letterToCode } from '../utils/digitalTree';
-import { type RMNode, insertRM, searchRM, buildRMTemplate } from '../utils/residueMultiTree';
+import { type RMNode, insertRM, searchRM, buildRMTemplate, groupBits } from '../utils/residueMultiTree';
 import { DataSet, Network, type Options } from 'vis-network/standalone';
 import 'vis-network/styles/vis-network.css';
 
@@ -265,6 +266,62 @@ function search() {
   message.value = res.found 
     ? `✓ Encontrada: ${input.value.toUpperCase()} (${code}) → Grupos: [${groupsText}] → Ruta: ${res.path.join('→')}`
     : `✗ No encontrada: ${input.value.toUpperCase()} (${code}) → Grupos: [${groupsText}]`;
+}
+
+function remove() {
+  message.value = '';
+  const mv = Math.min(3, Math.max(1, m.value));
+  if (!treeCreated.value) { message.value = 'Primero debes crear la estructura del árbol'; return; }
+  if (!input.value) { message.value = 'Ingresa una letra A-Z'; return; }
+  const code = letterToCode(input.value);
+  if (!code) { message.value = 'Solo se permiten letras A-Z'; return; }
+  
+  // Actualizar información binaria
+  updateBinaryInfo(input.value);
+  
+  // Función auxiliar para encontrar el nodo específico
+  function findNodeForRemoval(node: RMNode | null, letter: string, m: number): { found: boolean; path: number[]; targetNode: RMNode | null } {
+    if (!node || !code) return { found: false, path: [], targetNode: null };
+    const groups = groupBits(code, m);
+    const path: number[] = [];
+    let current: RMNode | null = node;
+    
+    for (let i = 0; i < groups.length && current; i++) {
+      if (current.key !== null) {
+        return { 
+          found: current.key === letter.toUpperCase(), 
+          path, 
+          targetNode: current.key === letter.toUpperCase() ? current : null
+        };
+      }
+      const idx = parseInt(groups[i], 2); // Convert binary to index
+      path.push(idx);
+      current = current.children[idx] ?? null;
+    }
+    
+    if (current && current.key !== null) {
+      return { 
+        found: current.key === letter.toUpperCase(), 
+        path, 
+        targetNode: current.key === letter.toUpperCase() ? current : null
+      };
+    }
+    return { found: false, path, targetNode: null };
+  }
+  
+  const result = findNodeForRemoval(root.value, input.value, mv);
+  if (result.found && result.targetNode) {
+    // Simplemente borrar el contenido del nodo, dejando el espacio vacío
+    result.targetNode.key = null;
+    result.targetNode.code = null;
+    
+    const groupsText = binaryGroups.value.join(' | ');
+    message.value = `🗑️ Borrado: ${input.value.toUpperCase()} (${code}) → Grupos: [${groupsText}] → Ruta: ${result.path.join('→')}`;
+    pathIdx.value = result.path;
+  } else {
+    const groupsText = binaryGroups.value.join(' | ');
+    message.value = `✗ No se encontró ${input.value.toUpperCase()} (${code}) para borrar → Grupos: [${groupsText}]`;
+  }
 }
 
 function buildGraphData(node: RMNode, baseId = 'r'): { nodes: any[]; edges: any[] } {

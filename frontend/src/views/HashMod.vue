@@ -387,9 +387,9 @@ const displayIndices = computed<number[]>(() => {
     
     <div class="import-option">
       <p><strong>O importar estructura existente:</strong></p>
-      <label for="import-file-initial" class="secondary file-upload-btn">📥 Importar desde archivo</label>
+      <label for="import-file-initial" class="secondary file-upload-btn">Importar desde archivo</label>
       <input id="import-file-initial" type="file" accept=".json" @change="importarEstructura" style="display: none;">
-      <p class="import-warning">⚠️ Al importar se mantendrán la función hash, estrategia de colisión y capacidad del archivo.</p>
+      <p class="import-warning">Al importar se mantendrán la función hash, estrategia de colisión y capacidad del archivo.</p>
     </div>
   </div>
 
@@ -401,8 +401,8 @@ const displayIndices = computed<number[]>(() => {
     
     <!-- Controles de exportación e importación -->
     <div class="import-export-controls">
-      <button @click="exportarEstructura" class="secondary">📤 Exportar Estructura</button>
-      <label for="import-file" class="secondary file-upload-btn">📥 Importar Estructura</label>
+      <button @click="exportarEstructura" class="secondary">Exportar Estructura</button>
+      <label for="import-file" class="secondary file-upload-btn">Importar Estructura</label>
       <input id="import-file" type="file" accept=".json" @change="importarEstructura" style="display: none;">
     </div>
     
