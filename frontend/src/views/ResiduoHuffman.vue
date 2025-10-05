@@ -392,12 +392,8 @@ watch([huffmanResult, useGraph], () => {
 }
 
 .message {
-  color: #1f2937; 
-  font-weight: 600; 
-  background: #f3f4f6; 
-  padding: 8px 12px; 
-  border-radius: 6px; 
-  border: 1px solid #d1d5db;
+  color: #e5e7eb; 
+  font-size: 0.9rem;
 }
 
 .frequency-section {

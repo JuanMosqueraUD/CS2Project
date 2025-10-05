@@ -70,6 +70,19 @@ function crearEstructura() {
     return;
   }
 
+  // Validación específica para truncamiento
+  if (funcionHash.value === 'truncamiento') {
+    let minimoDigitos = 0;
+    if (capacidad.value === 10) minimoDigitos = 2;
+    else if (capacidad.value === 100) minimoDigitos = 4;
+    else if (capacidad.value === 1000) minimoDigitos = 6;
+
+    if (digitosClave.value < minimoDigitos) {
+      errorMessage.value = `Para función truncamiento con capacidad ${capacidad.value}, se requieren mínimo ${minimoDigitos} dígitos.`;
+      return;
+    }
+  }
+
   estructura.value = Array(capacidad.value).fill(null);
   buckets.value = Array(capacidad.value).fill(0).map(() => []);
   // Sin estructuras anidadas al inicio; se crean al ocurrir colisiones
@@ -95,9 +108,18 @@ function siguienteIndice(base: number, cap: number, estrategia: string, intento:
 
 const insertar = () => {
   resultado.value = null;
-  const num = parseInt(valor.value);
-  const res = funciones.validarInput(num, digitosClave.value);
+  
+  // Verificar que la estructura esté creada
+  if (!estructuraCreada.value) {
+    errorMessage.value = "Primero debes crear una estructura.";
+    return;
+  }
+  
+  // Validar input con la nueva función que acepta ceros iniciales
+  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
   if (res.isError) { errorMessage.value = res.msg; return; }
+
+  const num = parseInt(valor.value); // Convertir a número para operaciones
 
   const cap = capacidad.value!;
   let index = indiceInicial(num);
@@ -150,9 +172,11 @@ const insertar = () => {
 
 const buscar = () => {
   resultado.value = null;
-  const num = parseInt(valor.value);
-  const res = funciones.validarInput(num, digitosClave.value);
+  // Validar input con la nueva función que acepta ceros iniciales
+  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
   if (res.isError) { errorMessage.value = res.msg; return; }
+
+  const num = parseInt(valor.value); // Convertir a número para operaciones
 
   const cap = capacidad.value!;
   let index = indiceInicial(num);
@@ -187,8 +211,11 @@ const buscar = () => {
 
 const eliminar = () => {
   resultado.value = null;
-  const num = parseInt(valor.value);
-  const res = funciones.validarInput(num, digitosClave.value);
+  // Validar input con la nueva función que acepta ceros iniciales
+  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
+  if (res.isError) { errorMessage.value = res.msg; return; }
+
+  const num = parseInt(valor.value); // Convertir a número para operaciones
   if (res.isError) { errorMessage.value = res.msg; return; }
 
   const cap = capacidad.value!;
@@ -406,7 +433,7 @@ const displayIndices = computed<number[]>(() => {
       <input id="import-file" type="file" accept=".json" @change="importarEstructura" style="display: none;">
     </div>
     
-    <input v-model="valor" type="number" min="0" step="1" placeholder="Clave entera positiva" @input="validateInput" />
+    <input v-model="valor" type="text" placeholder="Clave entera positiva" @input="validateInput" />
     <div id="general-nav">
       <button @click="insertar" class="outline contrast">Insertar</button>
       <button @click="buscar" class="outline contrast">Buscar</button>

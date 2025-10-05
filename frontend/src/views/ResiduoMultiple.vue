@@ -703,12 +703,8 @@ watch([root, pathIdx, useGraph, m], () => { nextTick(() => { if (useGraph.value)
 
 /* Mensajes */
 .message {
-  color: #1f2937;
-  font-weight: 600;
-  padding: 8px 12px;
-  background: #f3f4f6;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
+  color: #e5e7eb;
+  font-size: 0.9rem;
 }
 
 /* Contenedor del árbol */

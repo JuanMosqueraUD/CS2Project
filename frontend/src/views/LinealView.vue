@@ -33,12 +33,20 @@ function crearEstructura() {
 
 const insertar = () => {
   resultado.value = null;
-  const num = parseInt(valor.value);
-  const res = funciones.validarInput(num,digitosClave.value);
+  
+  // Verificar que la estructura esté creada
+  if (!estructuraCreada.value) {
+    errorMessage.value = "Primero debes crear una estructura.";
+    return;
+  }
+  
+  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
   if (res.isError) {
     errorMessage.value = res.msg;
     return;
   }
+  
+  const num = parseInt(valor.value); // Convertir a número para operaciones
   
   // Validar capacidad: buscar primer slot vacío (null)
   if (capacidad.value !== null) {
@@ -68,12 +76,13 @@ function buscar() {
   errorMessage.value = "";
   resultado.value = null;
 
-  const num = parseInt(valor.value);
-  const res = funciones.validarInput(num,digitosClave.value);
+  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
   if (res.isError) {
     errorMessage.value = res.msg;
     return;
   }
+
+  const num = parseInt(valor.value); // Convertir a número para búsqueda
 
   const index = funciones.busquedaLineal(estructura.value, num);
   if (index !== -1) {
@@ -89,12 +98,13 @@ function buscar() {
 function eliminar() {
   errorMessage.value = "";
   resultado.value = null;
-  const num = parseInt(valor.value);
-  const res = funciones.validarInput(num,digitosClave.value);
+  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
   if (res.isError) {
     errorMessage.value = res.msg;
     return;
   }
+
+  const num = parseInt(valor.value); // Convertir a número para operaciones
 
   const index = funciones.busquedaLineal(estructura.value, num);
 
@@ -114,12 +124,12 @@ function eliminar() {
 function validateInput(event: Event) {
   const target = event.target as HTMLInputElement;
   const value = target.value;
-  // Permitir solo números enteros positivos (incluye 0)
+  // Permitir solo claves enteras positivas (incluye 0)
   const validChars = /^\d*$/;
   
   if (!validChars.test(value)) {
   target.value = value.slice(0, -1);
-    errorMessage.value = "Solo se permiten números enteros positivos";
+    errorMessage.value = "Solo se permiten claves enteras positivas";
   } else {
     errorMessage.value = "";
   }
@@ -245,10 +255,8 @@ const displayIndices = computed<number[]>(() => {
       
       <input
         v-model="valor"
-        type="number"
-        min="0"
-        step="1"
-        placeholder="Número entero positivo"
+        type="text"
+        placeholder="Clave entera positiva"
         @input="validateInput"
       />
       <div id="general-nav">

@@ -35,12 +35,19 @@ function crearEstructura() {
 const insertar = () => {
   resultado.value = null;
 
-  const num = parseInt(valor.value);
-  const res = funciones.validarInput(num,digitosClave.value);
+  // Verificar que la estructura esté creada
+  if (!estructuraCreada.value) {
+    errorMessage.value = "Primero debes crear una estructura.";
+    return;
+  }
+
+  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
   if (res.isError) {
     errorMessage.value = res.msg;
     return;
   }
+  
+  const num = parseInt(valor.value); // Convertir a número para operaciones
   // Validar capacidad: buscar primer slot vacío (null)
   if (capacidad.value !== null) {
     const firstEmpty = funciones.busquedaLineal(estructura.value, null);
@@ -68,12 +75,13 @@ function buscar() {
   errorMessage.value = "";
   resultado.value = null;
 
-  const num = parseInt(valor.value);
-  const res = funciones.validarInput(num,digitosClave.value);
+  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
   if (res.isError) {
     errorMessage.value = res.msg;
     return;
   }
+
+  const num = parseInt(valor.value); // Convertir a número para búsqueda
 
   const index = funciones.busquedaBinaria(estructura.value, num);
   if (index !== -1) {
@@ -89,12 +97,13 @@ function buscar() {
 function eliminar() {
   errorMessage.value = "";
   resultado.value = null;
-  const num = parseInt(valor.value);
-  const res = funciones.validarInput(num,digitosClave.value);
+  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
   if (res.isError) {
     errorMessage.value = res.msg;
     return;
   }
+
+  const num = parseInt(valor.value); // Convertir a número para operaciones
 
   const index = funciones.busquedaBinaria(estructura.value, num);
 
@@ -247,9 +256,7 @@ const displayIndices = computed<number[]>(() => {
       
       <input
         v-model="valor"
-        type="number"
-        min="0"
-        step="1"
+        type="text"
         placeholder="Clave entera positiva"
         @input="validateInput"
       />

@@ -21,6 +21,24 @@ export function validarDigitosClave(num: number, digitosClave: number | null): b
   return true;
 }
 
+export function validarDigitosClaveConCeros(claveStr: string, digitosClave: number | null): boolean {
+  if (digitosClave == null) {
+    return false;
+  }
+  
+  // Verificar que la clave tenga exactamente digitosClave caracteres
+  if (claveStr.length !== digitosClave) {
+    return false;
+  }
+  
+  // Verificar que todos los caracteres sean dígitos
+  if (!/^\d+$/.test(claveStr)) {
+    return false;
+  }
+  
+  return true;
+}
+
 export function busquedaBinaria<T>(lista: (T | null)[], elemento: T): number {
   let izquierda = 0;
   let derecha = lista.length - 1;
@@ -57,6 +75,23 @@ export function validarInput(valor: number | null, digitosClave: number | null):
   if (!validarDigitosClave(valor, digitosClave)) {
     return { msg: `La clave debe tener exactamente ${digitosClave} dígitos.`, isError: true };
   }
+  return { msg: "", isError: false };
+}
+
+export function validarInputConCeros(claveStr: string, digitosClave: number | null): { msg: string; isError: boolean } {
+  if (!claveStr || claveStr.trim() === "") {
+    return { msg: "Ingresa una clave.", isError: true };
+  }
+
+  // Verificar que digitosClave esté definido
+  if (digitosClave === null || digitosClave === undefined) {
+    return { msg: "Primero debes configurar la cantidad de dígitos por clave.", isError: true };
+  }
+
+  if (!validarDigitosClaveConCeros(claveStr, digitosClave)) {
+    return { msg: `La clave debe tener exactamente ${digitosClave} dígitos.`, isError: true };
+  }
+
   return { msg: "", isError: false };
 }
 

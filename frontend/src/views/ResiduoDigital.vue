@@ -434,7 +434,7 @@ const TreeNode = defineComponent<TreeNodeProps>({
   flex-wrap: wrap;
 }
 .toggle { display: inline-flex; gap: 6px; align-items: center; }
-.message { color: #1f2937; font-weight: 600; background: #f3f4f6; padding: 8px 12px; border-radius: 6px; border: 1px solid #d1d5db; }
+.message { color: #e5e7eb; font-size: 0.9rem; }
 
 .import-export-controls {
   display: flex;

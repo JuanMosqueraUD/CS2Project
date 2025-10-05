@@ -12,14 +12,14 @@ const residuosOpen = ref(false);
 <template>
   <nav class="grid">
     <li><strong>Algoritmo:</strong></li>
-    <button @click="mode = 'Busquedas'" class="outline contrast"> Busquedas</button>
-    <button @click="mode = 'Grafos'" class="outline contrast"> Grafos</button>
+    <button @click="mode = mode === 'Busquedas' ? '' : 'Busquedas'" class="outline contrast"> Busquedas</button>
+    <button @click="mode = mode === 'Grafos' ? '' : 'Grafos'" class="outline contrast"> Grafos</button>
   </nav>
 
   <div v-if="mode === 'Busquedas'" id ="subnav">
     <div id="general-nav">
-      <button @click="searchMode = 'Interna'" class="outline contrast">Interna</button>
-      <button @click="searchMode = 'Externa'" class="outline contrast">Externa</button>
+      <button @click="searchMode = searchMode === 'Interna' ? '' : 'Interna'" class="outline contrast">Interna</button>
+      <button @click="searchMode = searchMode === 'Externa' ? '' : 'Externa'" class="outline contrast">Externa</button>
     </div>
 
     <!-- Búsqueda Interna -->
@@ -31,8 +31,8 @@ const residuosOpen = ref(false);
         <button class="outline contrast">
           <router-link to="/binaria" class="outline contrast">Búsqueda Binaria</router-link>
         </button>
-        <button @click="internalAlgorithm = 'Hash'" class="outline contrast">Funciones Hash</button>
-        <button @click="internalAlgorithm = 'Residuos'" class="outline contrast">Otras</button>
+        <button @click="internalAlgorithm = internalAlgorithm === 'Hash' ? '' : 'Hash'" class="outline contrast">Funciones Hash</button>
+        <button @click="internalAlgorithm = internalAlgorithm === 'Residuos' ? '' : 'Residuos'" class="outline contrast">Otras</button>
       </div>
 
       <!-- Opciones de Hash -->
@@ -83,7 +83,7 @@ const residuosOpen = ref(false);
         <button class="outline contrast">
           <router-link to="/external/binaria" class="outline contrast">Búsqueda Binaria</router-link>
         </button>
-        <button @click="internalAlgorithm = 'ExternalHash'" class="outline contrast">Búsquedas Hash</button>
+        <button @click="internalAlgorithm = internalAlgorithm === 'ExternalHash' ? '' : 'ExternalHash'" class="outline contrast">Búsquedas Hash</button>
         <button class="outline contrast">
           <router-link to="/external/estructuras-dinamicas" class="outline contrast">Estructuras Dinámicas</router-link>
         </button>
