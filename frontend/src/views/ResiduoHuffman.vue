@@ -5,13 +5,13 @@
   <h1>Árbol de Huffman</h1>
 
   <section class="controls">
-    <input v-model="inputText" placeholder="Ingresa una cadena de texto" @input="onTextInput" />
+    <input v-model="inputText" placeholder="Ingresa un mensaje a enviar" @input="onTextInput" />
     <button @click="buildTree" class="outline contrast">Construir Árbol</button>
     <button @click="recoverString" class="outline" :disabled="!huffmanResult">Recuperar Cadena</button>
     
     <div class="import-export-controls">
-      <button @click="exportarEstructura" class="secondary" :disabled="!huffmanResult">Exportar</button>
-      <label for="import-file" class="secondary file-upload-btn">Importar</label>
+      <button @click="exportarEstructura" class="secondary" :disabled="!huffmanResult">Guardar</button>
+      <label for="import-file" class="secondary file-upload-btn">Abrir</label>
       <input id="import-file" type="file" accept=".json" @change="importarEstructura" style="display: none;">
     </div>
     
@@ -131,7 +131,7 @@ function buildGraphData(node: HuffmanNode, baseId = 'r'): { nodes: any[]; edges:
   const nodes: any[] = [];
   const edges: any[] = [];
   
-  function traverse(n: HuffmanNode, id: string) {
+  function traverse(n: HuffmanNode, id: string, level: number = 0) {
     const isLeaf = n.isLeaf && n.char !== null && n.char !== '';
     const label = isLeaf ? (n.char === ' ' ? '[ESP]' : n.char) : `${n.frequency}`;
     
@@ -151,10 +151,12 @@ function buildGraphData(node: HuffmanNode, baseId = 'r'): { nodes: any[]; edges:
         bold: { color: '#ffffff' } 
       },
       borderWidth: 2,
+      level
     });
     
+    // Always create left connection - real or invisible
+    const lid = id + 'L';
     if (n.left) {
-      const lid = id + 'L';
       edges.push({ 
         from: id, 
         to: lid, 
@@ -163,11 +165,33 @@ function buildGraphData(node: HuffmanNode, baseId = 'r'): { nodes: any[]; edges:
         label: '0',
         font: { size: 12, color: '#6b7280' }
       });
-      traverse(n.left, lid);
+      traverse(n.left, lid, level + 1);
+    } else {
+      // Create invisible left node
+      nodes.push({
+        id: lid,
+        label: '',
+        shape: 'circle',
+        size: 1,
+        color: { background: 'rgba(0,0,0,0)', border: 'rgba(0,0,0,0)' },
+        font: { color: 'rgba(0,0,0,0)', size: 1 },
+        borderWidth: 0,
+        level: level + 1,
+        physics: false,
+        fixed: { x: true, y: true }
+      });
+      edges.push({ 
+        from: id, 
+        to: lid, 
+        arrows: '', 
+        color: { color: 'rgba(0,0,0,0)' },
+        width: 0
+      });
     }
     
+    // Always create right connection - real or invisible
+    const rid = id + 'R';
     if (n.right) {
-      const rid = id + 'R';
       edges.push({ 
         from: id, 
         to: rid, 
@@ -176,11 +200,32 @@ function buildGraphData(node: HuffmanNode, baseId = 'r'): { nodes: any[]; edges:
         label: '1',
         font: { size: 12, color: '#6b7280' }
       });
-      traverse(n.right, rid);
+      traverse(n.right, rid, level + 1);
+    } else {
+      // Create invisible right node
+      nodes.push({
+        id: rid,
+        label: '',
+        shape: 'circle',
+        size: 1,
+        color: { background: 'rgba(0,0,0,0)', border: 'rgba(0,0,0,0)' },
+        font: { color: 'rgba(0,0,0,0)', size: 1 },
+        borderWidth: 0,
+        level: level + 1,
+        physics: false,
+        fixed: { x: true, y: true }
+      });
+      edges.push({ 
+        from: id, 
+        to: rid, 
+        arrows: '', 
+        color: { color: 'rgba(0,0,0,0)' },
+        width: 0
+      });
     }
   }
   
-  traverse(node, baseId);
+  traverse(node, baseId, 0);
   return { nodes, edges };
 }
 
@@ -198,7 +243,11 @@ function renderGraph() {
         sortMethod: 'directed', 
         levelSeparation: 80, 
         nodeSpacing: 120, 
-        treeSpacing: 100 
+        treeSpacing: 100,
+        blockShifting: true,
+        edgeMinimization: true,
+        parentCentralization: false,
+        shakeTowards: 'leaves'
       }
     },
     physics: false,
@@ -343,8 +392,12 @@ watch([huffmanResult, useGraph], () => {
 }
 
 .message {
-  color: #334155;
-  font-weight: 500;
+  color: #1f2937; 
+  font-weight: 600; 
+  background: #f3f4f6; 
+  padding: 8px 12px; 
+  border-radius: 6px; 
+  border: 1px solid #d1d5db;
 }
 
 .frequency-section {

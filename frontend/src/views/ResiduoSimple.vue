@@ -2,10 +2,10 @@
   <div class="btn-back">
     <router-link to="/" class="outline contrast">Volver al inicio</router-link>
   </div>
-  <h1>Árbol por Residuos (Simple)</h1>
+  <h1>Árbol de Residuos</h1>
 
   <section class="controls">
-    <input v-model="input" maxlength="1" placeholder="Ingresa una letra (A-Z)" @input="onInput" />
+    <input v-model="input" maxlength="1" placeholder="Ingresa una clave (A-Z)" @input="onInput" />
     <button @click="insert" class="outline contrast">Insertar</button>
     <button @click="search" class="outline">Buscar</button>
     <button @click="remove" class="contrast">Borrar</button>
@@ -17,8 +17,8 @@
     
     <!-- Controles de exportación e importación -->
     <div class="import-export-controls">
-      <button @click="exportarEstructura" class="secondary">Exportar</button>
-      <label for="import-file" class="secondary file-upload-btn">Importar</label>
+      <button @click="exportarEstructura" class="secondary">Guardar</button>
+      <label for="import-file" class="secondary file-upload-btn">Abrir</label>
       <input id="import-file" type="file" accept=".json" @change="importarEstructura" style="display: none;">
     </div>
     
@@ -37,7 +37,7 @@
     <div v-else class="muted">Activa "Vista gráfica" para ver el árbol.</div>
   </section>
 
-  <p v-else class="muted">Aún no hay nodos. Inserta una letra para crear el árbol.</p>
+  <p v-else class="muted">Aún no hay nodos. Inserta una clave para crear el árbol.</p>
 </template>
 
 <script setup lang="ts">
@@ -71,14 +71,14 @@ function onInput(e: Event) {
 
 function insert() {
   message.value = '';
-  if (!input.value) { message.value = 'Ingresa una letra A-Z'; return; }
+  if (!input.value) { message.value = 'Ingresa una clave A-Z'; return; }
   const code = letterToCode(input.value);
-  if (!code) { message.value = 'Solo se permiten letras A-Z'; return; }
+  if (!code) { message.value = 'Solo se permiten claves A-Z'; return; }
   const res = insertRS(root.value, input.value);
   root.value = res.root;
   highlightPath.value = res.path;
   if (res.status === 'duplicate') {
-    message.value = `La letra ${input.value.toUpperCase()} ya existe. Ruta: ${res.path.join('›') || 'raíz'}`;
+    message.value = `La clave ${input.value.toUpperCase()} ya existe. Ruta: ${res.path.join('›') || 'raíz'}`;
   } else {
     message.value = `Insertado ${input.value.toUpperCase()} con código ${code} por ruta ${res.path.join('›') || 'raíz'}`;
   }
@@ -88,8 +88,8 @@ function insert() {
 function search() {
   message.value = '';
   highlightPath.value = [];
-  if (!input.value) { message.value = 'Ingresa una letra A-Z'; return; }
-  if (!letterToCode(input.value)) { message.value = 'Solo se permiten letras A-Z'; return; }
+  if (!input.value) { message.value = 'Ingresa una clave A-Z'; return; }
+  if (!letterToCode(input.value)) { message.value = 'Solo se permiten claves A-Z'; return; }
   const res = searchRS(root.value, input.value);
   highlightPath.value = res.path;
   if (res.found) {
@@ -99,19 +99,21 @@ function search() {
   }
 }
 
-function buildGraphData(node: RSNode, baseId = 'r'): { nodes: any[]; edges: any[] } {
+function buildGraphData(node: RSNode, baseId = 'r', highlightPath: Array<'L' | 'R'> = []): { nodes: any[]; edges: any[] } {
   const nodes: any[] = [];
   const edges: any[] = [];
 
-  function traverse(n: RSNode, id: string, level: number = 0) {
+  function traverse(n: RSNode, id: string, level: number = 0, pathSoFar: Array<'L' | 'R'> = []) {
+    const isHighlighted = pathSoFar.length <= highlightPath.length && 
+                         pathSoFar.every((dir, i) => dir === highlightPath[i]);
     const isConnector = n.key === null;
     nodes.push({
       id,
       label: isConnector ? '○' : (n.key ?? '∅'),
       shape: 'circle',
       color: {
-        background: isConnector ? '#0f172a' : '#111827',
-        border: isConnector ? '#1e293b' : '#374151',
+        background: isHighlighted ? '#f59e0b' : (isConnector ? '#0f172a' : '#111827'),
+        border: isHighlighted ? '#d97706' : (isConnector ? '#1e293b' : '#374151'),
         highlight: { background: '#f59e0b', border: '#d97706' },
         hover: { background: '#1f2937', border: '#4b5563' }
       },
@@ -123,59 +125,83 @@ function buildGraphData(node: RSNode, baseId = 'r'): { nodes: any[]; edges: any[
     const hasLeft = !!n.left;
     const hasRight = !!n.right;
     
-    // Always create left connection first (even if invisible) to maintain order
+    // Always create left connection - real or invisible
+    const lid = id + 'L';
     if (hasLeft) {
-      const lid = id + 'L';
-      edges.push({ from: id, to: lid, arrows: '', color: { color: '#94a3b8', highlight: '#f59e0b' } });
-      traverse(n.left as RSNode, lid, level + 1);
-    } else if (hasRight) {
-      // Create invisible left placeholder to force right positioning
-      const phantomId = id + 'L_phantom';
+      const nextPath = [...pathSoFar, 'L' as const];
+      const isEdgeHighlighted = nextPath.length <= highlightPath.length && 
+                               nextPath.every((dir, i) => dir === highlightPath[i]);
+      
+      edges.push({ 
+        from: id, 
+        to: lid, 
+        arrows: '', 
+        color: { color: isEdgeHighlighted ? '#f59e0b' : '#94a3b8', highlight: '#f59e0b' },
+        width: isEdgeHighlighted ? 3 : 1,
+        label: '0',
+        font: { size: 12, color: '#6b7280' }
+      });
+      traverse(n.left as RSNode, lid, level + 1, nextPath);
+    } else {
+      // Create invisible left node
       nodes.push({
-        id: phantomId,
+        id: lid,
         label: '',
         shape: 'circle',
         size: 1,
-        color: { background: 'transparent', border: 'transparent' },
-        font: { color: 'transparent' },
+        color: { background: 'rgba(0,0,0,0)', border: 'rgba(0,0,0,0)' },
+        font: { color: 'rgba(0,0,0,0)', size: 1 },
         borderWidth: 0,
         level: level + 1,
-        hidden: true
+        physics: false,
+        fixed: { x: true, y: true }
       });
       edges.push({ 
         from: id, 
-        to: phantomId, 
+        to: lid, 
         arrows: '', 
-        color: { color: 'transparent' },
-        hidden: true
+        color: { color: 'rgba(0,0,0,0)' },
+        width: 0
       });
     }
     
-    // Then create right connection
+    // Always create right connection - real or invisible  
+    const rid = id + 'R';
     if (hasRight) {
-      const rid = id + 'R';
-      edges.push({ from: id, to: rid, arrows: '', color: { color: '#94a3b8', highlight: '#f59e0b' } });
-      traverse(n.right as RSNode, rid, level + 1);
-    } else if (hasLeft) {
-      // Create invisible right placeholder to force left positioning
-      const phantomId = id + 'R_phantom';
+      const nextPath = [...pathSoFar, 'R' as const];
+      const isEdgeHighlighted = nextPath.length <= highlightPath.length && 
+                               nextPath.every((dir, i) => dir === highlightPath[i]);
+      
+      edges.push({ 
+        from: id, 
+        to: rid, 
+        arrows: '', 
+        color: { color: isEdgeHighlighted ? '#f59e0b' : '#94a3b8', highlight: '#f59e0b' },
+        width: isEdgeHighlighted ? 3 : 1,
+        label: '1',
+        font: { size: 12, color: '#6b7280' }
+      });
+      traverse(n.right as RSNode, rid, level + 1, nextPath);
+    } else {
+      // Create invisible right node
       nodes.push({
-        id: phantomId,
+        id: rid,
         label: '',
         shape: 'circle',
         size: 1,
-        color: { background: 'transparent', border: 'transparent' },
-        font: { color: 'transparent' },
+        color: { background: 'rgba(0,0,0,0)', border: 'rgba(0,0,0,0)' },
+        font: { color: 'rgba(0,0,0,0)', size: 1 },
         borderWidth: 0,
         level: level + 1,
-        hidden: true
+        physics: false,
+        fixed: { x: true, y: true }
       });
       edges.push({ 
         from: id, 
-        to: phantomId, 
+        to: rid, 
         arrows: '', 
-        color: { color: 'transparent' },
-        hidden: true
+        color: { color: 'rgba(0,0,0,0)' },
+        width: 0
       });
     }
   }
@@ -193,7 +219,7 @@ function computeTargetId(): string | null {
 
 function renderGraph() {
   if (!graphEl.value || !root.value) return;
-  const data = buildGraphData(root.value);
+  const data = buildGraphData(root.value, 'r', highlightPath.value || []);
   const options: Options = {
     autoResize: true,
     layout: {
@@ -207,7 +233,7 @@ function renderGraph() {
         treeSpacing: 100,
         blockShifting: true,
         edgeMinimization: true,
-        parentCentralization: true,
+        parentCentralization: false,
         shakeTowards: 'leaves'
       }
     },
@@ -239,8 +265,8 @@ watch([root, highlightPath, useGraph], () => { nextTick(() => { if (useGraph.val
 function remove() {
   message.value = '';
   highlightPath.value = [];
-  if (!input.value) { message.value = 'Ingresa una letra A-Z'; return; }
-  if (!letterToCode(input.value)) { message.value = 'Solo se permiten letras A-Z'; return; }
+  if (!input.value) { message.value = 'Ingresa una clave A-Z'; return; }
+  if (!letterToCode(input.value)) { message.value = 'Solo se permiten claves A-Z'; return; }
   
   // Verificar que el elemento existe antes de intentar borrarlo
   const searchRes = searchRS(root.value, input.value);
@@ -336,7 +362,7 @@ function importarEstructura(event: Event) {
 <style scoped>
 .controls { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
 .toggle { display: inline-flex; gap: 6px; align-items: center; }
-.message { color: #cbd5e1; }
+.message { color: #1f2937; font-weight: 600; background: #f3f4f6; padding: 8px 12px; border-radius: 6px; border: 1px solid #d1d5db; }
 
 .import-export-controls {
   display: flex;

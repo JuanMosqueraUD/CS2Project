@@ -115,12 +115,12 @@ function eliminar() {
 function validateInput(event: Event) {
   const target = event.target as HTMLInputElement;
   const value = target.value;
-  // Permitir solo números enteros positivos (incluye 0)
+  // Permitir solo claves enteras positivas (incluye 0)
   const validChars = /^\d*$/;
   
   if (!validChars.test(value)) {
   target.value = value.slice(0, -1);
-    errorMessage.value = "Solo se permiten números enteros positivos";
+    errorMessage.value = "Solo se permiten claves enteras positivas";
   } else {
     errorMessage.value = "";
   }
@@ -250,7 +250,7 @@ const displayIndices = computed<number[]>(() => {
         type="number"
         min="0"
         step="1"
-        placeholder="Número entero positivo"
+        placeholder="Clave entera positiva"
         @input="validateInput"
       />
       <div id="general-nav">

@@ -30,7 +30,7 @@
     </div>
     
     <div class="operation-controls">
-      <input v-model="input" maxlength="1" placeholder="Letra (A-Z)" @input="onInput" />
+      <input v-model="input" maxlength="1" placeholder="Clave (A-Z)" @input="onInput" />
       <button @click="insert" class="outline contrast" :disabled="!treeCreated">Insertar</button>
       <button @click="search" class="outline" :disabled="!treeCreated">Buscar</button>
       <button @click="remove" class="contrast" :disabled="!treeCreated">Borrar</button>
@@ -64,9 +64,9 @@
     <!-- Herramientas adicionales -->
     <div v-if="treeCreated" class="tools-section">
       <div class="tools-buttons">
-        <button @click="exportTreeConfig" class="tool-btn outline">📁 Exportar</button>
+        <button @click="exportTreeConfig" class="tool-btn outline">📁 Guardar</button>
         <label class="tool-btn outline import-btn">
-          📂 Importar
+          📂 Abrir
           <input type="file" accept=".json" @change="importTreeConfig" hidden />
         </label>
       </div>
@@ -230,9 +230,9 @@ function insert() {
   message.value = '';
   const mv = Math.min(3, Math.max(1, m.value));
   if (!treeCreated.value) { message.value = 'Primero debes crear la estructura del árbol'; return; }
-  if (!input.value) { message.value = 'Ingresa una letra A-Z'; return; }
+  if (!input.value) { message.value = 'Ingresa una clave A-Z'; return; }
   const code = letterToCode(input.value);
-  if (!code) { message.value = 'Solo se permiten letras A-Z'; return; }
+  if (!code) { message.value = 'Solo se permiten claves A-Z'; return; }
   
   // Actualizar información binaria
   updateBinaryInfo(input.value);
@@ -252,9 +252,9 @@ function search() {
   message.value = '';
   const mv = Math.min(3, Math.max(1, m.value));
   if (!treeCreated.value) { message.value = 'Primero debes crear la estructura del árbol'; return; }
-  if (!input.value) { message.value = 'Ingresa una letra A-Z'; return; }
+  if (!input.value) { message.value = 'Ingresa una clave A-Z'; return; }
   const code = letterToCode(input.value);
-  if (!code) { message.value = 'Solo se permiten letras A-Z'; return; }
+  if (!code) { message.value = 'Solo se permiten claves A-Z'; return; }
   
   // Actualizar información binaria
   updateBinaryInfo(input.value);
@@ -272,9 +272,9 @@ function remove() {
   message.value = '';
   const mv = Math.min(3, Math.max(1, m.value));
   if (!treeCreated.value) { message.value = 'Primero debes crear la estructura del árbol'; return; }
-  if (!input.value) { message.value = 'Ingresa una letra A-Z'; return; }
+  if (!input.value) { message.value = 'Ingresa una clave A-Z'; return; }
   const code = letterToCode(input.value);
-  if (!code) { message.value = 'Solo se permiten letras A-Z'; return; }
+  if (!code) { message.value = 'Solo se permiten claves A-Z'; return; }
   
   // Actualizar información binaria
   updateBinaryInfo(input.value);
@@ -703,12 +703,12 @@ watch([root, pathIdx, useGraph, m], () => { nextTick(() => { if (useGraph.value)
 
 /* Mensajes */
 .message {
-  color: #cbd5e1;
-  font-weight: 500;
-  padding: 0.5rem;
-  background: #1f2937;
+  color: #1f2937;
+  font-weight: 600;
+  padding: 8px 12px;
+  background: #f3f4f6;
   border-radius: 6px;
-  border-left: 4px solid #3b82f6;
+  border: 1px solid #d1d5db;
 }
 
 /* Contenedor del árbol */
