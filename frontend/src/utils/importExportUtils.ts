@@ -1,7 +1,7 @@
 // Utilidades comunes para validación de importación/exportación de estructuras
 import * as funciones from "./funciones.ts";
 
-export type StructureType = 'lineal' | 'binaria' | 'hash' | 'residuo-simple' | 'residuo-multiple' | 'residuo-digital';
+export type StructureType = 'lineal' | 'binaria' | 'hash' | 'residuo-simple' | 'residuo-multiple' | 'residuo-digital' | 'lineal-externa' | 'binaria-externa' | 'hash-externa';
 export type HashFunction = 'mod' | 'cuadrado' | 'truncamiento' | 'plegamiento';
 export type CollisionStrategy = 'lineal' | 'cuadratica' | 'doble-hash' | 'arreglos' | 'listas-anidadas' | 'encadenamiento';
 
@@ -426,6 +426,60 @@ export function validateResidueDigitalImport(importData: any): ValidationResult 
   // Validar estructura del árbol digital
   const treeValidation = validateResidueTreeData(importData.data, importData.config.digitosClave);
   if (!treeValidation.isValid) return treeValidation;
+
+  return { isValid: true };
+}
+
+// Función de validación para búsquedas externas lineales
+export function validateExternalLinearImport(importData: any): ValidationResult {
+  // Validación básica de estructura
+  const basicValidation = validateBasicFormat(importData, 'lineal-externa');
+  if (!basicValidation.isValid) return basicValidation;
+
+  // Validar que tenga la estructura específica de búsqueda externa lineal
+  if (!importData.data || typeof importData.data !== 'object') {
+    return { isValid: false, error: 'Los datos de la estructura deben ser un objeto válido.' };
+  }
+
+  const { estructura, elementosOriginales } = importData.data;
+
+  // Validar estructura de bloques
+  if (!Array.isArray(estructura)) {
+    return { isValid: false, error: 'La estructura debe ser un arreglo de bloques.' };
+  }
+
+  // Validar elementos originales
+  if (!Array.isArray(elementosOriginales)) {
+    return { isValid: false, error: 'Los elementos originales deben ser un arreglo.' };
+  }
+
+  // Validar que cada bloque tenga la estructura correcta
+  for (let i = 0; i < estructura.length; i++) {
+    const bloque = estructura[i];
+    if (!bloque || typeof bloque !== 'object') {
+      return { isValid: false, error: `El bloque ${i + 1} debe ser un objeto válido.` };
+    }
+
+    if (!Array.isArray(bloque.elementos)) {
+      return { isValid: false, error: `El bloque ${i + 1} debe tener un arreglo de elementos.` };
+    }
+
+    if (typeof bloque.indiceInicio !== 'number' || bloque.indiceInicio < 0) {
+      return { isValid: false, error: `El bloque ${i + 1} debe tener un índice de inicio válido.` };
+    }
+
+    if (typeof bloque.indiceFin !== 'number' || bloque.indiceFin < bloque.indiceInicio) {
+      return { isValid: false, error: `El bloque ${i + 1} debe tener un índice de fin válido.` };
+    }
+  }
+
+  // Validar elementos originales (deben ser números válidos)
+  for (let i = 0; i < elementosOriginales.length; i++) {
+    const elemento = elementosOriginales[i];
+    if (typeof elemento !== 'number' || !Number.isInteger(elemento) || elemento < 0) {
+      return { isValid: false, error: `El elemento original ${i + 1} debe ser un número entero positivo.` };
+    }
+  }
 
   return { isValid: true };
 }

@@ -63,18 +63,76 @@ Bloque 4: Elementos 16-19
 ### 2. Búsqueda Externa Lineal
 
 **Características:**
-- Similar a la binaria pero con búsqueda secuencial dentro del bloque
-- Los datos están ordenados para optimizar las inserciones
-- Utiliza la misma estrategia de bloques
+- Organización en bloques con datos ordenados globalmente
+- Búsqueda secuencial dentro de cada bloque
+- Utiliza comparación con el último elemento de cada bloque para localización
+- Capacidad mínima requerida: 10 elementos
 
-**Algoritmo de Búsqueda:**
-1. Buscar el bloque apropiado comparando con el último elemento
-2. Realizar búsqueda lineal dentro del bloque seleccionado
+**Algoritmo de Búsqueda Detallado:**
+1. **Localización del bloque**: Recorrer bloques secuencialmente
+   - Comparar el elemento buscado con el último elemento de cada bloque
+   - Si el elemento es menor o igual al último elemento del bloque, buscar en ese bloque
+   - Si el bloque está vacío (último elemento es null), buscar en ese bloque
+2. **Búsqueda interna**: Una vez localizado el bloque correcto
+   - Realizar búsqueda lineal desde el inicio del bloque
+   - Comparar elemento por elemento hasta encontrar o agotar el bloque
+3. **Resultado**: Devolver posición (bloque, índice) si se encuentra
 
-**Algoritmo de Inserción:**
-1. Encontrar el bloque correcto
-2. Insertar en orden dentro del bloque
-3. Aplicar corrimiento de bloques si es necesario
+**Algoritmo de Inserción Detallado:**
+1. **Localización del bloque destino**: Encontrar donde debe insertarse
+   - Usar la misma lógica de búsqueda para localizar el bloque
+   - Determinar la posición exacta dentro del bloque manteniendo el orden
+2. **Verificación de espacio**:
+   - Si el bloque tiene espacio: insertar directamente con desplazamiento local
+   - Si el bloque está lleno: aplicar **corrimiento de bloques**
+3. **Corrimiento de bloques** (cuando es necesario):
+   - Desplazar el último elemento del bloque actual al primer espacio del siguiente
+   - Propagar este proceso hasta encontrar un bloque con espacio disponible
+   - Insertar el nuevo elemento en la posición correcta del bloque inicial
+
+**Ejemplo Práctico de Inserción:**
+
+Configuración: Capacidad = 16, Elementos por bloque = 4
+
+**Estado inicial:**
+```
+Bloque 0: [2, 8, 12, 18]  (lleno)
+Bloque 1: [22, 25, 30, _] (espacio disponible)
+Bloque 2: [_, _, _, _]     (vacío)
+Bloque 3: [_, _, _, _]     (vacío)
+```
+
+**Insertar elemento 15:**
+1. Comparar 15 con último elemento de Bloque 0 (18): 15 < 18 → buscar en Bloque 0
+2. Encontrar posición: después de 12, antes de 18 (posición 2)
+3. Bloque 0 está lleno → aplicar corrimiento:
+   - Mover 18 (último de Bloque 0) a primera posición de Bloque 1
+   - Desplazar elementos en Bloque 1: [18, 22, 25, 30]
+   - Insertar 15 en posición 2 de Bloque 0: [2, 8, 15, 18]
+
+**Estado final:**
+```
+Bloque 0: [2, 8, 15, 18]  (elemento insertado)
+Bloque 1: [18, 22, 25, 30] (elementos desplazados)
+Bloque 2: [_, _, _, _]     (sin cambios)
+Bloque 3: [_, _, _, _]     (sin cambios)
+```
+
+**Ventajas de la Búsqueda Lineal Externa:**
+- **Simplicidad**: Algoritmo más simple que la búsqueda binaria externa
+- **Orden mantenido**: Los datos permanecen ordenados facilitando operaciones
+- **Eficiencia en inserciones**: Mejor rendimiento para inserciones frecuentes
+- **Localidad de datos**: Elementos relacionados se mantienen en el mismo bloque
+
+**Complejidad Temporal:**
+- **Búsqueda**: O(√n) para localizar bloque + O(√n) para búsqueda interna = O(√n)
+- **Inserción**: O(√n) para localización + O(n) para corrimiento en el peor caso
+- **Eliminación**: O(√n) para búsqueda + O(√n) para compactación local
+
+**Métricas Específicas:**
+- **Accesos a bloques por búsqueda**: Entre 1 y ⌊√n⌋ bloques
+- **Factor de utilización**: Varía según patrón de inserciones/eliminaciones
+- **Fragmentación**: Mínima debido al mantenimiento de orden
 
 ### 3. Búsqueda Externa Hash
 

@@ -5,100 +5,85 @@
   
   <h1>Búsqueda Lineal Externa</h1>
   
-  <div class="create-structure" v-if="!estructuraCreada">
+  <!-- Configuración inicial -->
+  <div v-if="!estructuraCreada" class="create-structure">
     <h3>Crear estructura</h3>
     <div>
-      <details class="dropdown">
-        <summary>Tamaño del archivo: <strong>{{ tamanoArchivo ?? 'Selecciona' }}</strong></summary>
-        <ul>
-          <li><a href="#" @click.prevent="tamanoArchivo = 100">100 elementos</a></li>
-          <li><a href="#" @click.prevent="tamanoArchivo = 500">500 elementos</a></li>
-          <li><a href="#" @click.prevent="tamanoArchivo = 1000">1000 elementos</a></li>
-          <li><a href="#" @click.prevent="tamanoArchivo = 5000">5000 elementos</a></li>
-        </ul>
-      </details>
-      <details class="dropdown">
-        <summary>Tipo de datos: <strong>{{ tipoDatos }}</strong></summary>
-        <ul>
-          <li><a href="#" @click.prevent="tipoDatos = 'numeros'">Números</a></li>
-          <li><a href="#" @click.prevent="tipoDatos = 'texto'">Texto</a></li>
-          <li><a href="#" @click.prevent="tipoDatos = 'mixto'">Mixto</a></li>
-        </ul>
-      </details>
-      <button @click="crearEstructura" :disabled="!tamanoArchivo">Crear estructura</button>
+      <input v-model.number="capacidad" type="number" placeholder="Capacidad (mínimo 10)" @input="validateInput" />
+      <input v-model.number="digitosClave" type="number" placeholder="Cantidad de dígitos por clave" @input="validateInput" />
+      <button @click="crearEstructura">Crear estructura</button>
+    </div>
+    
+    <div v-if="capacidad && capacidad >= 10" class="info-preview">
+      <p><strong>Elementos por bloque:</strong> {{ elementosPorBloque }} (⌊√{{ capacidad }}⌋) | <strong>Número de bloques:</strong> {{ numeroBloques }}</p>
+    </div>
+    
+    <div class="import-option">
+      <p><strong>O importar estructura existente:</strong></p>
+      <label for="import-file-initial" class="secondary file-upload-btn">Importar desde archivo</label>
+      <input id="import-file-initial" type="file" accept=".json" @change="importarEstructura" style="display: none;">
     </div>
   </div>
 
+  <!-- Controles de operación -->
   <div v-if="estructuraCreada">
-    <p>
-      Archivo creado con {{ tamanoArchivo }} elementos de tipo {{ tipoDatos }}.
-      <br />Tiempo de acceso secuencial simulado.
-    </p>
+    <p>Estructura creada. Capacidad: {{ capacidad }}, Dígitos por clave: {{ digitosClave }}, Elementos por bloque: {{ elementosPorBloque }}</p>
     
-    <div class="search-controls">
-      <input 
-        v-model="valorBusqueda" 
-        :placeholder="tipoDatos === 'numeros' ? 'Número a buscar' : 'Texto a buscar'" 
-        @input="limpiarResultado"
-      />
-      <button @click="buscarLineal" class="outline contrast" :disabled="!valorBusqueda">
-        🔍 Buscar
-      </button>
-      <button @click="reiniciarEstructura" class="outline">
-        🔄 Reiniciar
-      </button>
+    <!-- Controles de exportación e importación -->
+    <div class="import-export-controls">
+      <button @click="exportarEstructura" class="secondary">Exportar Estructura</button>
+      <label for="import-file" class="secondary file-upload-btn">Importar Estructura</label>
+      <input id="import-file" type="file" accept=".json" @change="importarEstructura" style="display: none;">
     </div>
+    
+    <input
+      v-model="valor"
+      type="text"
+      placeholder="Clave entera positiva"
+      @input="validateInput"
+    />
+    <div id="general-nav">
+      <button @click="insertar" class="outline contrast">Insertar</button>
+      <button @click="buscar" class="outline contrast">Buscar</button>
+      <button @click="eliminar" class="outline contrast">Eliminar</button>
+    </div>
+  </div>
 
-    <!-- Resultados de búsqueda -->
-    <div v-if="resultadoBusqueda" class="resultado-container">
-      <div class="resultado-info">
-        <h4>{{ resultadoBusqueda.encontrado ? '✅ Elemento encontrado' : '❌ Elemento no encontrado' }}</h4>
-        <div class="metricas">
-          <span class="metrica">
-            <strong>Posición:</strong> 
-            {{ resultadoBusqueda.encontrado ? resultadoBusqueda.posicion + 1 : 'N/A' }}
-          </span>
-          <span class="metrica">
-            <strong>Comparaciones:</strong> {{ resultadoBusqueda.comparaciones }}
-          </span>
-          <span class="metrica">
-            <strong>Tiempo:</strong> {{ resultadoBusqueda.tiempo }}ms
-          </span>
-          <span class="metrica">
-            <strong>Accesos a disco:</strong> {{ resultadoBusqueda.accesosDisco }}
-          </span>
-        </div>
-      </div>
-      
-      <!-- Visualización del progreso -->
-      <div class="progreso-container">
-        <h5>Progreso de búsqueda:</h5>
-        <div class="barra-progreso">
+  <!-- Mensaje de error -->
+  <div v-if="errorMessage">
+    <p>{{ errorMessage }}</p>
+  </div>
+
+  <!-- Resultado -->
+  <div v-if="resultado !== null">
+    <p v-if="resultado">Elemento encontrado en Bloque {{ bloqueBuscado }}, Posición {{ indexBuscado }}</p>
+    <p v-else>Elemento no encontrado</p>
+  </div>
+
+  <!-- Visualización de la estructura -->
+  <div v-if="estructuraCreada">
+    <h2>Estructura actual:</h2>
+    <div class="blocks-container">
+      <div 
+        v-for="(bloque, index) in estructura" 
+        :key="index" 
+        class="block"
+        :class="{ 'highlight-block': index === bloqueBuscado }"
+      >
+        <div class="block-header">Bloque {{ index }}</div>
+        <div class="block-content">
           <div 
-            class="progreso-barra" 
-            :style="{ width: progressPercentage + '%' }"
-          ></div>
-        </div>
-        <span class="progreso-texto">
-          {{ resultadoBusqueda.comparaciones }} / {{ tamanoArchivo }} elementos revisados
-        </span>
-      </div>
-    </div>
-
-    <!-- Simulación visual de elementos -->
-    <div v-if="mostrarElementos" class="elementos-container">
-      <h5>Primeros 20 elementos del archivo:</h5>
-      <div class="elementos-grid">
-        <div 
-          v-for="(elemento, index) in elementosVista.slice(0, 20)" 
-          :key="index"
-          class="elemento"
-          :class="{ 
-            'elemento-actual': index === posicionActual,
-            'elemento-encontrado': index === posicionEncontrada 
-          }"
-        >
-          {{ elemento }}
+            v-for="pos in getDisplayIndicesForBlock(bloque)" 
+            :key="pos" 
+            class="element"
+            :class="{ 
+              'empty': bloque[pos] === null,
+              'highlight': index === bloqueBuscado && pos === indexBuscado
+            }"
+          >
+            <div class="pos">{{ pos + 1 }}</div>
+            <div class="value">{{ bloque[pos] !== null ? bloque[pos] : '' }}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -106,260 +91,687 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed } from "vue";
+import * as funciones from "../../utils/funciones.ts";
 
-const tamanoArchivo = ref<number | null>(null);
-const tipoDatos = ref<string>('numeros');
+const valor = ref("");
+const estructura = ref<(number | null)[][]>([]); // Array de bloques
+const resultado = ref(null as null | boolean);
+const indexBuscado = ref(-1);
+const bloqueBuscado = ref(-1);
+const errorMessage = ref("");
 const estructuraCreada = ref(false);
-const valorBusqueda = ref('');
-const resultadoBusqueda = ref<any>(null);
-const mostrarElementos = ref(false);
-const elementosVista = ref<any[]>([]);
-const posicionActual = ref(-1);
-const posicionEncontrada = ref(-1);
+const capacidad = ref<number | null>(null);
+const digitosClave = ref<number | null>(null);
 
-const progressPercentage = computed(() => {
-  if (!resultadoBusqueda.value) return 0;
-  return (resultadoBusqueda.value.comparaciones / tamanoArchivo.value!) * 100;
+// Calcular elementos por bloque usando la fórmula ⌊√n⌋
+const elementosPorBloque = computed(() => {
+  if (!capacidad.value) return 0;
+  return Math.floor(Math.sqrt(capacidad.value));
 });
 
+// Calcular número de bloques
+const numeroBloques = computed(() => {
+  if (!capacidad.value || !elementosPorBloque.value) return 0;
+  return Math.ceil(capacidad.value / elementosPorBloque.value);
+});
+
+// Función para obtener índices limitados de elementos a mostrar dentro de un bloque
+const getDisplayIndicesForBlock = (bloque: (number | null)[], maxElements = 20) => {
+  const n = bloque.length;
+  if (n <= maxElements) return Array.from({ length: n }, (_, i) => i);
+  if (n === 0) return [];
+  
+  const occupied = bloque
+    .map((v, i) => (v !== null ? i : -1))
+    .filter((i) => i >= 0)
+    .sort((a, b) => a - b);
+  
+  const set = new Set<number>();
+  set.add(0); // Primer elemento
+  set.add(n - 1); // Último elemento
+  for (const i of occupied) set.add(i); // Elementos ocupados
+  
+  return Array.from(set).sort((a, b) => a - b);
+};
+
 function crearEstructura() {
-  if (!tamanoArchivo.value) return;
-  
-  // Generar datos simulados
-  elementosVista.value = [];
-  for (let i = 0; i < tamanoArchivo.value; i++) {
-    switch (tipoDatos.value) {
-      case 'numeros':
-        elementosVista.value.push(Math.floor(Math.random() * 10000));
-        break;
-      case 'texto':
-        elementosVista.value.push(`Item${i.toString().padStart(4, '0')}`);
-        break;
-      case 'mixto':
-        elementosVista.value.push(i % 2 === 0 ? Math.floor(Math.random() * 1000) : `Texto${i}`);
-        break;
-    }
+  errorMessage.value = "";
+  if (capacidad.value === null || digitosClave.value === null) {
+    errorMessage.value = "Por favor completa la capacidad y la cantidad de dígitos.";
+    return;
   }
-  
+  if (capacidad.value < 10) {
+    errorMessage.value = "La capacidad mínima para búsquedas externas es 10.";
+    return;
+  }
+  if (digitosClave.value <= 0) {
+    errorMessage.value = "La cantidad de dígitos debe ser un entero positivo.";
+    return;
+  }
+
+  // Crear estructura de bloques
+  const bloques = [];
+  for (let i = 0; i < numeroBloques.value; i++) {
+    bloques.push(Array(elementosPorBloque.value).fill(null));
+  }
+  estructura.value = bloques;
   estructuraCreada.value = true;
-  mostrarElementos.value = true;
-  resultadoBusqueda.value = null;
 }
 
-async function buscarLineal() {
-  if (!valorBusqueda.value) return;
+const insertar = () => {
+  resultado.value = null;
   
-  const inicio = performance.now();
-  let comparaciones = 0;
-  let encontrado = false;
-  let posicion = -1;
-  let accesosDisco = 0;
+  // Verificar que la estructura esté creada
+  if (!estructuraCreada.value) {
+    errorMessage.value = "Primero debes crear una estructura.";
+    return;
+  }
   
-  // Simular búsqueda lineal con accesos a disco
-  for (let i = 0; i < elementosVista.value.length; i++) {
-    comparaciones++;
-    accesosDisco += Math.ceil((i + 1) / 100); // Simular accesos a disco cada 100 elementos
+  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
+  if (res.isError) {
+    errorMessage.value = res.msg;
+    return;
+  }
+  
+  const num = parseInt(valor.value);
+  
+  // Verificar si el elemento ya existe
+  const existeResult = buscarElemento(num);
+  if (existeResult.encontrado) {
+    errorMessage.value = "El elemento ya existe en la estructura.";
+    return;
+  }
+  
+  // Insertar en orden
+  insertarEnOrden(num);
+  errorMessage.value = `Insertado ${num} correctamente.`;
+  valor.value = "";
+};
+
+function buscarElemento(elemento: number) {
+  for (let i = 0; i < estructura.value.length; i++) {
+    const bloque = estructura.value[i];
+    const ultimoElemento = obtenerUltimoElemento(bloque);
     
-    posicionActual.value = i;
-    
-    // Convertir a string para comparación uniforme
-    const elemento = String(elementosVista.value[i]);
-    const busqueda = String(valorBusqueda.value);
-    
-    if (elemento === busqueda || elemento.toLowerCase() === busqueda.toLowerCase()) {
-      encontrado = true;
-      posicion = i;
-      posicionEncontrada.value = i;
-      break;
+    // Si el bloque está vacío o el elemento es menor que el último, buscar en este bloque
+    if (ultimoElemento === null || elemento <= ultimoElemento) {
+      // Búsqueda lineal dentro del bloque
+      for (let j = 0; j < bloque.length; j++) {
+        if (bloque[j] === null) break;
+        if (bloque[j] === elemento) {
+          return { encontrado: true, bloque: i, posicion: j };
+        }
+      }
+      // Si llegamos aquí, el elemento no está en este bloque
+      return { encontrado: false, bloque: i, posicion: -1 };
     }
+  }
+  // Si no se encontró en ningún bloque
+  return { encontrado: false, bloque: estructura.value.length - 1, posicion: -1 };
+}
+
+function obtenerUltimoElemento(bloque: (number | null)[]): number | null {
+  for (let i = bloque.length - 1; i >= 0; i--) {
+    if (bloque[i] !== null) {
+      return bloque[i];
+    }
+  }
+  return null;
+}
+
+function insertarEnOrden(elemento: number) {
+  // Verificar si hay espacio total en la estructura
+  const totalOcupados = estructura.value.flat().filter(el => el !== null).length;
+  const capacidadTotal = capacidad.value!;
+  
+  if (totalOcupados >= capacidadTotal) {
+    errorMessage.value = "La estructura está completamente llena.";
+    return;
+  }
+  
+  // Encontrar el bloque y posición donde debe insertarse en orden global
+  let bloqueDestino = 0;
+  let posicionDestino = 0;
+  let encontrado = false;
+  
+  for (let i = 0; i < estructura.value.length && !encontrado; i++) {
+    const bloque = estructura.value[i];
     
-    // Simular tiempo de acceso
-    if (i % 100 === 0) {
-      await new Promise(resolve => setTimeout(resolve, 1));
+    for (let j = 0; j < bloque.length; j++) {
+      if (bloque[j] === null || elemento <= bloque[j]!) {
+        bloqueDestino = i;
+        posicionDestino = j;
+        encontrado = true;
+        break;
+      }
     }
   }
   
-  const fin = performance.now();
+  // Si no se encontró posición, insertar al final
+  if (!encontrado) {
+    for (let i = estructura.value.length - 1; i >= 0; i--) {
+      const bloque = estructura.value[i];
+      for (let j = bloque.length - 1; j >= 0; j--) {
+        if (bloque[j] !== null) {
+          bloqueDestino = i;
+          posicionDestino = j + 1;
+          if (posicionDestino >= bloque.length) {
+            bloqueDestino = i + 1;
+            posicionDestino = 0;
+          }
+          encontrado = true;
+          break;
+        }
+      }
+      if (encontrado) break;
+    }
+  }
   
-  resultadoBusqueda.value = {
-    encontrado,
-    posicion,
-    comparaciones,
-    tiempo: Math.round(fin - inicio),
-    accesosDisco,
-    valorBuscado: valorBusqueda.value
+  // Realizar la inserción con corrimiento
+  insertarConCorrimiento(bloqueDestino, posicionDestino, elemento);
+}
+
+function insertarConCorrimiento(bloqueInicial: number, posicion: number, elemento: number) {
+  let elementoAMover = elemento;
+  
+  for (let i = bloqueInicial; i < estructura.value.length; i++) {
+    const bloque = estructura.value[i];
+    
+    if (i === bloqueInicial && posicion < bloque.length) {
+      // En el bloque inicial, insertar en la posición correcta
+      let ultimoElemento = null;
+      
+      // Si hay un último elemento, guardarlo para corrimiento
+      if (bloque[bloque.length - 1] !== null) {
+        ultimoElemento = bloque[bloque.length - 1];
+      }
+      
+      // Desplazar elementos hacia la derecha desde la posición de inserción
+      for (let j = bloque.length - 1; j > posicion; j--) {
+        bloque[j] = bloque[j - 1];
+      }
+      bloque[posicion] = elementoAMover;
+      
+      // Si había un elemento al final, se convierte en el próximo a mover
+      if (ultimoElemento !== null) {
+        elementoAMover = ultimoElemento;
+      } else {
+        // No hay más elementos que mover
+        break;
+      }
+    } else {
+      // En bloques siguientes, insertar al inicio y desplazar
+      let ultimoElemento = null;
+      
+      // Guardar el último elemento si existe
+      if (bloque[bloque.length - 1] !== null) {
+        ultimoElemento = bloque[bloque.length - 1];
+      }
+      
+      // Desplazar todos los elementos hacia la derecha
+      for (let j = bloque.length - 1; j > 0; j--) {
+        bloque[j] = bloque[j - 1];
+      }
+      bloque[0] = elementoAMover;
+      
+      // Si no había último elemento, terminamos
+      if (ultimoElemento === null) {
+        break;
+      }
+      elementoAMover = ultimoElemento;
+    }
+  }
+}
+
+function buscar() {
+  errorMessage.value = "";
+  resultado.value = null;
+  bloqueBuscado.value = -1;
+  indexBuscado.value = -1;
+
+  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
+  if (res.isError) {
+    errorMessage.value = res.msg;
+    return;
+  }
+
+  const num = parseInt(valor.value);
+  const resultadoBusqueda = buscarElemento(num);
+  
+  if (resultadoBusqueda.encontrado) {
+    resultado.value = true;
+    bloqueBuscado.value = resultadoBusqueda.bloque;
+    indexBuscado.value = resultadoBusqueda.posicion;
+    errorMessage.value = `Encontrado en Bloque ${resultadoBusqueda.bloque}, Posición ${resultadoBusqueda.posicion}.`;
+  } else {
+    resultado.value = false;
+    errorMessage.value = "Elemento no encontrado.";
+  }
+}
+
+function eliminar() {
+  errorMessage.value = "";
+  resultado.value = null;
+
+  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
+  if (res.isError) {
+    errorMessage.value = res.msg;
+    return;
+  }
+
+  const num = parseInt(valor.value);
+  const resultadoBusqueda = buscarElemento(num);
+  
+  if (resultadoBusqueda.encontrado) {
+    // Eliminar elemento y hacer corrimiento hacia la izquierda
+    eliminarConCorrimiento(resultadoBusqueda.bloque, resultadoBusqueda.posicion);
+    
+    errorMessage.value = `Eliminado del Bloque ${resultadoBusqueda.bloque}.`;
+    valor.value = "";
+  } else {
+    errorMessage.value = "Elemento no encontrado para eliminar.";
+  }
+}
+
+function eliminarConCorrimiento(bloqueInicial: number, posicion: number) {
+  // Eliminar el elemento y hacer corrimiento hacia la izquierda
+  for (let i = bloqueInicial; i < estructura.value.length; i++) {
+    const bloque = estructura.value[i];
+    
+    if (i === bloqueInicial) {
+      // En el bloque inicial, desplazar desde la posición eliminada
+      for (let j = posicion; j < bloque.length - 1; j++) {
+        bloque[j] = bloque[j + 1];
+      }
+      bloque[bloque.length - 1] = null;
+      
+      // Si el siguiente bloque tiene elementos, traer el primer elemento
+      if (i + 1 < estructura.value.length) {
+        const siguienteBloque = estructura.value[i + 1];
+        if (siguienteBloque[0] !== null) {
+          bloque[bloque.length - 1] = siguienteBloque[0];
+        }
+      }
+    } else {
+      // En bloques siguientes, desplazar todo hacia la izquierda
+      for (let j = 0; j < bloque.length - 1; j++) {
+        bloque[j] = bloque[j + 1];
+      }
+      bloque[bloque.length - 1] = null;
+      
+      // Si hay un siguiente bloque con elementos, traer el primer elemento
+      if (i + 1 < estructura.value.length) {
+        const siguienteBloque = estructura.value[i + 1];
+        if (siguienteBloque[0] !== null) {
+          bloque[bloque.length - 1] = siguienteBloque[0];
+        } else {
+          // No hay más elementos que mover
+          break;
+        }
+      } else {
+        // Es el último bloque, no hay más que mover
+        break;
+      }
+    }
+  }
+}
+
+// Funciones de exportación e importación
+import { 
+  createExportData, 
+  generateExportFileName, 
+  downloadJsonFile, 
+  validateExternalLinearImport 
+} from "../../utils/importExportUtils.ts";
+
+function exportarEstructura() {
+  if (!estructuraCreada.value) {
+    errorMessage.value = "Primero debes crear una estructura para exportar.";
+    return;
+  }
+
+  const config = {
+    capacidad: capacidad.value,
+    digitosClave: digitosClave.value,
+    elementosPorBloque: elementosPorBloque.value,
+    numeroBloques: numeroBloques.value
+  };
+
+  const exportData = createExportData('lineal-externa', config, estructura.value);
+  const filename = generateExportFileName('lineal-externa');
+  
+  downloadJsonFile(exportData, filename);
+  errorMessage.value = "Estructura externa exportada exitosamente.";
+}
+
+function importarEstructura(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const importData = JSON.parse(e.target?.result as string);
+      
+      // Usar la utilidad común para validación
+      const validation = validateExternalLinearImport(importData);
+      if (!validation.isValid) {
+        errorMessage.value = validation.error!;
+        return;
+      }
+      
+      // Importar exitosamente
+      capacidad.value = importData.config.capacidad;
+      digitosClave.value = importData.config.digitosClave;
+      estructura.value = importData.data;
+      estructuraCreada.value = true;
+      resultado.value = null;
+      indexBuscado.value = -1;
+      bloqueBuscado.value = -1;
+      
+      errorMessage.value = `Estructura externa importada exitosamente. Capacidad: ${capacidad.value}, Dígitos: ${digitosClave.value}`;
+      
+    } catch (error) {
+      errorMessage.value = "Error al leer el archivo. Asegúrate de que sea un JSON válido.";
+    }
   };
   
-  // Resetear posición actual después de un momento
-  setTimeout(() => {
-    posicionActual.value = -1;
-  }, 1000);
+  reader.readAsText(file);
+  // Limpiar el input para permitir seleccionar el mismo archivo otra vez
+  target.value = '';
 }
 
-function limpiarResultado() {
-  resultadoBusqueda.value = null;
-  posicionActual.value = -1;
-  posicionEncontrada.value = -1;
-}
-
-function reiniciarEstructura() {
-  estructuraCreada.value = false;
-  tamanoArchivo.value = null;
-  tipoDatos.value = 'numeros';
-  valorBusqueda.value = '';
-  resultadoBusqueda.value = null;
-  mostrarElementos.value = false;
-  elementosVista.value = [];
-  posicionActual.value = -1;
-  posicionEncontrada.value = -1;
+// Función para validar entrada en tiempo real
+function validateInput(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const value = target.value;
+  const validChars = /^\d*$/;
+  
+  if (!validChars.test(value)) {
+    target.value = value.slice(0, -1);
+    errorMessage.value = "Solo se permiten claves enteras positivas";
+  } else {
+    errorMessage.value = "";
+  }
 }
 </script>
 
 <style scoped>
-.create-structure {
-  margin: 2rem 0;
-}
-
-.create-structure h3 {
+.btn-back {
   margin-bottom: 1rem;
 }
 
-.create-structure > div {
+h1 {
+  text-align: center;
+  margin: 2rem 0;
+}
+
+.create-structure {
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 2rem;
+  border: 1px solid var(--primary);
+  border-radius: 0.5rem;
+  background: var(--card-background-color);
+}
+
+.config-row {
   display: flex;
   gap: 1rem;
-  align-items: center;
+  margin-bottom: 1rem;
   flex-wrap: wrap;
 }
 
-.create-structure .dropdown {
-  min-width: 150px;
+.config-row input {
+  max-width: 200px;
+  margin: 0;
 }
 
-.search-controls {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
+.info-section {
   margin: 1rem 0;
-  flex-wrap: wrap;
+  padding: 1rem;
+  background: var(--code-background-color);
+  border-radius: 0.25rem;
 }
 
-.search-controls input {
-  min-width: 200px;
+.info-section p {
+  margin: 0.5rem 0;
+  font-family: monospace;
 }
 
-.resultado-container {
-  background: #1a1a2e;
-  border: 1px solid #16213e;
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin: 1rem 0;
+.structure-info {
+  max-width: 800px;
+  margin: 1rem auto;
+  padding: 1rem;
+  border: 1px solid var(--muted-border-color);
+  border-radius: 0.5rem;
+  background: var(--card-background-color);
 }
 
-.resultado-info h4 {
-  margin: 0 0 1rem 0;
-  color: #e0e7ff;
-}
-
-.metricas {
+.info-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 0.5rem;
+  gap: 1rem;
 }
 
-.metrica {
-  background: #0f172a;
+.info-item {
+  text-align: center;
   padding: 0.5rem;
-  border-radius: 4px;
-  border-left: 3px solid #3b82f6;
 }
 
-.progreso-container {
+.operations {
+  max-width: 600px;
+  margin: 2rem auto;
+}
+
+.operations input {
+  width: 100%;
+  max-width: 300px;
+  margin-bottom: 1rem;
+}
+
+#general-nav {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.import-option {
   margin-top: 1rem;
 }
 
-.progreso-container h5 {
-  margin: 0 0 0.5rem 0;
-  color: #cbd5e1;
+.file-upload-btn {
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--muted-border-color);
+  border-radius: 0.25rem;
+  background: var(--background-color);
+  color: var(--color);
+  transition: all 0.2s ease;
+  display: inline-block;
 }
 
-.barra-progreso {
-  width: 100%;
-  height: 20px;
-  background: #374151;
-  border-radius: 10px;
-  overflow: hidden;
-  margin-bottom: 0.5rem;
+.file-upload-btn:hover {
+  background: var(--muted-color);
+  border-color: var(--color);
 }
 
-.progreso-barra {
-  height: 100%;
-  background: linear-gradient(90deg, #3b82f6, #1e40af);
-  transition: width 0.3s ease;
+.import-export-controls {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
-.progreso-texto {
-  color: #9ca3af;
-  font-size: 0.875rem;
+.info-preview {
+  margin: 1rem 0;
+  padding: 0.5rem;
+  background: var(--card-background-color);
+  border-radius: 0.25rem;
 }
 
-.elementos-container {
-  margin-top: 2rem;
-  background: #0f172a;
-  border: 1px solid #1e293b;
-  border-radius: 8px;
+.message {
+  color: #e5e7eb;
+  font-size: 0.9rem;
+  margin: 1rem auto;
+  max-width: 600px;
+}
+
+.result {
+  margin: 1rem auto;
+  padding: 1rem;
+  max-width: 600px;
+  color: var(--primary);
+  font-weight: bold;
+}
+
+.structure-display {
+  max-width: 1200px;
+  margin: 2rem auto;
   padding: 1rem;
 }
 
-.elementos-container h5 {
-  margin: 0 0 1rem 0;
-  color: #cbd5e1;
+.structure-display h3 {
+  margin-bottom: 1.5rem;
 }
 
-.elementos-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-  gap: 0.5rem;
-  max-height: 200px;
-  overflow-y: auto;
+.blocks-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-start;
 }
 
-.elemento {
-  background: #1f2937;
-  padding: 0.5rem;
-  border-radius: 4px;
-  text-align: center;
-  font-size: 0.875rem;
-  border: 1px solid #374151;
+.block {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  padding: 0.75rem;
+  min-width: 200px;
+  max-width: 300px;
   transition: all 0.3s ease;
+  position: relative;
 }
 
-.elemento-actual {
-  background: #fbbf24;
-  color: #1f2937;
-  font-weight: bold;
+.block.highlight-block {
+  border-color: var(--primary);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
+
+.block-header {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(15, 23, 42, 0.06);
+  color: #334155;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: normal;
+}
+
+.block-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  gap: 8px;
+  margin-top: 20px;
+  padding: 0;
+}
+
+.element {
+  position: relative;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px 8px 10px 8px;
+  text-align: center;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  transition: all 0.3s ease;
+  min-height: 60px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.element .pos {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: rgba(15, 23, 42, 0.06);
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: #334155;
+}
+
+.element .value {
+  font-weight: 700;
+  margin-top: 14px;
+  font-size: 1.1rem;
+  color: #0f172a;
+}
+
+.element.empty {
+  opacity: 0.6;
+  background: linear-gradient(180deg, #ffffff 0%, #fefefe 100%);
+}
+
+.element.empty .value {
+  color: transparent;
+}
+
+.element.highlight {
+  background: var(--primary);
+  border-color: var(--primary);
   transform: scale(1.05);
 }
 
-.elemento-encontrado {
-  background: #10b981;
-  color: white;
+.element.highlight .pos {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--primary);
   font-weight: bold;
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
+
+.element.highlight .value {
+  color: white;
 }
 
 @media (max-width: 768px) {
-  .search-controls {
+  .config-row {
     flex-direction: column;
-    align-items: stretch;
   }
   
-  .metricas {
-    grid-template-columns: 1fr;
+  .config-row input {
+    max-width: 250px;
+    width: 100%;
   }
   
-  .elementos-grid {
-    grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  .blocks-container {
+    padding: 0 0.5rem;
+    justify-content: center;
+  }
+  
+  .block {
+    min-width: 280px;
+    width: 100%;
+  }
+  
+  .element {
+    min-height: 50px;
+  }
+  
+  .element .value {
+    font-size: 1rem;
+    margin-top: 12px;
+  }
+  
+  .element .pos {
+    font-size: 0.7rem;
   }
 }
 </style>
