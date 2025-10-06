@@ -19,8 +19,8 @@
     </div>
     
     <div class="import-option">
-      <p><strong>O importar estructura existente:</strong></p>
-      <label for="import-file-initial" class="secondary file-upload-btn">Importar desde archivo</label>
+      <p><strong>O abrir estructura existente:</strong></p>
+      <label for="import-file-initial" class="secondary file-upload-btn">Abrir desde archivo</label>
       <input id="import-file-initial" type="file" accept=".json" @change="importarEstructura" style="display: none;">
     </div>
   </div>
@@ -31,8 +31,8 @@
     
     <!-- Controles de exportación e importación -->
     <div class="import-export-controls">
-      <button @click="exportarEstructura" class="secondary">Exportar Estructura</button>
-      <label for="import-file" class="secondary file-upload-btn">Importar Estructura</label>
+      <button @click="exportarEstructura" class="secondary">Guardar Estructura</button>
+      <label for="import-file" class="secondary file-upload-btn">Abrir Estructura</label>
       <input id="import-file" type="file" accept=".json" @change="importarEstructura" style="display: none;">
     </div>
     
@@ -184,9 +184,12 @@ const insertar = () => {
   }
   
   // Insertar en orden
-  insertarEnOrden(num);
-  errorMessage.value = `Insertado ${num} correctamente.`;
-  valor.value = "";
+  const insercionExitosa = insertarEnOrden(num);
+  if (insercionExitosa) {
+    errorMessage.value = `Insertado ${num} correctamente.`;
+    valor.value = "";
+  }
+  // Si no fue exitosa, insertarEnOrden ya estableció el errorMessage
 };
 
 function buscarElemento(elemento: number) {
@@ -220,14 +223,14 @@ function obtenerUltimoElemento(bloque: (number | null)[]): number | null {
   return null;
 }
 
-function insertarEnOrden(elemento: number) {
+function insertarEnOrden(elemento: number): boolean {
   // Verificar si hay espacio total en la estructura
   const totalOcupados = estructura.value.flat().filter(el => el !== null).length;
   const capacidadTotal = capacidad.value!;
   
   if (totalOcupados >= capacidadTotal) {
     errorMessage.value = "La estructura está completamente llena.";
-    return;
+    return false;
   }
   
   // Encontrar el bloque y posición donde debe insertarse en orden global
@@ -270,6 +273,7 @@ function insertarEnOrden(elemento: number) {
   
   // Realizar la inserción con corrimiento
   insertarConCorrimiento(bloqueDestino, posicionDestino, elemento);
+  return true;
 }
 
 function insertarConCorrimiento(bloqueInicial: number, posicion: number, elemento: number) {

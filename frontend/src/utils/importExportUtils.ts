@@ -483,3 +483,40 @@ export function validateExternalLinearImport(importData: any): ValidationResult 
 
   return { isValid: true };
 }
+
+// Función de validación para búsquedas externas binarias
+export function validateExternalBinaryImport(importData: any): ValidationResult {
+  // Validación básica de estructura
+  const basicValidation = validateBasicFormat(importData, 'binaria-externa');
+  if (!basicValidation.isValid) return basicValidation;
+
+  // Validar que tenga la estructura específica de búsqueda externa binaria
+  if (!importData.data || typeof importData.data !== 'object') {
+    return { isValid: false, error: 'Los datos de la estructura deben ser un objeto válido.' };
+  }
+
+  const estructura = importData.data;
+
+  // Validar estructura de bloques (debe ser un array de arrays)
+  if (!Array.isArray(estructura)) {
+    return { isValid: false, error: 'La estructura debe ser un arreglo de bloques.' };
+  }
+
+  // Validar que cada bloque tenga la estructura correcta
+  for (let i = 0; i < estructura.length; i++) {
+    const bloque = estructura[i];
+    if (!Array.isArray(bloque)) {
+      return { isValid: false, error: `El bloque ${i + 1} debe ser un arreglo.` };
+    }
+
+    // Validar elementos del bloque (deben ser números válidos o null)
+    for (let j = 0; j < bloque.length; j++) {
+      const elemento = bloque[j];
+      if (elemento !== null && (typeof elemento !== 'number' || !Number.isInteger(elemento) || elemento < 0)) {
+        return { isValid: false, error: `El elemento en bloque ${i + 1}, posición ${j + 1} debe ser un número entero positivo o null.` };
+      }
+    }
+  }
+
+  return { isValid: true };
+}
