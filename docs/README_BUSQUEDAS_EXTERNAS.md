@@ -1,5 +1,7 @@
 # Búsquedas Externas
 
+> **Nota sobre Numeración:** Esta documentación utiliza numeración 1-indexed para bloques y elementos, donde los bloques van de 1 a n y los elementos mantienen numeración global de 1 a capacidad_total, mejorando la intuición del usuario.
+
 ## Introducción
 
 Las **búsquedas externas** son técnicas de organización y acceso a datos que están diseñadas para trabajar con memoria secundaria (disco duro, SSD, etc.). A diferencia de las búsquedas internas que operan completamente en memoria RAM, las búsquedas externas dividen los datos en **bloques** para optimizar las operaciones de entrada/salida.
@@ -12,7 +14,8 @@ Un **bloque** es la unidad básica de transferencia entre la memoria secundaria 
 
 - Los datos se organizan en bloques de tamaño fijo
 - Cada bloque contiene múltiples elementos
-- Los bloques se numeran secuencialmente (Bloque 0, Bloque 1, etc.)
+- Los bloques se numeran secuencialmente (Bloque 1, Bloque 2, etc.)
+- Los elementos se numeran globalmente de 1 a n respetando la capacidad total
 
 ### Cálculo del Tamaño de Bloque
 
@@ -31,14 +34,26 @@ Donde:
 - Elementos por bloque: ⌊√20⌋ = ⌊4.47⌋ = 4 elementos
 - Número total de bloques: ⌈20/4⌉ = 5 bloques
 
-### Numeración de Bloques
+### Numeración de Bloques y Elementos
 
+**Numeración de Bloques (1-indexed):**
+Los bloques se numeran desde 1 hasta n, facilitando la comprensión al usuario.
+
+**Numeración de Elementos (1-indexed, capacidad global):**
+Los elementos se numeran de 1 a n respetando la capacidad total de la estructura, independientemente del bloque al que pertenezcan.
+
+**Ejemplo con capacidad de 20 elementos:**
 ```
-Bloque 0: Elementos 0-3
-Bloque 1: Elementos 4-7
-Bloque 2: Elementos 8-11
-Bloque 3: Elementos 12-15
-Bloque 4: Elementos 16-19
+Bloque 1: Elementos 1-4   (posiciones globales 1, 2, 3, 4)
+Bloque 2: Elementos 5-8   (posiciones globales 5, 6, 7, 8) 
+Bloque 3: Elementos 9-12  (posiciones globales 9, 10, 11, 12)
+Bloque 4: Elementos 13-16 (posiciones globales 13, 14, 15, 16)
+Bloque 5: Elementos 17-20 (posiciones globales 17, 18, 19, 20)
+```
+
+**Fórmula para índice global:**
+```
+índice_global = (índice_bloque * elementos_por_bloque) + posición_interna + 1
 ```
 
 ## Tipos de Búsquedas Externas
@@ -96,25 +111,25 @@ Configuración: Capacidad = 16, Elementos por bloque = 4
 
 **Estado inicial:**
 ```
-Bloque 0: [2, 8, 12, 18]  (lleno)
-Bloque 1: [22, 25, 30, _] (espacio disponible)
-Bloque 2: [_, _, _, _]     (vacío)
-Bloque 3: [_, _, _, _]     (vacío)
+Bloque 1: [2, 8, 12, 18]  (lleno)        - Elementos en posiciones globales 1-4
+Bloque 2: [22, 25, 30, _] (espacio disponible) - Elementos en posiciones globales 5-8
+Bloque 3: [_, _, _, _]     (vacío)        - Posiciones globales 9-12
+Bloque 4: [_, _, _, _]     (vacío)        - Posiciones globales 13-16
 ```
 
 **Insertar elemento 15:**
-1. Comparar 15 con último elemento de Bloque 0 (18): 15 < 18 → buscar en Bloque 0
-2. Encontrar posición: después de 12, antes de 18 (posición 2)
-3. Bloque 0 está lleno → aplicar corrimiento:
-   - Mover 18 (último de Bloque 0) a primera posición de Bloque 1
-   - Desplazar elementos en Bloque 1: [18, 22, 25, 30]
-   - Insertar 15 en posición 2 de Bloque 0: [2, 8, 15, 18]
+1. Comparar 15 con último elemento de Bloque 1 (18): 15 < 18 → buscar en Bloque 1
+2. Encontrar posición: después de 12, antes de 18 (posición global 3)
+3. Bloque 1 está lleno → aplicar corrimiento:
+   - Mover 18 (último de Bloque 1) a primera posición de Bloque 2
+   - Desplazar elementos en Bloque 2: [18, 22, 25, 30]
+   - Insertar 15 en posición 3 de Bloque 1: [2, 8, 15, 18]
 
 **Estado final:**
 ```
-Bloque 0: [2, 8, 15, 18]  (elemento insertado)
-Bloque 1: [18, 22, 25, 30] (elementos desplazados)
-Bloque 2: [_, _, _, _]     (sin cambios)
+Bloque 1: [2, 8, 15, 18]  (elemento insertado)
+Bloque 2: [18, 22, 25, 30] (elementos desplazados)
+Bloque 3: [_, _, _, _]     (sin cambios)
 Bloque 3: [_, _, _, _]     (sin cambios)
 ```
 
@@ -144,7 +159,7 @@ Bloque 3: [_, _, _, _]     (sin cambios)
 **Algoritmo:**
 1. Aplicar función hash para determinar el número de bloque
 2. Buscar dentro del bloque correspondiente
-3. En caso de colisión, usar técnicas de resolución (sondeo lineal, etc.)
+3. En caso de colisión, usar técnicas de resolución
 
 ## Corrimiento de Bloques
 
@@ -161,16 +176,16 @@ Cuando un bloque está lleno y se necesita insertar un nuevo elemento:
 
 **Estado inicial:**
 ```
-Bloque 0: [1, 3, 5, 7] (lleno)
-Bloque 1: [9, 11, 13, 15] (lleno)  
-Bloque 2: [17, 19, _, _] (espacio disponible)
+Bloque 1: [1, 3, 5, 7] (lleno)        - Posiciones globales 1-4
+Bloque 2: [9, 11, 13, 15] (lleno)     - Posiciones globales 5-8  
+Bloque 3: [17, 19, _, _] (espacio disponible) - Posiciones globales 9-12
 ```
 
 **Insertar elemento 6:**
 ```
-Bloque 0: [1, 3, 5, 6] (insertar 6, mover 7)
-Bloque 1: [7, 9, 11, 13] (recibir 7, mover 15)
-Bloque 2: [15, 17, 19, _] (recibir 15)
+Bloque 1: [1, 3, 5, 6] (insertar 6, mover 7)    - Posición global 4
+Bloque 2: [7, 9, 11, 13] (recibir 7, mover 15)  - Posiciones globales 5-8
+Bloque 3: [15, 17, 19, _] (recibir 15)          - Posiciones globales 9-12
 ```
 
 ## Ventajas de las Búsquedas Externas

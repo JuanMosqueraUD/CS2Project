@@ -3,7 +3,7 @@
     <router-link to="/" class="outline contrast">Volver al inicio</router-link>
   </div>
   
-  <h1>Búsqueda Lineal Externa</h1>
+  <h1>Hash Módulo Externa</h1>
   
   <!-- Configuración inicial -->
   <div v-if="!estructuraCreada" class="create-structure">
@@ -11,11 +11,19 @@
     <div>
       <input v-model.number="capacidad" type="number" placeholder="Capacidad (mínimo 10)" @input="validateInput" />
       <input v-model.number="digitosClave" type="number" placeholder="Cantidad de dígitos por clave" @input="validateInput" />
+      
+      <!-- Selector de resolución de colisiones -->
+      <select v-model="resolucionColisiones">
+        <option value="estructura-secundaria">Estructura Secundaria</option>
+        <option value="area-colisiones">Área de Colisiones</option>
+      </select>
+      
       <button @click="crearEstructura">Crear estructura</button>
     </div>
     
     <div v-if="capacidad && capacidad >= 10" class="info-preview">
       <p><strong>Elementos por bloque:</strong> {{ elementosPorBloque }} (⌊√{{ capacidad }}⌋) | <strong>Número de bloques:</strong> {{ numeroBloques }}</p>
+      <p><strong>Función Hash:</strong> Módulo | <strong>Resolución:</strong> {{ resolucionColisiones }}</p>
     </div>
     
     <div class="import-option">
@@ -28,6 +36,7 @@
   <!-- Controles de operación -->
   <div v-if="estructuraCreada">
     <p>Estructura creada. Capacidad: {{ capacidad }}, Dígitos por clave: {{ digitosClave }}, Elementos por bloque: {{ elementosPorBloque }}</p>
+    <p><strong>Función Hash:</strong> Módulo | <strong>Resolución de Colisiones:</strong> {{ resolucionColisiones }}</p>
     
     <!-- Controles de exportación e importación -->
     <div class="import-export-controls">
@@ -91,7 +100,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
-import * as funciones from "../../utils/funciones.ts";
+import * as funciones from "../../../utils/funciones.ts";
 
 const valor = ref("");
 const estructura = ref<(number | null)[][]>([]); // Array de bloques
@@ -102,6 +111,7 @@ const errorMessage = ref("");
 const estructuraCreada = ref(false);
 const capacidad = ref<number | null>(null);
 const digitosClave = ref<number | null>(null);
+const resolucionColisiones = ref<string>("estructura-secundaria");
 
 // Calcular elementos por bloque usando la fórmula ⌊√n⌋
 const elementosPorBloque = computed(() => {
@@ -140,18 +150,20 @@ const getGlobalIndex = (blockIndex: number, positionIndex: number) => {
   return blockIndex * elementosPorBloque.value + positionIndex + 1;
 };
 
-function crearEstructura() {
+const crearEstructura = () => {
   errorMessage.value = "";
-  if (capacidad.value === null || digitosClave.value === null) {
-    errorMessage.value = "Por favor completa la capacidad y la cantidad de dígitos.";
+  resultado.value = null;
+  indexBuscado.value = -1;
+  bloqueBuscado.value = -1;
+  
+  // Validaciones básicas
+  if (!capacidad.value || capacidad.value < 10) {
+    errorMessage.value = "La capacidad debe ser al menos 10.";
     return;
   }
-  if (capacidad.value < 10) {
-    errorMessage.value = "La capacidad mínima para búsquedas externas es 10.";
-    return;
-  }
-  if (digitosClave.value <= 0) {
-    errorMessage.value = "La cantidad de dígitos debe ser un entero positivo.";
+  
+  if (!digitosClave.value || digitosClave.value < 1) {
+    errorMessage.value = "Debe especificar al menos 1 dígito por clave.";
     return;
   }
 
@@ -162,6 +174,71 @@ function crearEstructura() {
   }
   estructura.value = bloques;
   estructuraCreada.value = true;
+};
+
+// Función hash módulo para determinar el bloque
+const hashModuloBloque = (clave: number): number => {
+  return funciones.HashModulo(clave, numeroBloques.value);
+};
+
+// Búsqueda de elemento usando hash para encontrar bloque y búsqueda lineal dentro del bloque
+function buscarElemento(elemento: number) {
+  const bloqueHash = hashModuloBloque(elemento);
+  const bloque = estructura.value[bloqueHash];
+  
+  // Búsqueda lineal dentro del bloque
+  for (let i = 0; i < bloque.length; i++) {
+    if (bloque[i] === elemento) {
+      return { encontrado: true, bloque: bloqueHash, posicion: i };
+    }
+  }
+  
+  return { encontrado: false, bloque: bloqueHash, posicion: -1 };
+}
+
+// Inserción usando hash para determinar el bloque y colocación lineal dentro del bloque
+function insertarElemento(elemento: number): boolean {
+  // Verificar si ya existe
+  const existeResult = buscarElemento(elemento);
+  if (existeResult.encontrado) {
+    errorMessage.value = "El elemento ya existe en la estructura.";
+    return false;
+  }
+  
+  const bloqueHash = hashModuloBloque(elemento);
+  const bloque = estructura.value[bloqueHash];
+  
+  // Buscar primera posición disponible en el bloque
+  for (let i = 0; i < bloque.length; i++) {
+    if (bloque[i] === null) {
+      bloque[i] = elemento;
+      return true;
+    }
+  }
+  
+  // Si el bloque está lleno, manejar colisión según la estrategia seleccionada
+  if (resolucionColisiones.value === "estructura-secundaria") {
+    errorMessage.value = "Bloque lleno. Estructura secundaria no implementada aún.";
+    return false;
+  } else if (resolucionColisiones.value === "area-colisiones") {
+    errorMessage.value = "Bloque lleno. Área de colisiones no implementada aún.";
+    return false;
+  }
+  
+  return false;
+}
+
+// Eliminación usando hash para encontrar bloque y búsqueda lineal para eliminar
+function eliminarElemento(elemento: number): boolean {
+  const resultadoBusqueda = buscarElemento(elemento);
+  
+  if (resultadoBusqueda.encontrado) {
+    const bloque = estructura.value[resultadoBusqueda.bloque];
+    bloque[resultadoBusqueda.posicion] = null;
+    return true;
+  }
+  
+  return false;
 }
 
 const insertar = () => {
@@ -181,157 +258,12 @@ const insertar = () => {
   
   const num = parseInt(valor.value);
   
-  // Verificar si el elemento ya existe
-  const existeResult = buscarElemento(num);
-  if (existeResult.encontrado) {
-    errorMessage.value = "El elemento ya existe en la estructura.";
-    return;
-  }
-  
-  // Insertar en orden
-  const insercionExitosa = insertarEnOrden(num);
+  const insercionExitosa = insertarElemento(num);
   if (insercionExitosa) {
-    errorMessage.value = `Insertado ${num} correctamente.`;
+    errorMessage.value = `Insertado ${num} correctamente en bloque ${hashModuloBloque(num) + 1}.`;
     valor.value = "";
   }
-  // Si no fue exitosa, insertarEnOrden ya estableció el errorMessage
 };
-
-function buscarElemento(elemento: number) {
-  for (let i = 0; i < estructura.value.length; i++) {
-    const bloque = estructura.value[i];
-    const ultimoElemento = obtenerUltimoElemento(bloque);
-    
-    // Si el bloque está vacío o el elemento es menor que el último, buscar en este bloque
-    if (ultimoElemento === null || elemento <= ultimoElemento) {
-      // Búsqueda lineal dentro del bloque
-      for (let j = 0; j < bloque.length; j++) {
-        if (bloque[j] === null) break;
-        if (bloque[j] === elemento) {
-          return { encontrado: true, bloque: i, posicion: j };
-        }
-      }
-      // Si llegamos aquí, el elemento no está en este bloque
-      return { encontrado: false, bloque: i, posicion: -1 };
-    }
-  }
-  // Si no se encontró en ningún bloque
-  return { encontrado: false, bloque: estructura.value.length - 1, posicion: -1 };
-}
-
-function obtenerUltimoElemento(bloque: (number | null)[]): number | null {
-  for (let i = bloque.length - 1; i >= 0; i--) {
-    if (bloque[i] !== null) {
-      return bloque[i];
-    }
-  }
-  return null;
-}
-
-function insertarEnOrden(elemento: number): boolean {
-  // Verificar si hay espacio total en la estructura
-  const totalOcupados = estructura.value.flat().filter(el => el !== null).length;
-  const capacidadTotal = capacidad.value!;
-  
-  if (totalOcupados >= capacidadTotal) {
-    errorMessage.value = "La estructura está completamente llena.";
-    return false;
-  }
-  
-  // Encontrar el bloque y posición donde debe insertarse en orden global
-  let bloqueDestino = 0;
-  let posicionDestino = 0;
-  let encontrado = false;
-  
-  for (let i = 0; i < estructura.value.length && !encontrado; i++) {
-    const bloque = estructura.value[i];
-    
-    for (let j = 0; j < bloque.length; j++) {
-      if (bloque[j] === null || elemento <= bloque[j]!) {
-        bloqueDestino = i;
-        posicionDestino = j;
-        encontrado = true;
-        break;
-      }
-    }
-  }
-  
-  // Si no se encontró posición, insertar al final
-  if (!encontrado) {
-    for (let i = estructura.value.length - 1; i >= 0; i--) {
-      const bloque = estructura.value[i];
-      for (let j = bloque.length - 1; j >= 0; j--) {
-        if (bloque[j] !== null) {
-          bloqueDestino = i;
-          posicionDestino = j + 1;
-          if (posicionDestino >= bloque.length) {
-            bloqueDestino = i + 1;
-            posicionDestino = 0;
-          }
-          encontrado = true;
-          break;
-        }
-      }
-      if (encontrado) break;
-    }
-  }
-  
-  // Realizar la inserción con corrimiento
-  insertarConCorrimiento(bloqueDestino, posicionDestino, elemento);
-  return true;
-}
-
-function insertarConCorrimiento(bloqueInicial: number, posicion: number, elemento: number) {
-  let elementoAMover = elemento;
-  
-  for (let i = bloqueInicial; i < estructura.value.length; i++) {
-    const bloque = estructura.value[i];
-    
-    if (i === bloqueInicial && posicion < bloque.length) {
-      // En el bloque inicial, insertar en la posición correcta
-      let ultimoElemento = null;
-      
-      // Si hay un último elemento, guardarlo para corrimiento
-      if (bloque[bloque.length - 1] !== null) {
-        ultimoElemento = bloque[bloque.length - 1];
-      }
-      
-      // Desplazar elementos hacia la derecha desde la posición de inserción
-      for (let j = bloque.length - 1; j > posicion; j--) {
-        bloque[j] = bloque[j - 1];
-      }
-      bloque[posicion] = elementoAMover;
-      
-      // Si había un elemento al final, se convierte en el próximo a mover
-      if (ultimoElemento !== null) {
-        elementoAMover = ultimoElemento;
-      } else {
-        // No hay más elementos que mover
-        break;
-      }
-    } else {
-      // En bloques siguientes, insertar al inicio y desplazar
-      let ultimoElemento = null;
-      
-      // Guardar el último elemento si existe
-      if (bloque[bloque.length - 1] !== null) {
-        ultimoElemento = bloque[bloque.length - 1];
-      }
-      
-      // Desplazar todos los elementos hacia la derecha
-      for (let j = bloque.length - 1; j > 0; j--) {
-        bloque[j] = bloque[j - 1];
-      }
-      bloque[0] = elementoAMover;
-      
-      // Si no había último elemento, terminamos
-      if (ultimoElemento === null) {
-        break;
-      }
-      elementoAMover = ultimoElemento;
-    }
-  }
-}
 
 function buscar() {
   errorMessage.value = "";
@@ -370,69 +302,25 @@ function eliminar() {
   }
 
   const num = parseInt(valor.value);
-  const resultadoBusqueda = buscarElemento(num);
+  const eliminacionExitosa = eliminarElemento(num);
   
-  if (resultadoBusqueda.encontrado) {
-    // Eliminar elemento y hacer corrimiento hacia la izquierda
-    eliminarConCorrimiento(resultadoBusqueda.bloque, resultadoBusqueda.posicion);
-    
-    errorMessage.value = `Eliminado del Bloque ${resultadoBusqueda.bloque + 1}.`;
+  if (eliminacionExitosa) {
+    errorMessage.value = `Eliminado del Bloque ${hashModuloBloque(num) + 1}.`;
     valor.value = "";
   } else {
     errorMessage.value = "Elemento no encontrado para eliminar.";
   }
 }
 
-function eliminarConCorrimiento(bloqueInicial: number, posicion: number) {
-  // Eliminar el elemento y hacer corrimiento hacia la izquierda
-  for (let i = bloqueInicial; i < estructura.value.length; i++) {
-    const bloque = estructura.value[i];
-    
-    if (i === bloqueInicial) {
-      // En el bloque inicial, desplazar desde la posición eliminada
-      for (let j = posicion; j < bloque.length - 1; j++) {
-        bloque[j] = bloque[j + 1];
-      }
-      bloque[bloque.length - 1] = null;
-      
-      // Si el siguiente bloque tiene elementos, traer el primer elemento
-      if (i + 1 < estructura.value.length) {
-        const siguienteBloque = estructura.value[i + 1];
-        if (siguienteBloque[0] !== null) {
-          bloque[bloque.length - 1] = siguienteBloque[0];
-        }
-      }
-    } else {
-      // En bloques siguientes, desplazar todo hacia la izquierda
-      for (let j = 0; j < bloque.length - 1; j++) {
-        bloque[j] = bloque[j + 1];
-      }
-      bloque[bloque.length - 1] = null;
-      
-      // Si hay un siguiente bloque con elementos, traer el primer elemento
-      if (i + 1 < estructura.value.length) {
-        const siguienteBloque = estructura.value[i + 1];
-        if (siguienteBloque[0] !== null) {
-          bloque[bloque.length - 1] = siguienteBloque[0];
-        } else {
-          // No hay más elementos que mover
-          break;
-        }
-      } else {
-        // Es el último bloque, no hay más que mover
-        break;
-      }
-    }
-  }
-}
-
-// Funciones de exportación e importación
+// Funciones de exportación e importación (temporalmente deshabilitadas)
+/*
 import { 
   createExportData, 
   generateExportFileName, 
   downloadJsonFile, 
-  validateExternalLinearImport 
-} from "../../utils/importExportUtils.ts";
+  validateExternalHashImport 
+//} from "../../../utils/importExportUtils.ts";
+*/
 
 function exportarEstructura() {
   if (!estructuraCreada.value) {
@@ -440,18 +328,24 @@ function exportarEstructura() {
     return;
   }
 
+  errorMessage.value = "Función de exportación temporalmente deshabilitada.";
+  
+  /*
   const config = {
     capacidad: capacidad.value,
     digitosClave: digitosClave.value,
     elementosPorBloque: elementosPorBloque.value,
-    numeroBloques: numeroBloques.value
+    numeroBloques: numeroBloques.value,
+    funcionHash: 'modulo',
+    resolucionColisiones: resolucionColisiones.value
   };
 
-  const exportData = createExportData('lineal-externa', config, estructura.value);
-  const filename = generateExportFileName('lineal-externa');
+  const exportData = createExportData('hash-modulo-externa', config, estructura.value);
+  const filename = generateExportFileName('hash-modulo-externa');
   
   downloadJsonFile(exportData, filename);
-  errorMessage.value = "Estructura externa exportada exitosamente.";
+  errorMessage.value = "Estructura hash externa exportada exitosamente.";
+  */
 }
 
 function importarEstructura(event: Event) {
@@ -460,28 +354,37 @@ function importarEstructura(event: Event) {
   
   if (!file) return;
 
+  errorMessage.value = "Función de importación temporalmente deshabilitada.";
+  target.value = '';
+  
+  /*
   const reader = new FileReader();
   reader.onload = (e) => {
     try {
       const importData = JSON.parse(e.target?.result as string);
       
-      // Usar la utilidad común para validación
-      const validation = validateExternalLinearImport(importData);
-      if (!validation.isValid) {
-        errorMessage.value = validation.error!;
+      // Validación básica del archivo importado
+      if (!importData.type || !importData.config || !importData.data) {
+        errorMessage.value = "Archivo inválido. Debe ser una estructura hash externa válida.";
+        return;
+      }
+      
+      if (importData.type !== 'hash-modulo-externa') {
+        errorMessage.value = "El archivo no corresponde a una estructura hash módulo externa.";
         return;
       }
       
       // Importar exitosamente
       capacidad.value = importData.config.capacidad;
       digitosClave.value = importData.config.digitosClave;
+      resolucionColisiones.value = importData.config.resolucionColisiones || "estructura-secundaria";
       estructura.value = importData.data;
       estructuraCreada.value = true;
       resultado.value = null;
       indexBuscado.value = -1;
       bloqueBuscado.value = -1;
       
-      errorMessage.value = `Estructura externa importada exitosamente. Capacidad: ${capacidad.value}, Dígitos: ${digitosClave.value}`;
+      errorMessage.value = `Estructura hash externa importada exitosamente. Capacidad: ${capacidad.value}, Dígitos: ${digitosClave.value}`;
       
     } catch (error) {
       errorMessage.value = "Error al leer el archivo. Asegúrate de que sea un JSON válido.";
@@ -491,6 +394,7 @@ function importarEstructura(event: Event) {
   reader.readAsText(file);
   // Limpiar el input para permitir seleccionar el mismo archivo otra vez
   target.value = '';
+  */
 }
 
 // Función para validar entrada en tiempo real
@@ -534,7 +438,7 @@ h1 {
   flex-wrap: wrap;
 }
 
-.config-row input {
+.config-row input, select {
   max-width: 200px;
   margin: 0;
 }
@@ -734,28 +638,12 @@ h1 {
   color: transparent;
 }
 
-.element.highlight {
-  background: var(--primary);
-  border-color: var(--primary);
-  transform: scale(1.05);
-}
-
-.element.highlight .pos {
-  background: rgba(255, 255, 255, 0.9);
-  color: var(--primary);
-  font-weight: bold;
-}
-
-.element.highlight .value {
-  color: white;
-}
-
 @media (max-width: 768px) {
   .config-row {
     flex-direction: column;
   }
   
-  .config-row input {
+  .config-row input, select {
     max-width: 250px;
     width: 100%;
   }

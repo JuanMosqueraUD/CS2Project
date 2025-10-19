@@ -56,7 +56,6 @@ const residuosOpen = ref(false);
 
       <!-- Opciones de Residuos -->
       <div v-if="internalAlgorithm === 'Residuos'" class="hash-options">
-        <h4>Residuos:</h4>
         <div id="general-nav">
           <button class="outline contrast">
             <router-link :to="{ name: 'residuo-digital' }" class="outline contrast">Árbol Digital</router-link>
@@ -97,7 +96,7 @@ const residuosOpen = ref(false);
             <router-link to="/external/hash/modulo" class="outline contrast">Módulo</router-link>
           </button>
           <button class="outline contrast">
-            <router-link to="/external/hash/cuadratica" class="outline contrast">Cuadrática</router-link>
+            <router-link to="/external/hash/cuadrado" class="outline contrast">Cuadrado</router-link>
           </button>
           <button class="outline contrast">
             <router-link to="/external/hash/plegamiento" class="outline contrast">Plegamiento</router-link>

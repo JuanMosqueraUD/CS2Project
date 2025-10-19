@@ -520,3 +520,84 @@ export function validateExternalBinaryImport(importData: any): ValidationResult 
 
   return { isValid: true };
 }
+
+/**
+ * Valida un archivo de importación para estructuras hash externas
+ */
+export function validateExternalHashImport(importData: any): ValidationResult {
+  // Validación básica del formato
+  if (!importData || typeof importData !== 'object') {
+    return { isValid: false, error: "El archivo no contiene datos válidos." };
+  }
+
+  if (!importData.type || typeof importData.type !== 'string') {
+    return { isValid: false, error: "El archivo no tiene un tipo válido." };
+  }
+
+  // Aceptar cualquier tipo de hash externa
+  if (!importData.type.includes('hash') || !importData.type.includes('externa')) {
+    return { isValid: false, error: "Este archivo no contiene una estructura hash externa válida." };
+  }
+
+  if (!importData.config || typeof importData.config !== 'object') {
+    return { isValid: false, error: "El archivo no contiene una configuración válida." };
+  }
+
+  // Validar configuración específica de hash externa
+  const config = importData.config;
+  
+  if (typeof config.capacidad !== 'number' || config.capacidad <= 0) {
+    return { isValid: false, error: 'La capacidad debe ser un número positivo.' };
+  }
+
+  if (typeof config.digitosClave !== 'number' || config.digitosClave <= 0) {
+    return { isValid: false, error: 'Los dígitos por clave deben ser un número positivo.' };
+  }
+
+  if (typeof config.elementosPorBloque !== 'number' || config.elementosPorBloque <= 0) {
+    return { isValid: false, error: 'Los elementos por bloque deben ser un número positivo.' };
+  }
+
+  if (typeof config.numeroBloques !== 'number' || config.numeroBloques <= 0) {
+    return { isValid: false, error: 'El número de bloques debe ser un número positivo.' };
+  }
+
+  if (!config.funcionHash || typeof config.funcionHash !== 'string') {
+    return { isValid: false, error: 'Debe especificar una función hash válida.' };
+  }
+
+  if (!['modulo', 'cuadrado', 'truncamiento', 'plegamiento'].includes(config.funcionHash)) {
+    return { isValid: false, error: 'La función hash debe ser módulo, cuadrado, truncamiento o plegamiento.' };
+  }
+
+  if (!config.resolucionColisiones || typeof config.resolucionColisiones !== 'string') {
+    return { isValid: false, error: 'Debe especificar una estrategia de resolución de colisiones válida.' };
+  }
+
+  if (!['estructura-secundaria', 'area-colisiones'].includes(config.resolucionColisiones)) {
+    return { isValid: false, error: 'La resolución de colisiones debe ser estructura-secundaria o area-colisiones.' };
+  }
+
+  // Validar estructura de datos
+  if (!importData.data || !Array.isArray(importData.data)) {
+    return { isValid: false, error: 'Los datos de la estructura deben ser un arreglo de bloques válido.' };
+  }
+
+  // Validar que cada bloque sea un arreglo
+  for (let i = 0; i < importData.data.length; i++) {
+    const bloque = importData.data[i];
+    if (!Array.isArray(bloque)) {
+      return { isValid: false, error: `El bloque ${i + 1} debe ser un arreglo.` };
+    }
+
+    // Validar elementos del bloque
+    for (let j = 0; j < bloque.length; j++) {
+      const elemento = bloque[j];
+      if (elemento !== null && (typeof elemento !== 'number' || !Number.isInteger(elemento) || elemento < 0)) {
+        return { isValid: false, error: `El elemento en bloque ${i + 1}, posición ${j + 1} debe ser un número entero positivo o null.` };
+      }
+    }
+  }
+
+  return { isValid: true };
+}

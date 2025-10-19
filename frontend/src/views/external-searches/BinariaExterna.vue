@@ -56,7 +56,7 @@
 
   <!-- Resultado -->
   <div v-if="resultado !== null">
-    <p v-if="resultado">Elemento encontrado en Bloque {{ bloqueBuscado }}, Posición {{ indexBuscado }}</p>
+    <p v-if="resultado">Elemento encontrado en Bloque {{ bloqueBuscado + 1 }}, Posición {{ getGlobalIndex(bloqueBuscado, indexBuscado) }}</p>
     <p v-else>Elemento no encontrado</p>
   </div>
 
@@ -70,18 +70,17 @@
         class="block"
         :class="{ 'highlight-block': index === bloqueBuscado }"
       >
-        <div class="block-header">Bloque {{ index }}</div>
+        <div class="block-header">Bloque {{ index + 1 }}</div>
         <div class="block-content">
           <div 
             v-for="pos in getDisplayIndicesForBlock(bloque)" 
             :key="pos" 
             class="element"
             :class="{ 
-              'empty': bloque[pos] === null,
-              'highlight': index === bloqueBuscado && pos === indexBuscado
+              'empty': bloque[pos] === null
             }"
           >
-            <div class="pos">{{ pos + 1 }}</div>
+            <div class="pos">{{ getGlobalIndex(index, pos) }}</div>
             <div class="value">{{ bloque[pos] !== null ? bloque[pos] : '' }}</div>
           </div>
         </div>
@@ -117,6 +116,7 @@ const numeroBloques = computed(() => {
 });
 
 // Función para obtener índices limitados de elementos a mostrar dentro de un bloque
+// Para estructuras grandes (>20 elementos por bloque), solo muestra elementos ocupados + primer y último elemento
 const getDisplayIndicesForBlock = (bloque: (number | null)[], maxElements = 20) => {
   const n = bloque.length;
   if (n <= maxElements) return Array.from({ length: n }, (_, i) => i);
@@ -133,6 +133,11 @@ const getDisplayIndicesForBlock = (bloque: (number | null)[], maxElements = 20) 
   for (const i of occupied) set.add(i); // Elementos ocupados
   
   return Array.from(set).sort((a, b) => a - b);
+};
+
+// Función para calcular el índice global (1-indexed) basado en bloque y posición
+const getGlobalIndex = (blockIndex: number, positionIndex: number) => {
+  return blockIndex * elementosPorBloque.value + positionIndex + 1;
 };
 
 function crearEstructura() {
@@ -380,10 +385,10 @@ function buscar() {
     resultado.value = true;
     bloqueBuscado.value = resultadoBusqueda.bloque;
     indexBuscado.value = resultadoBusqueda.posicion;
-    errorMessage.value = `Encontrado en Bloque ${resultadoBusqueda.bloque}, Posición ${resultadoBusqueda.posicion}.`;
+    errorMessage.value = "";  // Limpiar mensaje, el resultado se muestra en el template
   } else {
     resultado.value = false;
-    errorMessage.value = "Elemento no encontrado.";
+    errorMessage.value = "";  // Limpiar mensaje, el resultado se muestra en el template
   }
 }
 
@@ -405,7 +410,7 @@ function eliminar() {
     // Eliminar elemento y hacer corrimiento hacia la izquierda
     eliminarConCorrimiento(resultadoBusqueda.bloque, resultadoBusqueda.posicion);
     
-    errorMessage.value = `Eliminado del Bloque ${resultadoBusqueda.bloque}.`;
+    errorMessage.value = `Eliminado del Bloque ${resultadoBusqueda.bloque + 1}.`;
     valor.value = "";
   } else {
     errorMessage.value = "Elemento no encontrado para eliminar.";
