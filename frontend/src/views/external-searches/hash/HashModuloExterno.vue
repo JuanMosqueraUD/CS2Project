@@ -71,26 +71,110 @@
 
   <!-- Visualización de la estructura -->
   <div v-if="estructuraCreada">
-    <h2>Estructura actual:</h2>
-    <div class="blocks-container">
+    <h2>Estructura actual: ({{ elementosInsertados }}/{{ capacidad }} elementos)</h2>
+    
+    <!-- Visualización con Área de Colisiones -->
+    <div v-if="resolucionColisiones === 'area-colisiones'" class="blocks-container">
       <div 
         v-for="(bloque, index) in estructura" 
-        :key="index" 
-        class="block"
+        :key="'collision-' + index" 
+        class="block-with-collision"
         :class="{ 'highlight-block': index === bloqueBuscado }"
       >
         <div class="block-header">Bloque {{ index + 1 }}</div>
-        <div class="block-content">
+        
+        <!-- Área Principal -->
+        <div class="area-section">
+          <div class="area-header">Área Principal</div>
+          <div class="block-content">
+            <div 
+              v-for="pos in getDisplayIndicesForBlock(bloque)" 
+              :key="'main-' + index + '-' + pos" 
+              class="element"
+              :class="{ 
+                'empty': bloque[pos] === null
+              }"
+            >
+              <div class="pos">{{ getGlobalIndex(index, pos) }}</div>
+              <div class="value">{{ bloque[pos] !== null ? bloque[pos] : '' }}</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Área de Colisiones -->
+        <div class="area-section collision-area">
+          <div class="area-header">Área de Colisiones</div>
+          <div class="block-content">
+            <div 
+              v-for="pos in getDisplayIndicesForBlock(areaColisiones[index])" 
+              :key="'collision-' + index + '-' + pos" 
+              class="element collision-element"
+              :class="{ 
+                'empty': areaColisiones[index][pos] === null
+              }"
+            >
+              <div class="pos">C{{ pos + 1 }}</div>
+              <div class="value">{{ areaColisiones[index][pos] !== null ? areaColisiones[index][pos] : '' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visualización con Estructura Secundaria (original) -->
+    <div v-else class="structures-flex-container">
+      <!-- Estructura Principal -->
+      <div class="structure-container">
+        <h3>Estructura Principal</h3>
+        <div class="blocks-container">
           <div 
-            v-for="pos in getDisplayIndicesForBlock(bloque)" 
-            :key="pos" 
-            class="element"
-            :class="{ 
-              'empty': bloque[pos] === null
-            }"
+            v-for="(bloque, index) in estructura" 
+            :key="'main-' + index" 
+            class="block"
+            :class="{ 'highlight-block': index === bloqueBuscado }"
           >
-            <div class="pos">{{ getGlobalIndex(index, pos) }}</div>
-            <div class="value">{{ bloque[pos] !== null ? bloque[pos] : '' }}</div>
+            <div class="block-header">Bloque {{ index + 1 }}</div>
+            <div class="block-content">
+              <div 
+                v-for="pos in getDisplayIndicesForBlock(bloque)" 
+                :key="'main-' + index + '-' + pos" 
+                class="element"
+                :class="{ 
+                  'empty': bloque[pos] === null
+                }"
+              >
+                <div class="pos">{{ getGlobalIndex(index, pos) }}</div>
+                <div class="value">{{ bloque[pos] !== null ? bloque[pos] : '' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Estructura Secundaria (solo visible cuando se activa) -->
+      <div v-if="estructuraSecundariaVisible" class="structure-container">
+        <h3>Estructura Secundaria</h3>
+        <div class="blocks-container">
+          <div 
+            v-for="(bloque, index) in estructuraSecundaria" 
+            :key="'sec-' + index" 
+            class="block secondary"
+            :class="{ 'highlight-block': index === bloqueBuscado }"
+          >
+            <div class="block-header">Bloque {{ index + 1 }}</div>
+            <div class="block-content">
+              <div 
+                v-for="pos in getDisplayIndicesForBlock(bloque)" 
+                :key="'sec-' + index + '-' + pos" 
+                class="element"
+                :class="{ 
+                  'empty': bloque[pos] === null
+                }"
+              >
+                <div class="pos">{{ getGlobalIndex(index, pos) }}</div>
+                <div class="value">{{ bloque[pos] !== null ? bloque[pos] : '' }}</div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -103,7 +187,9 @@ import { ref, computed } from "vue";
 import * as funciones from "../../../utils/funciones.ts";
 
 const valor = ref("");
-const estructura = ref<(number | null)[][]>([]); // Array de bloques
+const estructura = ref<(number | null)[][]>([]); // Array de bloques principales
+const estructuraSecundaria = ref<(number | null)[][]>([]); // Array de bloques secundarios para colisiones
+const areaColisiones = ref<(number | null)[][]>([]); // Array de áreas de colisiones dentro de cada bloque
 const resultado = ref(null as null | boolean);
 const indexBuscado = ref(-1);
 const bloqueBuscado = ref(-1);
@@ -112,6 +198,8 @@ const estructuraCreada = ref(false);
 const capacidad = ref<number | null>(null);
 const digitosClave = ref<number | null>(null);
 const resolucionColisiones = ref<string>("estructura-secundaria");
+const estructuraSecundariaVisible = ref(false); // Solo mostrar cuando se use
+const elementosInsertados = ref(0); // Contador para limitar la capacidad total
 
 // Calcular elementos por bloque usando la fórmula ⌊√n⌋
 const elementosPorBloque = computed(() => {
@@ -167,37 +255,92 @@ const crearEstructura = () => {
     return;
   }
 
-  // Crear estructura de bloques
+  // Crear estructura de bloques principales
   const bloques = [];
   for (let i = 0; i < numeroBloques.value; i++) {
     bloques.push(Array(elementosPorBloque.value).fill(null));
   }
   estructura.value = bloques;
+  
+  // Crear estructura de bloques secundarios (inicialmente vacía)
+  const bloquesSecundarios = [];
+  for (let i = 0; i < numeroBloques.value; i++) {
+    bloquesSecundarios.push(Array(elementosPorBloque.value).fill(null));
+  }
+  estructuraSecundaria.value = bloquesSecundarios;
+  estructuraSecundariaVisible.value = false;
+  
+  // Crear áreas de colisiones para cada bloque (siempre presentes)
+  const areasColisiones = [];
+  for (let i = 0; i < numeroBloques.value; i++) {
+    areasColisiones.push(Array(elementosPorBloque.value).fill(null));
+  }
+  areaColisiones.value = areasColisiones;
+  
+  // Reiniciar contador de elementos
+  elementosInsertados.value = 0;
+  
   estructuraCreada.value = true;
 };
 
 // Función hash módulo para determinar el bloque
 const hashModuloBloque = (clave: number): number => {
-  return funciones.HashModulo(clave, numeroBloques.value);
+  const hash = funciones.HashModulo(clave, numeroBloques.value);
+  // Verificar que el hash sea válido y esté en rango
+  if (isNaN(hash) || hash < 0 || hash >= numeroBloques.value) {
+    // Usar hash módulo directo como respaldo
+    return clave % numeroBloques.value;
+  }
+  return hash;
 };
 
 // Búsqueda de elemento usando hash para encontrar bloque y búsqueda lineal dentro del bloque
 function buscarElemento(elemento: number) {
   const bloqueHash = hashModuloBloque(elemento);
+  
+  // Verificar que el índice sea válido
+  if (bloqueHash < 0 || bloqueHash >= estructura.value.length) {
+    return { encontrado: false, bloque: bloqueHash, posicion: -1, esSecundario: false, esAreaColision: false };
+  }
+  
   const bloque = estructura.value[bloqueHash];
   
-  // Búsqueda lineal dentro del bloque
+  // Búsqueda lineal dentro del bloque principal
   for (let i = 0; i < bloque.length; i++) {
     if (bloque[i] === elemento) {
-      return { encontrado: true, bloque: bloqueHash, posicion: i };
+      return { encontrado: true, bloque: bloqueHash, posicion: i, esSecundario: false, esAreaColision: false };
     }
   }
   
-  return { encontrado: false, bloque: bloqueHash, posicion: -1 };
+  // Buscar en área de colisiones del mismo bloque
+  const areaColision = areaColisiones.value[bloqueHash];
+  for (let i = 0; i < areaColision.length; i++) {
+    if (areaColision[i] === elemento) {
+      return { encontrado: true, bloque: bloqueHash, posicion: i, esSecundario: false, esAreaColision: true };
+    }
+  }
+  
+  // Buscar en estructura secundaria si está visible
+  if (estructuraSecundariaVisible.value) {
+    const bloqueSecundario = estructuraSecundaria.value[bloqueHash];
+    for (let i = 0; i < bloqueSecundario.length; i++) {
+      if (bloqueSecundario[i] === elemento) {
+        return { encontrado: true, bloque: bloqueHash, posicion: i, esSecundario: true, esAreaColision: false };
+      }
+    }
+  }
+  
+  return { encontrado: false, bloque: bloqueHash, posicion: -1, esSecundario: false, esAreaColision: false };
 }
 
 // Inserción usando hash para determinar el bloque y colocación lineal dentro del bloque
 function insertarElemento(elemento: number): boolean {
+  // Verificar límite de capacidad total
+  if (elementosInsertados.value >= capacidad.value!) {
+    errorMessage.value = `Capacidad máxima alcanzada (${capacidad.value} elementos).`;
+    return false;
+  }
+
   // Verificar si ya existe
   const existeResult = buscarElemento(elemento);
   if (existeResult.encontrado) {
@@ -206,22 +349,55 @@ function insertarElemento(elemento: number): boolean {
   }
   
   const bloqueHash = hashModuloBloque(elemento);
+  
+  // Verificar que el índice sea válido
+  if (bloqueHash < 0 || bloqueHash >= estructura.value.length) {
+    errorMessage.value = `Error: Índice de bloque inválido (${bloqueHash}).`;
+    return false;
+  }
+  
   const bloque = estructura.value[bloqueHash];
   
-  // Buscar primera posición disponible en el bloque
+  // Buscar primera posición disponible en el bloque principal
   for (let i = 0; i < bloque.length; i++) {
     if (bloque[i] === null) {
       bloque[i] = elemento;
+      elementosInsertados.value++;
       return true;
     }
   }
   
-  // Si el bloque está lleno, manejar colisión según la estrategia seleccionada
-  if (resolucionColisiones.value === "estructura-secundaria") {
-    errorMessage.value = "Bloque lleno. Estructura secundaria no implementada aún.";
+  // Si el bloque principal está lleno, manejar colisión según la estrategia seleccionada
+  if (resolucionColisiones.value === "area-colisiones") {
+    // Buscar espacio en área de colisiones del mismo bloque
+    const areaColision = areaColisiones.value[bloqueHash];
+    for (let i = 0; i < areaColision.length; i++) {
+      if (areaColision[i] === null) {
+        areaColision[i] = elemento;
+        elementosInsertados.value++;
+        return true;
+      }
+    }
+    
+    errorMessage.value = "Tanto el área principal como el área de colisiones del bloque están llenas.";
     return false;
-  } else if (resolucionColisiones.value === "area-colisiones") {
-    errorMessage.value = "Bloque lleno. Área de colisiones no implementada aún.";
+  } else if (resolucionColisiones.value === "estructura-secundaria") {
+    // Activar estructura secundaria si no está visible
+    if (!estructuraSecundariaVisible.value) {
+      estructuraSecundariaVisible.value = true;
+    }
+    
+    const bloqueSecundario = estructuraSecundaria.value[bloqueHash];
+    // Buscar primera posición disponible en el bloque secundario
+    for (let i = 0; i < bloqueSecundario.length; i++) {
+      if (bloqueSecundario[i] === null) {
+        bloqueSecundario[i] = elemento;
+        elementosInsertados.value++;
+        return true;
+      }
+    }
+    
+    errorMessage.value = "Tanto el bloque principal como el secundario están llenos.";
     return false;
   }
   
@@ -233,8 +409,17 @@ function eliminarElemento(elemento: number): boolean {
   const resultadoBusqueda = buscarElemento(elemento);
   
   if (resultadoBusqueda.encontrado) {
-    const bloque = estructura.value[resultadoBusqueda.bloque];
-    bloque[resultadoBusqueda.posicion] = null;
+    if (resultadoBusqueda.esSecundario) {
+      const bloqueSecundario = estructuraSecundaria.value[resultadoBusqueda.bloque];
+      bloqueSecundario[resultadoBusqueda.posicion] = null;
+    } else if (resultadoBusqueda.esAreaColision) {
+      const areaColision = areaColisiones.value[resultadoBusqueda.bloque];
+      areaColision[resultadoBusqueda.posicion] = null;
+    } else {
+      const bloque = estructura.value[resultadoBusqueda.bloque];
+      bloque[resultadoBusqueda.posicion] = null;
+    }
+    elementosInsertados.value--;
     return true;
   }
   
@@ -258,9 +443,19 @@ const insertar = () => {
   
   const num = parseInt(valor.value);
   
+  const bloqueHash = hashModuloBloque(num);
+  // Verificar si el bloque existe antes de comprobar si está lleno
+  const bloquePrincipalLleno = estructura.value[bloqueHash] ? estructura.value[bloqueHash].every(e => e !== null) : false;
+  
   const insercionExitosa = insertarElemento(num);
   if (insercionExitosa) {
-    errorMessage.value = `Insertado ${num} correctamente en bloque ${hashModuloBloque(num) + 1}.`;
+    if (bloquePrincipalLleno && resolucionColisiones.value === "area-colisiones") {
+      errorMessage.value = `Colisión en bloque ${bloqueHash + 1}. Insertado ${num} en área de colisiones.`;
+    } else if (bloquePrincipalLleno && estructuraSecundariaVisible.value) {
+      errorMessage.value = `Colisión en bloque ${bloqueHash + 1}. Insertado ${num} en estructura secundaria.`;
+    } else {
+      errorMessage.value = `Insertado ${num} correctamente en bloque ${bloqueHash + 1}. (${elementosInsertados.value}/${capacidad.value})`;
+    }
     valor.value = "";
   }
 };
@@ -284,7 +479,13 @@ function buscar() {
     resultado.value = true;
     bloqueBuscado.value = resultadoBusqueda.bloque;
     indexBuscado.value = resultadoBusqueda.posicion;
-    errorMessage.value = "";  // Limpiar mensaje, el resultado se muestra en el template
+    if (resultadoBusqueda.esSecundario) {
+      errorMessage.value = `(Encontrado en estructura secundaria)`;
+    } else if (resultadoBusqueda.esAreaColision) {
+      errorMessage.value = `(Encontrado en área de colisiones)`;
+    } else {
+      errorMessage.value = "";  // Limpiar mensaje, el resultado se muestra en el template
+    }
   } else {
     resultado.value = false;
     errorMessage.value = "";  // Limpiar mensaje, el resultado se muestra en el template
@@ -302,10 +503,17 @@ function eliminar() {
   }
 
   const num = parseInt(valor.value);
+  const resultadoBusqueda = buscarElemento(num);
   const eliminacionExitosa = eliminarElemento(num);
   
   if (eliminacionExitosa) {
-    errorMessage.value = `Eliminado del Bloque ${hashModuloBloque(num) + 1}.`;
+    let ubicacion = "principal";
+    if (resultadoBusqueda.esSecundario) {
+      ubicacion = "secundaria";
+    } else if (resultadoBusqueda.esAreaColision) {
+      ubicacion = "área de colisiones";
+    }
+    errorMessage.value = `Eliminado del Bloque ${hashModuloBloque(num) + 1} (${ubicacion}). (${elementosInsertados.value}/${capacidad.value})`;
     valor.value = "";
   } else {
     errorMessage.value = "Elemento no encontrado para eliminar.";
@@ -553,11 +761,81 @@ h1 {
   margin-bottom: 1.5rem;
 }
 
+.structures-flex-container {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+  justify-content: space-around;
+  flex-wrap: wrap;
+}
+
+.structure-container {
+  flex: 1;
+  min-width: 300px;
+}
+
+.structure-container h3 {
+  text-align: center;
+  margin-bottom: 1rem;
+  color: var(--primary);
+}
+
 .blocks-container {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
   align-items: flex-start;
+  justify-content: center;
+}
+
+.block-with-collision {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  padding: 0.75rem;
+  min-width: 300px;
+  max-width: 400px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.block-with-collision.highlight-block {
+  border-color: var(--primary);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
+
+.area-section {
+  margin-bottom: 1rem;
+}
+
+.area-section:last-child {
+  margin-bottom: 0;
+}
+
+.area-header {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  text-align: center;
+  padding: 0.25rem;
+  background: rgba(15, 23, 42, 0.05);
+  border-radius: 4px;
+}
+
+.collision-area .area-header {
+  background: rgba(245, 158, 11, 0.1);
+  color: #92400e;
+}
+
+.collision-element {
+  border-color: #fbbf24;
+  background: linear-gradient(180deg, #fef3c7 0%, #ffffff 100%);
+}
+
+.collision-element .pos {
+  background: rgba(245, 158, 11, 0.1);
+  color: #92400e;
 }
 
 .block {
@@ -574,6 +852,21 @@ h1 {
 .block.highlight-block {
   border-color: var(--primary);
   box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
+
+.block.secondary {
+  border-color: #86efac;
+  background: linear-gradient(180deg, #f0fdf4 0%, #f7fbff 100%);
+}
+
+.block.secondary .block-header {
+  background: rgba(34, 197, 94, 0.1);
+  color: #166534;
+}
+
+.block.secondary .element {
+  border-color: #bbf7d0;
+  background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%);
 }
 
 .block-header {

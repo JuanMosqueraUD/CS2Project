@@ -114,11 +114,26 @@ export function HashModulo(clave: number, capacidad: number): number {
 export function HashCuadrado(clave: number, capacidad: number): number {
   const cuadrado = clave * clave;
   const cuadradoStr = cuadrado.toString().padStart(capacidad.toString().length * 2, '0');
-  const digitos = capacidad.toString().length - 1; // cantidad de ceros
+  const digitos = Math.max(1, capacidad.toString().length - 1); // cantidad de ceros, mínimo 1
   const totalLen = cuadradoStr.length;
   const start = Math.floor((totalLen - digitos) / 2);
   const medio = cuadradoStr.substring(start, start + digitos);
-  return parseInt(medio) % capacidad;
+  
+  // Verificar que el medio no esté vacío y sea un número válido
+  if (!medio || medio.length === 0) {
+    // Usar los últimos dígitos como fallback
+    const fallback = cuadradoStr.slice(-digitos);
+    const valor = parseInt(fallback) || 0;
+    return valor % capacidad;
+  }
+  
+  const valor = parseInt(medio);
+  if (isNaN(valor)) {
+    // Usar hash módulo como último recurso
+    return clave % capacidad;
+  }
+  
+  return valor % capacidad;
 }
 
 export function HashPlegamiento(clave: number, capacidad: number): number {
