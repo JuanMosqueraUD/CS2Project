@@ -3,7 +3,7 @@
     <router-link to="/" class="outline contrast">Volver al inicio</router-link>
   </div>
   
-  <h1>Hash Módulo Externa</h1>
+  <h1>Hash Cambio de Base Externa</h1>
   
   <!-- Configuración inicial -->
   <div v-if="!estructuraCreada" class="create-structure">
@@ -11,6 +11,18 @@
     <div>
       <input v-model.number="capacidad" type="number" placeholder="Capacidad (mínimo 10)" @input="validateInput" />
       <input v-model.number="digitosClave" type="number" placeholder="Cantidad de dígitos por clave" @input="validateInput" />
+      
+      <!-- Selector de base para cambio de base -->
+      <select v-model.number="base">
+        <option value="2">Base 2</option>
+        <option value="3">Base 3</option>
+        <option value="4">Base 4</option>
+        <option value="5">Base 5</option>
+        <option value="6">Base 6</option>
+        <option value="7">Base 7</option>
+        <option value="8">Base 8</option>
+        <option value="9">Base 9</option>
+      </select>
       
       <!-- Selector de resolución de colisiones -->
       <select v-model="resolucionColisiones">
@@ -23,7 +35,7 @@
     
     <div v-if="capacidad && capacidad >= 10" class="info-preview">
       <p><strong>Elementos por bloque:</strong> {{ elementosPorBloque }} (⌊√{{ capacidad }}⌋) | <strong>Número de bloques:</strong> {{ numeroBloques }}</p>
-      <p><strong>Función Hash:</strong> Módulo | <strong>Resolución:</strong> {{ resolucionColisiones }}</p>
+      <p><strong>Función Hash:</strong> Cambio de Base {{ base }} | <strong>Resolución:</strong> {{ resolucionColisiones }}</p>
     </div>
     
     <div class="import-option">
@@ -35,8 +47,8 @@
 
   <!-- Controles de operación -->
   <div v-if="estructuraCreada">
-    <p>Estructura creada. Capacidad: {{ capacidad }}, Dígitos por clave: {{ digitosClave }}, Elementos por bloque: {{ elementosPorBloque }}</p>
-    <p><strong>Función Hash:</strong> Módulo | <strong>Resolución de Colisiones:</strong> {{ resolucionColisiones }}</p>
+    <p>Estructura creada. Capacidad: {{ capacidad }}, Dígitos por clave: {{ digitosClave }}, Elementos por bloque: {{ elementosPorBloque }}, Base: {{ base }}</p>
+    <p><strong>Función Hash:</strong> Cambio de Base {{ base }} | <strong>Resolución de Colisiones:</strong> {{ resolucionColisiones }}</p>
     
     <!-- Controles de exportación e importación -->
     <div class="import-export-controls">
@@ -197,6 +209,7 @@ const errorMessage = ref("");
 const estructuraCreada = ref(false);
 const capacidad = ref<number | null>(null);
 const digitosClave = ref<number | null>(null);
+const base = ref<number>(2); // Base para cambio de base (2-9)
 const resolucionColisiones = ref<string>("estructura-secundaria");
 const estructuraSecundariaVisible = ref(false); // Solo mostrar cuando se use
 const elementosInsertados = ref(0); // Contador para limitar la capacidad total
@@ -255,6 +268,11 @@ const crearEstructura = () => {
     return;
   }
 
+  if (!base.value || base.value < 2 || base.value > 9) {
+    errorMessage.value = "La base debe estar entre 2 y 9.";
+    return;
+  }
+
   // Crear estructura de bloques principales
   const bloques = [];
   for (let i = 0; i < numeroBloques.value; i++) {
@@ -283,9 +301,9 @@ const crearEstructura = () => {
   estructuraCreada.value = true;
 };
 
-// Función hash módulo para determinar el bloque
-const hashModuloBloque = (clave: number): number => {
-  const hash = funciones.HashModulo(clave, numeroBloques.value);
+// Función hash cambio de base para determinar el bloque
+const hashCambioBaseBloque = (clave: number): number => {
+  const hash = funciones.HashCambioBase(clave, numeroBloques.value, base.value);
   // Verificar que el hash sea válido y esté en rango
   if (isNaN(hash) || hash < 0 || hash >= numeroBloques.value) {
     // Usar hash módulo directo como respaldo
@@ -296,7 +314,7 @@ const hashModuloBloque = (clave: number): number => {
 
 // Búsqueda de elemento usando hash para encontrar bloque y búsqueda lineal dentro del bloque
 function buscarElemento(elemento: number) {
-  const bloqueHash = hashModuloBloque(elemento);
+  const bloqueHash = hashCambioBaseBloque(elemento);
   
   // Verificar que el índice sea válido
   if (bloqueHash < 0 || bloqueHash >= estructura.value.length) {
@@ -348,17 +366,10 @@ function insertarElemento(elemento: number): boolean {
     return false;
   }
   
-  const bloqueHash = hashModuloBloque(elemento);
-  
-  // Verificar que el índice sea válido
-  if (bloqueHash < 0 || bloqueHash >= estructura.value.length) {
-    errorMessage.value = `Error: Índice de bloque inválido (${bloqueHash}).`;
-    return false;
-  }
-  
+  const bloqueHash = hashCambioBaseBloque(elemento);
   const bloque = estructura.value[bloqueHash];
   
-  // Buscar primera posición disponible en el bloque principal
+  // Intentar insertar en el bloque principal
   for (let i = 0; i < bloque.length; i++) {
     if (bloque[i] === null) {
       bloque[i] = elemento;
@@ -367,9 +378,9 @@ function insertarElemento(elemento: number): boolean {
     }
   }
   
-  // Si el bloque principal está lleno, manejar colisión según la estrategia seleccionada
+  // Si el bloque principal está lleno, usar la estrategia de resolución de colisiones
   if (resolucionColisiones.value === "area-colisiones") {
-    // Buscar espacio en área de colisiones del mismo bloque
+    // Intentar insertar en área de colisiones
     const areaColision = areaColisiones.value[bloqueHash];
     for (let i = 0; i < areaColision.length; i++) {
       if (areaColision[i] === null) {
@@ -378,17 +389,12 @@ function insertarElemento(elemento: number): boolean {
         return true;
       }
     }
-    
-    errorMessage.value = "Tanto el área principal como el área de colisiones del bloque están llenas.";
+    errorMessage.value = "El bloque y su área de colisiones están llenos.";
     return false;
-  } else if (resolucionColisiones.value === "estructura-secundaria") {
-    // Activar estructura secundaria si no está visible
-    if (!estructuraSecundariaVisible.value) {
-      estructuraSecundariaVisible.value = true;
-    }
-    
+  } else {
+    // Usar estructura secundaria
+    estructuraSecundariaVisible.value = true;
     const bloqueSecundario = estructuraSecundaria.value[bloqueHash];
-    // Buscar primera posición disponible en el bloque secundario
     for (let i = 0; i < bloqueSecundario.length; i++) {
       if (bloqueSecundario[i] === null) {
         bloqueSecundario[i] = elemento;
@@ -396,136 +402,118 @@ function insertarElemento(elemento: number): boolean {
         return true;
       }
     }
-    
-    errorMessage.value = "Tanto el bloque principal como el secundario están llenos.";
+    errorMessage.value = "El bloque principal y secundario están llenos.";
+    return false;
+  }
+}
+
+// Eliminar elemento de la estructura
+function eliminarElemento(elemento: number): boolean {
+  const resultado = buscarElemento(elemento);
+  
+  if (!resultado.encontrado) {
     return false;
   }
   
-  return false;
-}
-
-// Eliminación usando hash para encontrar bloque y búsqueda lineal para eliminar
-function eliminarElemento(elemento: number): boolean {
-  const resultadoBusqueda = buscarElemento(elemento);
-  
-  if (resultadoBusqueda.encontrado) {
-    if (resultadoBusqueda.esSecundario) {
-      const bloqueSecundario = estructuraSecundaria.value[resultadoBusqueda.bloque];
-      bloqueSecundario[resultadoBusqueda.posicion] = null;
-    } else if (resultadoBusqueda.esAreaColision) {
-      const areaColision = areaColisiones.value[resultadoBusqueda.bloque];
-      areaColision[resultadoBusqueda.posicion] = null;
-    } else {
-      const bloque = estructura.value[resultadoBusqueda.bloque];
-      bloque[resultadoBusqueda.posicion] = null;
-    }
-    elementosInsertados.value--;
-    return true;
+  // Eliminar del lugar correspondiente
+  if (resultado.esAreaColision) {
+    areaColisiones.value[resultado.bloque][resultado.posicion] = null;
+  } else if (resultado.esSecundario) {
+    estructuraSecundaria.value[resultado.bloque][resultado.posicion] = null;
+  } else {
+    estructura.value[resultado.bloque][resultado.posicion] = null;
   }
   
-  return false;
+  elementosInsertados.value--;
+  return true;
 }
+
+// Botones de operaciones
+const buscar = () => {
+  errorMessage.value = "";
+  resultado.value = null;
+  indexBuscado.value = -1;
+  bloqueBuscado.value = -1;
+
+  const num = parseInt(valor.value);
+  if (isNaN(num) || num < 0) {
+    errorMessage.value = "Por favor, ingresa un número válido.";
+    return;
+  }
+
+  const validacion = funciones.validarInput(num, digitosClave.value);
+  if (validacion.isError) {
+    errorMessage.value = validacion.msg;
+    return;
+  }
+
+  const searchResult = buscarElemento(num);
+  resultado.value = searchResult.encontrado;
+  
+  if (searchResult.encontrado) {
+    bloqueBuscado.value = searchResult.bloque;
+    indexBuscado.value = searchResult.posicion;
+  }
+};
 
 const insertar = () => {
+  errorMessage.value = "";
   resultado.value = null;
-  
-  // Verificar que la estructura esté creada
-  if (!estructuraCreada.value) {
-    errorMessage.value = "Primero debes crear una estructura.";
-    return;
-  }
-  
-  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
-  if (res.isError) {
-    errorMessage.value = res.msg;
-    return;
-  }
-  
+  indexBuscado.value = -1;
+  bloqueBuscado.value = -1;
+
   const num = parseInt(valor.value);
-  
-  const bloqueHash = hashModuloBloque(num);
-  // Verificar si el bloque existe antes de comprobar si está lleno
-  const bloquePrincipalLleno = estructura.value[bloqueHash] ? estructura.value[bloqueHash].every(e => e !== null) : false;
-  
-  const insercionExitosa = insertarElemento(num);
-  if (insercionExitosa) {
-    if (bloquePrincipalLleno && resolucionColisiones.value === "area-colisiones") {
-      errorMessage.value = `Colisión en bloque ${bloqueHash + 1}. Insertado ${num} en área de colisiones.`;
-    } else if (bloquePrincipalLleno && estructuraSecundariaVisible.value) {
-      errorMessage.value = `Colisión en bloque ${bloqueHash + 1}. Insertado ${num} en estructura secundaria.`;
-    } else {
-      errorMessage.value = `Insertado ${num} correctamente en bloque ${bloqueHash + 1}. (${elementosInsertados.value}/${capacidad.value})`;
-    }
+  if (isNaN(num) || num < 0) {
+    errorMessage.value = "Por favor, ingresa un número válido.";
+    return;
+  }
+
+  const validacion = funciones.validarInput(num, digitosClave.value);
+  if (validacion.isError) {
+    errorMessage.value = validacion.msg;
+    return;
+  }
+
+  const insertado = insertarElemento(num);
+  if (insertado) {
+    errorMessage.value = `Elemento ${num} insertado exitosamente.`;
     valor.value = "";
   }
 };
 
-function buscar() {
+const eliminar = () => {
   errorMessage.value = "";
   resultado.value = null;
-  bloqueBuscado.value = -1;
   indexBuscado.value = -1;
+  bloqueBuscado.value = -1;
 
-  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
-  if (res.isError) {
-    errorMessage.value = res.msg;
+  const num = parseInt(valor.value);
+  if (isNaN(num) || num < 0) {
+    errorMessage.value = "Por favor, ingresa un número válido.";
     return;
   }
 
-  const num = parseInt(valor.value);
-  const resultadoBusqueda = buscarElemento(num);
-  
-  if (resultadoBusqueda.encontrado) {
-    resultado.value = true;
-    bloqueBuscado.value = resultadoBusqueda.bloque;
-    indexBuscado.value = resultadoBusqueda.posicion;
-    if (resultadoBusqueda.esSecundario) {
-      errorMessage.value = `(Encontrado en estructura secundaria)`;
-    } else if (resultadoBusqueda.esAreaColision) {
-      errorMessage.value = `(Encontrado en área de colisiones)`;
-    } else {
-      errorMessage.value = "";  // Limpiar mensaje, el resultado se muestra en el template
-    }
-  } else {
-    resultado.value = false;
-    errorMessage.value = "";  // Limpiar mensaje, el resultado se muestra en el template
-  }
-}
-
-function eliminar() {
-  errorMessage.value = "";
-  resultado.value = null;
-
-  const res = funciones.validarInputConCeros(valor.value, digitosClave.value);
-  if (res.isError) {
-    errorMessage.value = res.msg;
+  const validacion = funciones.validarInput(num, digitosClave.value);
+  if (validacion.isError) {
+    errorMessage.value = validacion.msg;
     return;
   }
 
-  const num = parseInt(valor.value);
-  const resultadoBusqueda = buscarElemento(num);
-  const eliminacionExitosa = eliminarElemento(num);
-  
-  if (eliminacionExitosa) {
-    let ubicacion = "principal";
-    if (resultadoBusqueda.esSecundario) {
-      ubicacion = "secundaria";
-    } else if (resultadoBusqueda.esAreaColision) {
-      ubicacion = "área de colisiones";
-    }
-    errorMessage.value = `Eliminado del Bloque ${hashModuloBloque(num) + 1} (${ubicacion}). (${elementosInsertados.value}/${capacidad.value})`;
+  const eliminado = eliminarElemento(num);
+  if (eliminado) {
+    errorMessage.value = `Elemento ${num} eliminado exitosamente.`;
     valor.value = "";
   } else {
-    errorMessage.value = "Elemento no encontrado para eliminar.";
+    errorMessage.value = `Elemento ${num} no encontrado en la estructura.`;
   }
-}
+};
 
 // Funciones de exportación e importación
 import { 
   createExportData, 
   generateExportFileName, 
   downloadJsonFile, 
-  validateExternalHashImport
+  validateExternalHashImport 
 } from "../../../utils/importExportUtils.ts";
 import type { ValidationResult } from "../../../utils/importExportUtils.ts";
 
@@ -541,7 +529,8 @@ function exportarEstructura() {
       digitosClave: digitosClave.value,
       elementosPorBloque: elementosPorBloque.value,
       numeroBloques: numeroBloques.value,
-      funcionHash: 'modulo',
+      funcionHash: 'cambio-base',
+      base: base.value,
       resolucionColisiones: resolucionColisiones.value
     };
 
@@ -552,8 +541,8 @@ function exportarEstructura() {
       elementosInsertados: elementosInsertados.value
     };
 
-    const exportData = createExportData('hash-modulo-externo', config, dataToExport);
-    const filename = generateExportFileName('hash-modulo-externo', config);
+    const exportData = createExportData('hash-cambio-base-externo', config, dataToExport);
+    const filename = generateExportFileName('hash-cambio-base-externo', config);
     
     downloadJsonFile(exportData, filename);
     errorMessage.value = "Estructura hash externa exportada exitosamente.";
@@ -581,21 +570,28 @@ function importarEstructura(event: Event) {
         return;
       }
       
-      // Verificar que sea específicamente hash-modulo-externo
-      if (importData.type !== 'hash-modulo-externo') {
-        errorMessage.value = `El archivo no corresponde a una estructura hash módulo externa. Tipo recibido: ${importData.type}`;
+      // Verificar que sea específicamente hash-cambio-base-externo
+      if (importData.type !== 'hash-cambio-base-externo') {
+        errorMessage.value = `El archivo no corresponde a una estructura hash cambio de base externa. Tipo recibido: ${importData.type}`;
         return;
       }
       
-      // Verificar que la función hash sea módulo
-      if (importData.config.funcionHash !== 'modulo') {
-        errorMessage.value = `El archivo usa función hash "${importData.config.funcionHash}". Solo se acepta "modulo" aquí.`;
+      // Verificar que la función hash sea cambio-base
+      if (importData.config.funcionHash !== 'cambio-base') {
+        errorMessage.value = `El archivo usa función hash "${importData.config.funcionHash}". Solo se acepta "cambio-base" aquí.`;
+        return;
+      }
+      
+      // Verificar que tenga la base
+      if (!importData.config.base || importData.config.base < 2 || importData.config.base > 9) {
+        errorMessage.value = "El archivo no contiene una base válida (2-9).";
         return;
       }
       
       // Importar exitosamente
       capacidad.value = importData.config.capacidad;
       digitosClave.value = importData.config.digitosClave;
+      base.value = importData.config.base;
       resolucionColisiones.value = importData.config.resolucionColisiones || "estructura-secundaria";
       
       // Importar las estructuras de datos
@@ -613,7 +609,7 @@ function importarEstructura(event: Event) {
       indexBuscado.value = -1;
       bloqueBuscado.value = -1;
       
-      errorMessage.value = `Estructura hash externa importada exitosamente. Capacidad: ${capacidad.value}, Dígitos: ${digitosClave.value}`;
+      errorMessage.value = `Estructura hash externa importada exitosamente. Capacidad: ${capacidad.value}, Dígitos: ${digitosClave.value}, Base: ${base.value}`;
       
     } catch (error) {
       errorMessage.value = "Error al leer el archivo. Asegúrate de que sea un JSON válido.";

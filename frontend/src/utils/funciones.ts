@@ -137,46 +137,103 @@ export function HashCuadrado(clave: number, capacidad: number): number {
 }
 
 export function HashPlegamiento(clave: number, capacidad: number): number {
-  // Cantidad de ceros de la capacidad decide el tamaño de grupo y cuántos dígitos devolver
-  // 10 -> 1, 100 -> 2, 1000 -> 3
-  const ceros = Math.max(1, capacidad.toString().length - 1);
+  if (capacidad <= 0) return 0;
+  
+  // Determinar el tamaño de grupo basado en la capacidad
+  // Para capacidad < 10: usar 1 dígito
+  // Para capacidad 10-99: usar 1 dígito  
+  // Para capacidad 100-999: usar 2 dígitos
+  // Para capacidad 1000-9999: usar 3 dígitos, etc.
+  const digitosGrupo = Math.max(1, Math.floor(Math.log10(capacidad)));
   const claveStr = Math.abs(clave).toString();
 
-  // Separar la clave en grupos de 'ceros' dígitos de izquierda a derecha.
+  // Separar la clave en grupos de 'digitosGrupo' dígitos de izquierda a derecha.
   // El último grupo puede ser más corto (sobrante permitido)
   let suma = 0;
-  for (let i = 0; i < claveStr.length; i += ceros) {
-    const grupo = claveStr.substring(i, i + ceros);
+  for (let i = 0; i < claveStr.length; i += digitosGrupo) {
+    const grupo = claveStr.substring(i, i + digitosGrupo);
     suma += parseInt(grupo, 10);
   }
 
-  // Tomar los 'ceros' dígitos menos significativos del resultado de la suma
-  const sumaStr = suma.toString();
-  const ultimos = sumaStr.slice(-ceros); // si ceros > len, devuelve todo (está bien)
-  const valor = parseInt(ultimos, 10);
-
-  // Asegurar índice válido
-  return capacidad > 0 ? (valor % capacidad) : 0;
+  // Aplicar módulo directamente sobre la suma para obtener el índice del bloque
+  // Esto asegura que el resultado esté siempre en el rango [0, capacidad-1]
+  return suma % capacidad;
 }
 
 export function HashTruncamiento(clave: number, capacidad: number): number {
-  // cantidad de ceros en la capacidad (10->1, 100->2, 1000->3, ...)
-  const ceros = Math.max(1, capacidad.toString().length - 1);
+  if (capacidad <= 0) return 0;
+  
   const claveStr = Math.abs(clave).toString();
-
+  
   // Tomar dígitos en posiciones pares (contadas 1-based): 2,4,6,...
   // En índice 0-based corresponde a 1,3,5,...
+  // No limitamos la cantidad de dígitos seleccionados, tomamos todos los pares disponibles
   let seleccion = "";
-  for (let i = 1; i < claveStr.length && seleccion.length < ceros; i += 2) {
+  for (let i = 1; i < claveStr.length; i += 2) {
     seleccion += claveStr[i];
   }
 
-  // Si no alcanzan los dígitos, completa con ceros a la izquierda
-  if (seleccion.length === 0) seleccion = "0";
-  if (seleccion.length < ceros) seleccion = seleccion.padStart(ceros, "0");
-  if (seleccion.length > ceros) seleccion = seleccion.slice(0, ceros);
+  // Si no hay dígitos seleccionados, usar 0
+  if (seleccion.length === 0) {
+    return 0;
+  }
 
   const valor = parseInt(seleccion, 10);
   if (!Number.isFinite(valor)) return 0;
+  
+  // Aplicar módulo para asegurar que el resultado esté en el rango [0, capacidad-1]
   return valor % capacidad;
+}
+
+/**
+ * Función Hash Cambio de Base
+ * Convierte una clave numérica a una base dada (1-9) y extrae dígitos según capacidad
+ * 
+ * @param clave - Número entero a hashear
+ * @param capacidad - Número de bloques (determina cuántos dígitos extraer)
+ * @param base - Base numérica para conversión (1-9)
+ * @returns Índice del bloque (0 a capacidad-1)
+ * 
+ * Ejemplo: clave=1234, base=9
+ * - 1 * 9^3 = 1 * 729 = 729
+ * - 2 * 9^2 = 2 * 81 = 162
+ * - 3 * 9^1 = 3 * 9 = 27
+ * - 4 * 9^0 = 4 * 1 = 4
+ * - Suma: 729 + 162 + 27 + 4 = 922
+ * - Si capacidad=10 (1 dígito): tomar último dígito = 2
+ * - Si capacidad=100 (2 dígitos): tomar últimos 2 dígitos = 22
+ */
+export function HashCambioBase(clave: number, capacidad: number, base: number): number {
+  // Validaciones
+  if (capacidad <= 0) return 0;
+  if (base < 1 || base > 9) return 0; // Base debe estar entre 1 y 9
+  
+  const claveStr = Math.abs(clave).toString();
+  const digitos = claveStr.split('').map(d => parseInt(d, 10));
+  
+  // Calcular el valor en la nueva base
+  // Para cada dígito, multiplicar por base^posición (de derecha a izquierda)
+  let suma = 0;
+  const n = digitos.length;
+  
+  for (let i = 0; i < n; i++) {
+    const exponente = n - 1 - i; // Posición desde la derecha (más significativo = mayor exponente)
+    const valor = digitos[i] * Math.pow(base, exponente);
+    suma += valor;
+  }
+  
+  // Determinar cuántos dígitos tomar según la capacidad
+  // Similar a HashPlegamiento: usar log10 de la capacidad
+  const digitosNecesarios = Math.max(1, Math.floor(Math.log10(capacidad)));
+  
+  // Extraer los dígitos menos significativos (últimos N dígitos)
+  const sumaStr = suma.toString();
+  const digitosExtraidos = sumaStr.length >= digitosNecesarios 
+    ? sumaStr.slice(-digitosNecesarios) 
+    : sumaStr;
+  
+  const resultado = parseInt(digitosExtraidos, 10);
+  
+  // Aplicar módulo para asegurar que esté en rango [0, capacidad-1]
+  return resultado % capacidad;
 }

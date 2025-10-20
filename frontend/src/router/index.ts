@@ -15,6 +15,9 @@ import LinealExterna from '../views/external-searches/LinealExterna.vue';
 import BinariaExterna from '../views/external-searches/BinariaExterna.vue';
 import HashModuloExterno from '../views/external-searches/hash/HashModuloExterno.vue';
 import HashCuadradoExterno from '../views/external-searches/hash/HashCuadradoExterno.vue';
+import HashPlegamientoExterno from '../views/external-searches/hash/HashPlegamientoExterno.vue';
+import HashTruncamientoExterno from '../views/external-searches/hash/HashTruncamientoExterno.vue';
+import HashCambioBaseExterno from '../views/external-searches/hash/HashCambioBaseExterno.vue';
 import EstructurasDinamicas from '../views/external-searches/EstructurasDinamicas.vue';
 
 const routes = [
@@ -44,9 +47,9 @@ const routes = [
   { path: "/external/binaria", name: "external-binaria", component: BinariaExterna },
   { path: "/external/hash/modulo", name: "external-hash-modulo", component: HashModuloExterno },
   { path: "/external/hash/cuadrado", name: "external-hash-cuadrado", component: HashCuadradoExterno },
-  { path: "/external/hash/plegamiento", name: "external-hash-plegamiento", component: HashModuloExterno },
-  { path: "/external/hash/truncamiento", name: "external-hash-truncamiento", component: HashModuloExterno },
-  { path: "/external/hash/cambio-base", name: "external-hash-cambio-base", component: HashModuloExterno },
+  { path: "/external/hash/plegamiento", name: "external-hash-plegamiento", component: HashPlegamientoExterno },
+  { path: "/external/hash/truncamiento", name: "external-hash-truncamiento", component: HashTruncamientoExterno },
+  { path: "/external/hash/cambio-base", name: "external-hash-cambio-base", component: HashCambioBaseExterno },
   { path: "/external/estructuras-dinamicas", name: "external-estructuras-dinamicas", component: EstructurasDinamicas },
 ]
 

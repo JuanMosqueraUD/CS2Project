@@ -3,7 +3,7 @@
     <router-link to="/" class="outline contrast">Volver al inicio</router-link>
   </div>
   
-  <h1>Hash Módulo Externa</h1>
+  <h1>Hash Plegamiento Externa</h1>
   
   <!-- Configuración inicial -->
   <div v-if="!estructuraCreada" class="create-structure">
@@ -23,7 +23,7 @@
     
     <div v-if="capacidad && capacidad >= 10" class="info-preview">
       <p><strong>Elementos por bloque:</strong> {{ elementosPorBloque }} (⌊√{{ capacidad }}⌋) | <strong>Número de bloques:</strong> {{ numeroBloques }}</p>
-      <p><strong>Función Hash:</strong> Módulo | <strong>Resolución:</strong> {{ resolucionColisiones }}</p>
+      <p><strong>Función Hash:</strong> Plegamiento | <strong>Resolución:</strong> {{ resolucionColisiones }}</p>
     </div>
     
     <div class="import-option">
@@ -36,7 +36,7 @@
   <!-- Controles de operación -->
   <div v-if="estructuraCreada">
     <p>Estructura creada. Capacidad: {{ capacidad }}, Dígitos por clave: {{ digitosClave }}, Elementos por bloque: {{ elementosPorBloque }}</p>
-    <p><strong>Función Hash:</strong> Módulo | <strong>Resolución de Colisiones:</strong> {{ resolucionColisiones }}</p>
+    <p><strong>Función Hash:</strong> Plegamiento | <strong>Resolución de Colisiones:</strong> {{ resolucionColisiones }}</p>
     
     <!-- Controles de exportación e importación -->
     <div class="import-export-controls">
@@ -283,12 +283,12 @@ const crearEstructura = () => {
   estructuraCreada.value = true;
 };
 
-// Función hash módulo para determinar el bloque
-const hashModuloBloque = (clave: number): number => {
-  const hash = funciones.HashModulo(clave, numeroBloques.value);
+// Función hash plegamiento para determinar el bloque
+const hashPlegamientoBloque = (clave: number): number => {
+  const hash = funciones.HashPlegamiento(clave, numeroBloques.value);
   // Verificar que el hash sea válido y esté en rango
   if (isNaN(hash) || hash < 0 || hash >= numeroBloques.value) {
-    // Usar hash módulo directo como respaldo
+    // Usar hash plegamiento directo como respaldo
     return clave % numeroBloques.value;
   }
   return hash;
@@ -296,7 +296,7 @@ const hashModuloBloque = (clave: number): number => {
 
 // Búsqueda de elemento usando hash para encontrar bloque y búsqueda lineal dentro del bloque
 function buscarElemento(elemento: number) {
-  const bloqueHash = hashModuloBloque(elemento);
+  const bloqueHash = hashPlegamientoBloque(elemento);
   
   // Verificar que el índice sea válido
   if (bloqueHash < 0 || bloqueHash >= estructura.value.length) {
@@ -348,7 +348,7 @@ function insertarElemento(elemento: number): boolean {
     return false;
   }
   
-  const bloqueHash = hashModuloBloque(elemento);
+  const bloqueHash = hashPlegamientoBloque(elemento);
   
   // Verificar que el índice sea válido
   if (bloqueHash < 0 || bloqueHash >= estructura.value.length) {
@@ -443,7 +443,7 @@ const insertar = () => {
   
   const num = parseInt(valor.value);
   
-  const bloqueHash = hashModuloBloque(num);
+  const bloqueHash = hashPlegamientoBloque(num);
   // Verificar si el bloque existe antes de comprobar si está lleno
   const bloquePrincipalLleno = estructura.value[bloqueHash] ? estructura.value[bloqueHash].every(e => e !== null) : false;
   
@@ -513,7 +513,7 @@ function eliminar() {
     } else if (resultadoBusqueda.esAreaColision) {
       ubicacion = "área de colisiones";
     }
-    errorMessage.value = `Eliminado del Bloque ${hashModuloBloque(num) + 1} (${ubicacion}). (${elementosInsertados.value}/${capacidad.value})`;
+    errorMessage.value = `Eliminado del Bloque ${hashPlegamientoBloque(num) + 1} (${ubicacion}). (${elementosInsertados.value}/${capacidad.value})`;
     valor.value = "";
   } else {
     errorMessage.value = "Elemento no encontrado para eliminar.";
@@ -525,7 +525,7 @@ import {
   createExportData, 
   generateExportFileName, 
   downloadJsonFile, 
-  validateExternalHashImport
+  validateExternalHashImport 
 } from "../../../utils/importExportUtils.ts";
 import type { ValidationResult } from "../../../utils/importExportUtils.ts";
 
@@ -541,7 +541,7 @@ function exportarEstructura() {
       digitosClave: digitosClave.value,
       elementosPorBloque: elementosPorBloque.value,
       numeroBloques: numeroBloques.value,
-      funcionHash: 'modulo',
+      funcionHash: 'plegamiento',
       resolucionColisiones: resolucionColisiones.value
     };
 
@@ -552,8 +552,8 @@ function exportarEstructura() {
       elementosInsertados: elementosInsertados.value
     };
 
-    const exportData = createExportData('hash-modulo-externo', config, dataToExport);
-    const filename = generateExportFileName('hash-modulo-externo', config);
+    const exportData = createExportData('hash-plegamiento-externo', config, dataToExport);
+    const filename = generateExportFileName('hash-plegamiento-externo', config);
     
     downloadJsonFile(exportData, filename);
     errorMessage.value = "Estructura hash externa exportada exitosamente.";
@@ -581,15 +581,15 @@ function importarEstructura(event: Event) {
         return;
       }
       
-      // Verificar que sea específicamente hash-modulo-externo
-      if (importData.type !== 'hash-modulo-externo') {
-        errorMessage.value = `El archivo no corresponde a una estructura hash módulo externa. Tipo recibido: ${importData.type}`;
+      // Verificar que sea específicamente hash-plegamiento-externo
+      if (importData.type !== 'hash-plegamiento-externo') {
+        errorMessage.value = `El archivo no corresponde a una estructura hash plegamiento externa. Tipo recibido: ${importData.type}`;
         return;
       }
       
-      // Verificar que la función hash sea módulo
-      if (importData.config.funcionHash !== 'modulo') {
-        errorMessage.value = `El archivo usa función hash "${importData.config.funcionHash}". Solo se acepta "modulo" aquí.`;
+      // Verificar que la función hash sea plegamiento
+      if (importData.config.funcionHash !== 'plegamiento') {
+        errorMessage.value = `El archivo usa función hash "${importData.config.funcionHash}". Solo se acepta "plegamiento" aquí.`;
         return;
       }
       

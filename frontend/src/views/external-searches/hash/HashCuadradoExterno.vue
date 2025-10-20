@@ -520,15 +520,14 @@ function eliminar() {
   }
 }
 
-// Funciones de exportación e importación (temporalmente deshabilitadas)
-/*
+// Funciones de exportación e importación
 import { 
   createExportData, 
   generateExportFileName, 
   downloadJsonFile, 
   validateExternalHashImport 
 } from "../../../utils/importExportUtils.ts";
-*/
+import type { ValidationResult } from "../../../utils/importExportUtils.ts";
 
 function exportarEstructura() {
   if (!estructuraCreada.value) {
@@ -536,7 +535,31 @@ function exportarEstructura() {
     return;
   }
 
-  errorMessage.value = "Función de exportación temporalmente deshabilitada.";
+  try {
+    const config = {
+      capacidad: capacidad.value,
+      digitosClave: digitosClave.value,
+      elementosPorBloque: elementosPorBloque.value,
+      numeroBloques: numeroBloques.value,
+      funcionHash: 'cuadrado',
+      resolucionColisiones: resolucionColisiones.value
+    };
+
+    const dataToExport = {
+      estructura: estructura.value,
+      estructuraSecundaria: estructuraSecundaria.value,
+      areaColisiones: areaColisiones.value,
+      elementosInsertados: elementosInsertados.value
+    };
+
+    const exportData = createExportData('hash-cuadrado-externo', config, dataToExport);
+    const filename = generateExportFileName('hash-cuadrado-externo', config);
+    
+    downloadJsonFile(exportData, filename);
+    errorMessage.value = "Estructura hash externa exportada exitosamente.";
+  } catch (error) {
+    errorMessage.value = "Error al exportar la estructura.";
+  }
 }
 
 function importarEstructura(event: Event) {
@@ -545,7 +568,59 @@ function importarEstructura(event: Event) {
   
   if (!file) return;
 
-  errorMessage.value = "Función de importación temporalmente deshabilitada.";
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const importData = JSON.parse(e.target?.result as string);
+      
+      // Validación con la función centralizada
+      const validation: ValidationResult = validateExternalHashImport(importData);
+      
+      if (!validation.isValid) {
+        errorMessage.value = validation.error || "Archivo inválido.";
+        return;
+      }
+      
+      // Verificar que sea específicamente hash-cuadrado-externo
+      if (importData.type !== 'hash-cuadrado-externo') {
+        errorMessage.value = `El archivo no corresponde a una estructura hash cuadrado externa. Tipo recibido: ${importData.type}`;
+        return;
+      }
+      
+      // Verificar que la función hash sea cuadrado
+      if (importData.config.funcionHash !== 'cuadrado') {
+        errorMessage.value = `El archivo usa función hash "${importData.config.funcionHash}". Solo se acepta "cuadrado" aquí.`;
+        return;
+      }
+      
+      // Importar exitosamente
+      capacidad.value = importData.config.capacidad;
+      digitosClave.value = importData.config.digitosClave;
+      resolucionColisiones.value = importData.config.resolucionColisiones || "estructura-secundaria";
+      
+      // Importar las estructuras de datos
+      estructura.value = importData.data.estructura || importData.data;
+      estructuraSecundaria.value = importData.data.estructuraSecundaria || [];
+      areaColisiones.value = importData.data.areaColisiones || [];
+      elementosInsertados.value = importData.data.elementosInsertados || 0;
+      
+      // Actualizar estado de visibilidad de estructura secundaria
+      estructuraSecundariaVisible.value = resolucionColisiones.value === 'estructura-secundaria' && 
+                                          estructuraSecundaria.value.some(bloque => bloque.some((el: number | null) => el !== null));
+      
+      estructuraCreada.value = true;
+      resultado.value = null;
+      indexBuscado.value = -1;
+      bloqueBuscado.value = -1;
+      
+      errorMessage.value = `Estructura hash externa importada exitosamente. Capacidad: ${capacidad.value}, Dígitos: ${digitosClave.value}`;
+      
+    } catch (error) {
+      errorMessage.value = "Error al leer el archivo. Asegúrate de que sea un JSON válido.";
+    }
+  };
+  
+  reader.readAsText(file);
   target.value = '';
 }
 

@@ -16,7 +16,6 @@
           <li><a href="#" @click.prevent="m = 3">3</a></li>
         </ul>
       </details>
-      <span class="info-text">Aridad: {{ arity }}</span>
       <button @click="createTreeStructure">Crear estructura</button>
     </div>
   </div>
@@ -25,7 +24,6 @@
   <section v-else class="controls">
     <div class="tree-info">
       <span class="badge primary">m = {{ m }}</span>
-      <span class="badge">Aridad: {{ arity }}</span>
       <button @click="resetTree" class="reset-btn outline">Reiniciar</button>
     </div>
     
@@ -64,9 +62,9 @@
     <!-- Herramientas adicionales -->
     <div v-if="treeCreated" class="tools-section">
       <div class="tools-buttons">
-        <button @click="exportTreeConfig" class="tool-btn outline">📁 Guardar</button>
+        <button @click="exportTreeConfig" class="tool-btn outline">Guardar</button>
         <label class="tool-btn outline import-btn">
-          📂 Abrir
+          Abrir
           <input type="file" accept=".json" @change="importTreeConfig" hidden />
         </label>
       </div>
@@ -86,7 +84,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { ref, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
 import { letterToCode } from '../utils/digitalTree';
 import { type RMNode, insertRM, searchRM, buildRMTemplate, groupBits } from '../utils/residueMultiTree';
 import { DataSet, Network, type Options } from 'vis-network/standalone';
@@ -114,7 +112,6 @@ watch(m, (mv) => {
   }
 });
 
-const arity = computed(() => 2 ** Math.min(3, Math.max(1, m.value)));
 const graphEl = ref<HTMLDivElement | null>(null);
 let network: Network | null = null;
 let networkContainer: HTMLDivElement | null = null;
@@ -140,7 +137,7 @@ function createTreeStructure() {
   treeCreated.value = true;
   showConfigPanel.value = false;
   pathIdx.value = [];
-  message.value = `Estructura del árbol creada con m=${mv}. Aridad: ${2 ** mv}`;
+  message.value = `Estructura del árbol creada con m=${mv}.`;
 }
 
 function resetTree() {
@@ -330,22 +327,18 @@ function buildGraphData(node: RMNode, baseId = 'r'): { nodes: any[]; edges: any[
   function traverse(n: RMNode, id: string, level: number = 0) {
     const isConnector = n.key === null;
     
-    // Mejorar el label para mostrar más información
+    // Configurar etiquetas según los requerimientos de residuos múltiples
     let label = '';
     if (isConnector) {
+      // Para conectores, mostrar los labelBits que representan el grupo de bits
       if (n.labelBits) {
-        // Mostrar los bits y su valor decimal
-        const decimalValue = parseInt(n.labelBits, 2);
-        label = `${n.labelBits}\n(${decimalValue})`;
+        label = n.labelBits; // Ejemplo: "00", "01", "10", "11" para m=2
       } else {
-        label = 'ROOT';
+        label = 'r'; // Raíz (no tiene labelBits)
       }
     } else {
-      // Para hojas, mostrar la letra y su código
+      // Para hojas, mantener comportamiento original: mostrar la letra insertada
       label = `${n.key ?? '∅'}`;
-      if (n.code) {
-        label += `\n(${n.code})`;
-      }
     }
     
     nodes.push({
@@ -362,7 +355,7 @@ function buildGraphData(node: RMNode, baseId = 'r'): { nodes: any[]; edges: any[
         face: 'Courier New, monospace', 
         size: isConnector ? 12 : 16,
         bold: !isConnector,
-        multi: true,  // Permitir múltiples líneas
+        multi: false,  // Una sola línea para las nuevas etiquetas
         align: 'center'
       },
       borderWidth: 2,
@@ -374,6 +367,9 @@ function buildGraphData(node: RMNode, baseId = 'r'): { nodes: any[]; edges: any[
         const child = n.children[i];
         const cid = id + '_' + i;
         if (child) {
+          // Determinar si el child es una hoja (tiene key !== null)
+          const isChildLeaf = child.key !== null;
+          
           edges.push({ 
             from: id, 
             to: cid, 
@@ -381,7 +377,8 @@ function buildGraphData(node: RMNode, baseId = 'r'): { nodes: any[]; edges: any[
             color: { color: '#64748b', highlight: '#f59e0b' },
             hoverWidth: 0,
             selectionWidth: 0,
-            label: i.toString(),  // Mostrar el índice en la arista
+            // Solo mostrar el número si conecta a una hoja en el último nivel
+            label: isChildLeaf ? i.toString() : '',
             font: { 
               color: '#94a3b8', 
               size: 10,

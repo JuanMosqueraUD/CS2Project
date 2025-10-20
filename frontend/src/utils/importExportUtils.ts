@@ -1,8 +1,8 @@
 // Utilidades comunes para validación de importación/exportación de estructuras
 import * as funciones from "./funciones.ts";
 
-export type StructureType = 'lineal' | 'binaria' | 'hash' | 'residuo-simple' | 'residuo-multiple' | 'residuo-digital' | 'lineal-externa' | 'binaria-externa' | 'hash-externa';
-export type HashFunction = 'mod' | 'cuadrado' | 'truncamiento' | 'plegamiento';
+export type StructureType = 'lineal' | 'binaria' | 'hash' | 'residuo-simple' | 'residuo-multiple' | 'residuo-digital' | 'lineal-externa' | 'binaria-externa' | 'hash-externa' | 'hash-modulo-externo' | 'hash-cuadrado-externo' | 'hash-plegamiento-externo' | 'hash-truncamiento-externo' | 'hash-cambio-base-externo';
+export type HashFunction = 'mod' | 'cuadrado' | 'truncamiento' | 'plegamiento' | 'cambio-base';
 export type CollisionStrategy = 'lineal' | 'cuadratica' | 'doble-hash' | 'arreglos' | 'listas-anidadas' | 'encadenamiento';
 
 export interface BaseImportData {
@@ -534,8 +534,8 @@ export function validateExternalHashImport(importData: any): ValidationResult {
     return { isValid: false, error: "El archivo no tiene un tipo válido." };
   }
 
-  // Aceptar cualquier tipo de hash externa
-  if (!importData.type.includes('hash') || !importData.type.includes('externa')) {
+  // Aceptar cualquier tipo de hash externa/externo
+  if (!importData.type.includes('hash') || (!importData.type.includes('externa') && !importData.type.includes('externo'))) {
     return { isValid: false, error: "Este archivo no contiene una estructura hash externa válida." };
   }
 
@@ -566,8 +566,15 @@ export function validateExternalHashImport(importData: any): ValidationResult {
     return { isValid: false, error: 'Debe especificar una función hash válida.' };
   }
 
-  if (!['modulo', 'cuadrado', 'truncamiento', 'plegamiento'].includes(config.funcionHash)) {
-    return { isValid: false, error: 'La función hash debe ser módulo, cuadrado, truncamiento o plegamiento.' };
+  if (!['modulo', 'cuadrado', 'truncamiento', 'plegamiento', 'cambio-base'].includes(config.funcionHash)) {
+    return { isValid: false, error: 'La función hash debe ser módulo, cuadrado, truncamiento, plegamiento o cambio-base.' };
+  }
+
+  // Validar base si la función es cambio-base
+  if (config.funcionHash === 'cambio-base') {
+    if (typeof config.base !== 'number' || config.base < 2 || config.base > 9) {
+      return { isValid: false, error: 'Para cambio de base, debe especificar una base entre 2 y 9.' };
+    }
   }
 
   if (!config.resolucionColisiones || typeof config.resolucionColisiones !== 'string') {
@@ -579,13 +586,41 @@ export function validateExternalHashImport(importData: any): ValidationResult {
   }
 
   // Validar estructura de datos
-  if (!importData.data || !Array.isArray(importData.data)) {
-    return { isValid: false, error: 'Los datos de la estructura deben ser un arreglo de bloques válido.' };
+  if (!importData.data || typeof importData.data !== 'object') {
+    return { isValid: false, error: 'Los datos de la estructura deben ser un objeto válido.' };
   }
 
-  // Validar que cada bloque sea un arreglo
-  for (let i = 0; i < importData.data.length; i++) {
-    const bloque = importData.data[i];
+  // El formato puede ser un objeto con propiedades o directamente un array (retrocompatibilidad)
+  let estructura: any[];
+  
+  if (Array.isArray(importData.data)) {
+    // Formato antiguo: data es directamente el array de bloques
+    estructura = importData.data;
+  } else if (importData.data.estructura && Array.isArray(importData.data.estructura)) {
+    // Formato nuevo: data es un objeto con estructura, estructuraSecundaria, areaColisiones, elementosInsertados
+    estructura = importData.data.estructura;
+    
+    // Validar estructuraSecundaria si existe
+    if (importData.data.estructuraSecundaria !== undefined && !Array.isArray(importData.data.estructuraSecundaria)) {
+      return { isValid: false, error: 'La estructura secundaria debe ser un arreglo de bloques.' };
+    }
+    
+    // Validar areaColisiones si existe
+    if (importData.data.areaColisiones !== undefined && !Array.isArray(importData.data.areaColisiones)) {
+      return { isValid: false, error: 'El área de colisiones debe ser un arreglo de bloques.' };
+    }
+    
+    // Validar elementosInsertados si existe
+    if (importData.data.elementosInsertados !== undefined && typeof importData.data.elementosInsertados !== 'number') {
+      return { isValid: false, error: 'El contador de elementos insertados debe ser un número.' };
+    }
+  } else {
+    return { isValid: false, error: 'Los datos deben contener una estructura de bloques válida.' };
+  }
+
+  // Validar que cada bloque de la estructura principal sea un arreglo
+  for (let i = 0; i < estructura.length; i++) {
+    const bloque = estructura[i];
     if (!Array.isArray(bloque)) {
       return { isValid: false, error: `El bloque ${i + 1} debe ser un arreglo.` };
     }
