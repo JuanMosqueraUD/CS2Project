@@ -18,7 +18,7 @@ import HashCuadradoExterno from '../views/external-searches/hash/HashCuadradoExt
 import HashPlegamientoExterno from '../views/external-searches/hash/HashPlegamientoExterno.vue';
 import HashTruncamientoExterno from '../views/external-searches/hash/HashTruncamientoExterno.vue';
 import HashCambioBaseExterno from '../views/external-searches/hash/HashCambioBaseExterno.vue';
-import EstructurasDinamicas from '../views/external-searches/EstructurasDinamicas.vue';
+import DinamicaView from '../views/DinamicaView.vue';
 
 const routes = [
   { path: "/", name: "home", component: HomeView },
@@ -50,7 +50,7 @@ const routes = [
   { path: "/external/hash/plegamiento", name: "external-hash-plegamiento", component: HashPlegamientoExterno },
   { path: "/external/hash/truncamiento", name: "external-hash-truncamiento", component: HashTruncamientoExterno },
   { path: "/external/hash/cambio-base", name: "external-hash-cambio-base", component: HashCambioBaseExterno },
-  { path: "/external/estructuras-dinamicas", name: "external-estructuras-dinamicas", component: EstructurasDinamicas },
+  { path: "/external/estructuras-dinamicas", name: "external-estructuras-dinamicas", component: DinamicaView },
 ]
 
 const router = createRouter({
