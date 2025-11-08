@@ -15,7 +15,6 @@
             type="number" 
             v-model.number="config.cubetas" 
             min="1"
-            placeholder="Ej: 8"
           />
         </div>
         
@@ -32,25 +31,19 @@
 
       <div class="config-row">
         <div>
-          <label>Tipo de Expansión:</label>
-          <select v-model="config.tipoExpansion">
+          <label>Tipo de Expansión/Reducción:</label>
+          <select v-model="config.tipoOperacion">
             <option value="total">Total</option>
-            <option value="parcial" disabled>Parcial (próximamente)</option>
-          </select>
-        </div>
-        
-        <div>
-          <label>Tipo de Reducción:</label>
-          <select v-model="config.tipoReduccion">
-            <option value="total">Total</option>
-            <option value="parcial" disabled>Parcial (próximamente)</option>
+            <option value="parcial">Parcial</option>
           </select>
         </div>
       </div>
 
       <div class="info-preview" v-if="config.cubetas > 0 && config.registrosPorCubeta > 0">
         <p><strong>Capacidad Total:</strong> {{ config.cubetas * config.registrosPorCubeta }} registros</p>
-        <p><strong>Umbral de Expansión:</strong> 80% ({{ Math.floor(config.cubetas * config.registrosPorCubeta * 0.8) }} registros)</p>
+        <p><strong>Umbral de Expansión:</strong> 75% ({{ Math.floor(config.cubetas * config.registrosPorCubeta * 0.75) }} registros)</p>
+        <p><strong>Umbral de Reducción:</strong> Densidad < 80% (< {{ (config.cubetas * 0.8).toFixed(1) }} registros/cubetas)</p>
+        <p><strong>Tipo:</strong> {{ config.tipoOperacion === 'total' ? 'Total (duplicar/dividir)' : 'Parcial (2 parciales = 1 total)' }}</p>
         <p><strong>Hash:</strong> Módulo sobre {{ config.cubetas }} cubetas</p>
       </div>
 
@@ -78,7 +71,16 @@
             <strong>Ocupación:</strong> {{ porcentajeOcupacion.toFixed(2) }}%
           </div>
           <div class="info-item">
-            <strong>Expansiones:</strong> {{ estructura.expansiones }}
+            <strong>Densidad Reducción:</strong> {{ densidadReduccion.toFixed(2) }}
+          </div>
+          <div class="info-item">
+            <strong>Tipo Operación:</strong> {{ config.tipoOperacion }}
+          </div>
+          <div class="info-item" v-if="config.tipoOperacion === 'parcial'">
+            <strong>Expansiones Parciales:</strong> {{ estructura.expansionesParciales }}
+          </div>
+          <div class="info-item" v-if="config.tipoOperacion === 'parcial'">
+            <strong>Reducciones Parciales:</strong> {{ estructura.reduccionesParciales }}
           </div>
         </div>
       </div>
@@ -169,8 +171,7 @@ import { HashModulo } from '../utils/funciones';
 interface Config {
   cubetas: number;
   registrosPorCubeta: number;
-  tipoExpansion: 'total' | 'parcial';
-  tipoReduccion: 'total' | 'parcial';
+  tipoOperacion: 'total' | 'parcial';
 }
 
 interface Estructura {
@@ -180,13 +181,15 @@ interface Estructura {
   tabla: (number | null)[][];
   desbordamientos: number[][];
   expansiones: number;
+  reducciones: number;
+  expansionesParciales: number;
+  reduccionesParciales: number;
 }
 
 const config = ref<Config>({
   cubetas: 8,
   registrosPorCubeta: 2,
-  tipoExpansion: 'total',
-  tipoReduccion: 'total'
+  tipoOperacion: 'total'
 });
 
 const estructuraCreada = ref(false);
@@ -196,7 +199,10 @@ const estructura = ref<Estructura>({
   capacidadTotal: 0,
   tabla: [],
   desbordamientos: [],
-  expansiones: 0
+  expansiones: 0,
+  reducciones: 0,
+  expansionesParciales: 0,
+  reduccionesParciales: 0
 });
 
 const elementoInsertar = ref<number | null>(null);
@@ -228,6 +234,11 @@ const porcentajeOcupacion = computed(() => {
   return (cantidadElementos.value / estructura.value.capacidadTotal) * 100;
 });
 
+const densidadReduccion = computed(() => {
+  if (estructura.value.cubetas === 0) return 0;
+  return cantidadElementos.value / estructura.value.cubetas;
+});
+
 function crearEstructura() {
   if (config.value.cubetas <= 0 || config.value.registrosPorCubeta <= 0) {
     alert('Por favor ingrese valores válidos para cubetas y registros');
@@ -242,7 +253,10 @@ function crearEstructura() {
       Array(config.value.registrosPorCubeta).fill(null)
     ),
     desbordamientos: Array.from({ length: config.value.cubetas }, () => []),
-    expansiones: 0
+    expansiones: 0,
+    reducciones: 0,
+    expansionesParciales: 0,
+    reduccionesParciales: 0
   };
 
   estructuraCreada.value = true;
@@ -382,6 +396,9 @@ function eliminar() {
         mensaje.value = '';
         ultimaCubetaAfectada.value = null;
       }, 2000);
+      
+      // Verificar si se necesita reducción
+      verificarReduccion();
       return;
     }
   }
@@ -398,6 +415,9 @@ function eliminar() {
       mensaje.value = '';
       ultimaCubetaAfectada.value = null;
     }, 2000);
+    
+    // Verificar si se necesita reducción
+    verificarReduccion();
     return;
   }
 
@@ -406,12 +426,22 @@ function eliminar() {
 }
 
 function verificarExpansion() {
-  if (porcentajeOcupacion.value >= 80) {
+  if (porcentajeOcupacion.value >= 75) {
     mostrarIndicadorExpansion.value = true;
     
     setTimeout(() => {
       expandirEstructura();
       mostrarIndicadorExpansion.value = false;
+    }, 1500);
+  }
+}
+
+function verificarReduccion() {
+  // Verificar si se necesita reducción: densidad menor a 80% (0.8 registros por cubeta)
+  // Solo reducir si hay más de 2 cubetas para evitar estructuras muy pequeñas
+  if (densidadReduccion.value < 0.8 && estructura.value.cubetas > 2) {
+    setTimeout(() => {
+      reducirEstructura();
     }, 1500);
   }
 }
@@ -435,15 +465,39 @@ function expandirEstructura() {
     });
   }
 
-  // Duplicar cantidad de cubetas (expansión total)
-  const nuevasCubetas = estructura.value.cubetas * 2;
+  let nuevasCubetas: number;
+  let tipoExpansion: string;
+
+  if (config.value.tipoOperacion === 'parcial') {
+    // Lógica de expansión parcial
+    estructura.value.expansionesParciales++;
+    
+    // Cada 2 expansiones parciales = 1 total
+    if (estructura.value.expansionesParciales % 2 === 1) {
+      // Primera expansión parcial: +1 cubeta
+      nuevasCubetas = estructura.value.cubetas + 1;
+      tipoExpansion = `Parcial ${estructura.value.expansionesParciales}`;
+    } else {
+      // Segunda expansión parcial: duplicar desde 2 posiciones atrás
+      // Secuencia: 2->3->4->6->8->10->12->20->24
+      const posicionesAtras = estructura.value.cubetas - 1; // Una posición atrás de la actual
+      nuevasCubetas = estructura.value.cubetas + posicionesAtras;
+      tipoExpansion = `Parcial ${estructura.value.expansionesParciales} (=Total)`;
+      estructura.value.expansiones++;
+    }
+  } else {
+    // Expansión total: duplicar
+    nuevasCubetas = estructura.value.cubetas * 2;
+    estructura.value.expansiones++;
+    tipoExpansion = `Total ${estructura.value.expansiones}`;
+  }
+
   estructura.value.cubetas = nuevasCubetas;
   estructura.value.capacidadTotal = nuevasCubetas * estructura.value.registrosPorCubeta;
   estructura.value.tabla = Array.from({ length: nuevasCubetas }, () => 
     Array(estructura.value.registrosPorCubeta).fill(null)
   );
   estructura.value.desbordamientos = Array.from({ length: nuevasCubetas }, () => []);
-  estructura.value.expansiones++;
 
   // Reinsertar todos los elementos en orden
   elementosOrdenados.forEach(elemento => {
@@ -463,7 +517,82 @@ function expandirEstructura() {
     }
   });
 
-  mensaje.value = `¡Estructura expandida! Ahora tiene ${nuevasCubetas} cubetas (Expansión #${estructura.value.expansiones})`;
+  mensaje.value = `¡Estructura expandida! Ahora tiene ${nuevasCubetas} cubetas (Expansión ${tipoExpansion})`;
+  setTimeout(() => mensaje.value = '', 4000);
+}
+
+function reducirEstructura() {
+  // Guardar todos los elementos en orden de inserción
+  const elementosOrdenados: number[] = [];
+  
+  // Recorrer cubetas en orden
+  for (let i = 0; i < estructura.value.cubetas; i++) {
+    // Primero los elementos de la tabla
+    for (let j = 0; j < estructura.value.registrosPorCubeta; j++) {
+      const valor = estructura.value.tabla[i][j];
+      if (valor !== null) {
+        elementosOrdenados.push(valor);
+      }
+    }
+    // Luego los desbordamientos
+    estructura.value.desbordamientos[i].forEach(valor => {
+      elementosOrdenados.push(valor);
+    });
+  }
+
+  let nuevasCubetas: number;
+  let tipoReduccion: string;
+
+  if (config.value.tipoOperacion === 'parcial') {
+    // Lógica de reducción parcial
+    estructura.value.reduccionesParciales++;
+    
+    // Cada 2 reducciones parciales = 1 total
+    if (estructura.value.reduccionesParciales % 2 === 1) {
+      // Primera reducción parcial: -1 cubeta
+      nuevasCubetas = Math.max(2, estructura.value.cubetas - 1);
+      tipoReduccion = `Parcial ${estructura.value.reduccionesParciales}`;
+    } else {
+      // Segunda reducción parcial: reducir más significativamente
+      // Inverso de la lógica de expansión
+      const reduccionExtra = Math.floor(estructura.value.cubetas / 3);
+      nuevasCubetas = Math.max(2, estructura.value.cubetas - reduccionExtra);
+      tipoReduccion = `Parcial ${estructura.value.reduccionesParciales} (=Total)`;
+      estructura.value.reducciones++;
+    }
+  } else {
+    // Reducción total: dividir a la mitad
+    nuevasCubetas = Math.max(2, Math.floor(estructura.value.cubetas / 2));
+    estructura.value.reducciones++;
+    tipoReduccion = `Total ${estructura.value.reducciones}`;
+  }
+
+  estructura.value.cubetas = nuevasCubetas;
+  estructura.value.capacidadTotal = nuevasCubetas * estructura.value.registrosPorCubeta;
+  estructura.value.tabla = Array.from({ length: nuevasCubetas }, () => 
+    Array(estructura.value.registrosPorCubeta).fill(null)
+  );
+  estructura.value.desbordamientos = Array.from({ length: nuevasCubetas }, () => []);
+
+  // Reinsertar todos los elementos en orden
+  elementosOrdenados.forEach(elemento => {
+    const cubeta = HashModulo(elemento, estructura.value.cubetas);
+    
+    let insertado = false;
+    for (let i = 0; i < estructura.value.registrosPorCubeta; i++) {
+      if (estructura.value.tabla[cubeta][i] === null) {
+        estructura.value.tabla[cubeta][i] = elemento;
+        insertado = true;
+        break;
+      }
+    }
+    
+    if (!insertado) {
+      estructura.value.desbordamientos[cubeta].push(elemento);
+    }
+  });
+
+  mensaje.value = `¡Estructura reducida! Ahora tiene ${nuevasCubetas} cubetas (Reducción ${tipoReduccion})`;
   setTimeout(() => mensaje.value = '', 4000);
 }
 
@@ -476,7 +605,10 @@ function resetearEstructura() {
       capacidadTotal: 0,
       tabla: [],
       desbordamientos: [],
-      expansiones: 0
+      expansiones: 0,
+      reducciones: 0,
+      expansionesParciales: 0,
+      reduccionesParciales: 0
     };
     elementoInsertar.value = null;
     mensaje.value = '';
