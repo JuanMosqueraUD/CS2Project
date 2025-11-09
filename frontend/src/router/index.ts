@@ -19,6 +19,7 @@ import HashPlegamientoExterno from '../views/external-searches/hash/HashPlegamie
 import HashTruncamientoExterno from '../views/external-searches/hash/HashTruncamientoExterno.vue';
 import HashCambioBaseExterno from '../views/external-searches/hash/HashCambioBaseExterno.vue';
 import DinamicaView from '../views/DinamicaView.vue';
+import IndicesView from '../views/external-searches/IndicesView.vue';
 
 const routes = [
   { path: "/", name: "home", component: HomeView },
@@ -51,6 +52,7 @@ const routes = [
   { path: "/external/hash/truncamiento", name: "external-hash-truncamiento", component: HashTruncamientoExterno },
   { path: "/external/hash/cambio-base", name: "external-hash-cambio-base", component: HashCambioBaseExterno },
   { path: "/external/estructuras-dinamicas", name: "external-estructuras-dinamicas", component: DinamicaView },
+  { path: "/external/indices", name: "external-indices", component: IndicesView },
 ]
 
 const router = createRouter({

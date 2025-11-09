@@ -86,6 +86,9 @@ const residuosOpen = ref(false);
         <button class="outline contrast">
           <router-link to="/external/estructuras-dinamicas" class="outline contrast">Estructuras Dinámicas</router-link>
         </button>
+        <button class="outline contrast">
+          <router-link to="/external/indices" class="outline contrast">Índices</router-link>
+        </button>
       </div>
 
       <!-- Opciones de Hash Externo -->

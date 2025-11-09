@@ -23,132 +23,27 @@ Organiza elementos ordenados en bloques. Primero busca el bloque correcto, luego
 
 #### Hash Externas
 
-Las funciones hash externas determinan el bloque donde insertar/buscar un elemento. Se ofrecen dos estrategias de resolución de colisiones:
+Las funciones hash externas determinan el bloque donde insertar/buscar un elemento. Se implementan 5 funciones hash:
 
-1. **Estructura Secundaria**: Bloques secundarios para elementos que no caben en el bloque principal
-2. **Área de Colisiones**: Área adicional dentro de cada bloque para manejar colisiones
+1. **Hash Módulo**: `hash(clave) = clave % número_de_bloques`
+2. **Hash Cuadrado**: Eleva la clave al cuadrado y extrae dígitos del centro
+3. **Hash Plegamiento**: Divide la clave en grupos, los suma y aplica módulo
+4. **Hash Truncamiento**: Selecciona dígitos en posiciones pares
+5. **Hash Cambio de Base**: Convierte la clave a base 2-9 y extrae dígitos
 
-##### 1. Hash Módulo Externa
+Estrategias de resolución de colisiones:
+- **Estructura Secundaria**: Bloques secundarios paralelos
+- **Área de Colisiones**: Área adicional dentro de cada bloque
 
-**Descripción**: Utiliza el operador módulo para determinar el bloque.
+#### Estructuras Dinámicas
 
-**Fórmula**:
-```
-hash(clave) = clave % número_de_bloques
-```
+Tablas hash que se expanden/reducen automáticamente según la densidad de ocupación:
+- **Expansión**: Cuando ocupación ≥ 75%
+- **Reducción**: Cuando densidad ≤ 0.8 registros/cubeta
+- **Reconstrucción de cubeta**: Al eliminar, los elementos se compactan automáticamente
+- **Validación de claves**: Tamaño obligatorio de dígitos
 
-**Ejemplo**:
-- Capacidad: 100 elementos
-- Elementos por bloque: ⌊√100⌋ = 10
-- Número de bloques: 10
-- Clave 1234 → 1234 % 10 = 4 → Bloque 4
-
-##### 2. Hash Cuadrado Externa
-
-**Descripción**: Eleva la clave al cuadrado y extrae dígitos del centro.
-
-**Proceso**:
-1. Elevar la clave al cuadrado
-2. Convertir a cadena
-3. Extraer dígitos centrales según la cantidad necesaria
-4. Aplicar módulo para asegurar rango válido
-
-**Ejemplo**:
-- Clave: 123
-- Cuadrado: 123² = 15129
-- Cadena: "15129" (5 dígitos)
-- Si necesitamos 2 dígitos: extraer centro → "12"
-- Resultado: 12 % número_de_bloques
-
-##### 3. Hash Plegamiento Externa
-
-**Descripción**: Divide la clave en grupos de dígitos, los suma y aplica módulo.
-
-**Proceso**:
-1. Determinar tamaño de grupos: `Math.floor(Math.log10(número_de_bloques))`
-2. Dividir la clave en grupos de ese tamaño
-3. Sumar todos los grupos
-4. Aplicar módulo
-
-**Ejemplo con 100 bloques (2 dígitos por grupo)**:
-- Clave: 12345678
-- Grupos: [12, 34, 56, 78]
-- Suma: 12 + 34 + 56 + 78 = 180
-- Resultado: 180 % 100 = 80 → Bloque 80
-
-**Ejemplo con 4 bloques (1 dígito por grupo)**:
-- Clave: 1111
-- Grupos: [1, 1, 1, 1]
-- Suma: 1 + 1 + 1 + 1 = 4
-- Resultado: 4 % 4 = 0 → Bloque 0
-
-##### 4. Hash Truncamiento Externa
-
-**Descripción**: Selecciona dígitos en posiciones pares (contadas desde 1).
-
-**Proceso**:
-1. Convertir clave a cadena
-2. Extraer dígitos en posiciones pares: posición 2, 4, 6, 8...
-3. (En índice 0-based: índices 1, 3, 5, 7...)
-4. Concatenar y aplicar módulo
-
-**Ejemplo**:
-- Clave: 123456
-- Posiciones (1-based): 1:1, 2:2, 3:3, 4:4, 5:5, 6:6
-- Extraer pares: 2, 4, 6
-- Resultado: 246 % número_de_bloques
-
-##### 5. Hash Cambio de Base Externa ⭐ NUEVO
-
-**Descripción**: Convierte la clave a una base numérica diferente (2-9) y extrae los dígitos menos significativos.
-
-**Proceso**:
-1. Seleccionar una base entre 2 y 9
-2. Para cada dígito de la clave, multiplicar por base^posición
-3. Sumar todos los resultados
-4. Extraer los dígitos menos significativos según el número de bloques
-5. Aplicar módulo para garantizar el rango
-
-**Fórmula**:
-```
-Para clave = d₁d₂d₃...dₙ en base b:
-valor = d₁ × b^(n-1) + d₂ × b^(n-2) + ... + dₙ × b^0
-```
-
-**Ejemplos**:
-
-**Ejemplo 1: Base 9 con clave 1234**
-- d₁=1, d₂=2, d₃=3, d₄=4
-- Conversión: 1×9³ + 2×9² + 3×9¹ + 4×9⁰
-  - 1 × 729 = 729
-  - 2 × 81 = 162
-  - 3 × 9 = 27
-  - 4 × 1 = 4
-- Suma: 729 + 162 + 27 + 4 = 922
-- Si hay 10 bloques (1 dígito): extraer último = 2 → Bloque 2
-- Si hay 100 bloques (2 dígitos): extraer últimos 2 = 22 → Bloque 22
-
-**Ejemplo 2: Base 7 con clave 555**
-- Conversión: 5×7² + 5×7¹ + 5×7⁰
-  - 5 × 49 = 245
-  - 5 × 7 = 35
-  - 5 × 1 = 5
-- Suma: 245 + 35 + 5 = 285
-- Con 10 bloques: 285 % 10 = 5 → Bloque 5
-
-**Ejemplo 3: Base 2 con clave 1010**
-- Conversión: 1×2³ + 0×2² + 1×2¹ + 0×2⁰
-  - 1 × 8 = 8
-  - 0 × 4 = 0
-  - 1 × 2 = 2
-  - 0 × 1 = 0
-- Suma: 8 + 0 + 2 + 0 = 10
-- Con 16 bloques: 10 % 16 = 10 → Bloque 10
-
-**Ventajas**:
-- Distribución diferente según la base elegida
-- Más opciones de ajuste fino para distribución de datos
-- Útil cuando se conoce el patrón de las claves
+> 📖 **Documentación detallada**: Ver [`docs/README_BUSQUEDAS_EXTERNAS.md`](docs/README_BUSQUEDAS_EXTERNAS.md)
 
 ### Árboles de Residuos
 - **Residuo Simple**: Árbol binario de residuos

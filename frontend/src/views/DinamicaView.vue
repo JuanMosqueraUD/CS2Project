@@ -27,6 +27,16 @@
             placeholder="Ej: 2"
           />
         </div>
+        
+        <div>
+          <label>Tamaño de Clave (dígitos):</label>
+          <input 
+            type="number" 
+            v-model.number="config.tamanioClave" 
+            min="1"
+            placeholder="Ej: 2"
+          />
+        </div>
       </div>
 
       <div class="config-row">
@@ -39,10 +49,11 @@
         </div>
       </div>
 
-      <div class="info-preview" v-if="config.cubetas > 0 && config.registrosPorCubeta > 0">
+      <div class="info-preview" v-if="config.cubetas > 0 && config.registrosPorCubeta > 0 && config.tamanioClave > 0">
         <p><strong>Capacidad Total:</strong> {{ config.cubetas * config.registrosPorCubeta }} registros</p>
+        <p><strong>Tamaño de Clave:</strong> {{ config.tamanioClave }} dígito{{ config.tamanioClave > 1 ? 's' : '' }}</p>
         <p><strong>Umbral de Expansión:</strong> 75% ({{ Math.floor(config.cubetas * config.registrosPorCubeta * 0.75) }} registros)</p>
-        <p><strong>Umbral de Reducción:</strong> Densidad < 80% (< {{ (config.cubetas * 0.8).toFixed(1) }} registros/cubetas)</p>
+        <p><strong>Umbral de Reducción:</strong> Densidad ≤ 0.8 (≤ {{ (config.cubetas * 0.8).toFixed(1) }} registros/cubeta)</p>
         <p><strong>Tipo:</strong> {{ config.tipoOperacion === 'total' ? 'Total (duplicar/dividir)' : 'Parcial (2 parciales = 1 total)' }}</p>
         <p><strong>Hash:</strong> Módulo sobre {{ config.cubetas }} cubetas</p>
       </div>
@@ -98,6 +109,18 @@
           <button @click="buscar">Buscar</button>
           <button @click="eliminar">Eliminar</button>
           <button @click="resetearEstructura" class="btn-danger">Resetear</button>
+        </div>
+      </div>
+
+      <!-- Modal de confirmación para resetear -->
+      <div v-if="mostrarModalReset" class="modal-overlay" @click="cancelarReset">
+        <div class="modal-content" @click.stop>
+          <h3>Confirmar Reseteo</h3>
+          <p>¿Estás seguro de que deseas resetear la estructura? Se perderán todos los datos.</p>
+          <div class="modal-buttons">
+            <button @click="confirmarReset" class="btn-danger">Sí, Resetear</button>
+            <button @click="cancelarReset" class="btn-secondary">Cancelar</button>
+          </div>
         </div>
       </div>
 
@@ -171,6 +194,7 @@ import { HashModulo } from '../utils/funciones';
 interface Config {
   cubetas: number;
   registrosPorCubeta: number;
+  tamanioClave: number;
   tipoOperacion: 'total' | 'parcial';
 }
 
@@ -189,6 +213,7 @@ interface Estructura {
 const config = ref<Config>({
   cubetas: 8,
   registrosPorCubeta: 2,
+  tamanioClave: 2,
   tipoOperacion: 'total'
 });
 
@@ -211,6 +236,7 @@ const resultado = ref('');
 const ultimaCubetaAfectada = ref<number | null>(null);
 const ultimoElementoInsertado = ref<number | null>(null);
 const mostrarIndicadorExpansion = ref(false);
+const mostrarModalReset = ref(false);
 
 const cantidadElementos = computed(() => {
   let count = 0;
@@ -241,7 +267,14 @@ const densidadReduccion = computed(() => {
 
 function crearEstructura() {
   if (config.value.cubetas <= 0 || config.value.registrosPorCubeta <= 0) {
-    alert('Por favor ingrese valores válidos para cubetas y registros');
+    mensaje.value = 'Por favor ingrese valores válidos para cubetas y registros';
+    setTimeout(() => mensaje.value = '', 3000);
+    return;
+  }
+
+  if (!config.value.tamanioClave || config.value.tamanioClave <= 0) {
+    mensaje.value = 'Por favor especifique el tamaño de clave (cantidad de dígitos)';
+    setTimeout(() => mensaje.value = '', 3000);
     return;
   }
 
@@ -272,6 +305,14 @@ function insertar() {
   }
 
   const elemento = elementoInsertar.value;
+  
+  // Validar tamaño de clave
+  const elementoStr = Math.abs(elemento).toString();
+  if (elementoStr.length !== config.value.tamanioClave) {
+    mensaje.value = `El elemento debe tener exactamente ${config.value.tamanioClave} dígito${config.value.tamanioClave > 1 ? 's' : ''}`;
+    setTimeout(() => mensaje.value = '', 3000);
+    return;
+  }
   
   // Verificar si el elemento ya existe
   if (existeElemento(elemento)) {
@@ -387,7 +428,8 @@ function eliminar() {
   // Buscar en la tabla
   for (let i = 0; i < estructura.value.registrosPorCubeta; i++) {
     if (estructura.value.tabla[cubeta][i] === elemento) {
-      estructura.value.tabla[cubeta][i] = null;
+      // Elemento encontrado en la tabla, proceder a reconstruir
+      reconstruirCubeta(cubeta, i);
       ultimaCubetaAfectada.value = cubeta;
       mensaje.value = `Elemento ${elemento} eliminado de cubeta ${cubeta}`;
       elementoInsertar.value = null;
@@ -425,6 +467,50 @@ function eliminar() {
   setTimeout(() => mensaje.value = '', 3000);
 }
 
+/**
+ * Reconstruye una cubeta después de eliminar un elemento.
+ * Mueve todos los elementos posteriores (en la tabla y desbordamiento) hacia arriba.
+ * 
+ * @param cubeta - Índice de la cubeta a reconstruir
+ * @param posicionEliminada - Posición del elemento eliminado en la tabla
+ */
+function reconstruirCubeta(cubeta: number, posicionEliminada: number) {
+  // Recolectar todos los elementos restantes de la cubeta (después de la posición eliminada)
+  const elementosRestantes: number[] = [];
+  
+  // Agregar elementos de la tabla desde la posición siguiente
+  for (let i = posicionEliminada + 1; i < estructura.value.registrosPorCubeta; i++) {
+    const valor = estructura.value.tabla[cubeta][i];
+    if (valor !== null) {
+      elementosRestantes.push(valor);
+    }
+  }
+  
+  // Agregar todos los elementos del desbordamiento
+  elementosRestantes.push(...estructura.value.desbordamientos[cubeta]);
+  
+  // Limpiar desde la posición eliminada hasta el final
+  for (let i = posicionEliminada; i < estructura.value.registrosPorCubeta; i++) {
+    estructura.value.tabla[cubeta][i] = null;
+  }
+  
+  // Limpiar desbordamiento
+  estructura.value.desbordamientos[cubeta] = [];
+  
+  // Reinsertar elementos en la cubeta
+  let posicionActual = posicionEliminada;
+  for (const elemento of elementosRestantes) {
+    if (posicionActual < estructura.value.registrosPorCubeta) {
+      // Insertar en la tabla
+      estructura.value.tabla[cubeta][posicionActual] = elemento;
+      posicionActual++;
+    } else {
+      // Insertar en desbordamiento
+      estructura.value.desbordamientos[cubeta].push(elemento);
+    }
+  }
+}
+
 function verificarExpansion() {
   if (porcentajeOcupacion.value >= 75) {
     mostrarIndicadorExpansion.value = true;
@@ -437,9 +523,9 @@ function verificarExpansion() {
 }
 
 function verificarReduccion() {
-  // Verificar si se necesita reducción: densidad menor a 80% (0.8 registros por cubeta)
+  // Verificar si se necesita reducción: densidad menor o igual a 0.8 registros por cubeta
   // Solo reducir si hay más de 2 cubetas para evitar estructuras muy pequeñas
-  if (densidadReduccion.value < 0.8 && estructura.value.cubetas > 2) {
+  if (densidadReduccion.value <= 0.8 && estructura.value.cubetas > 2) {
     setTimeout(() => {
       reducirEstructura();
     }, 1500);
@@ -597,25 +683,32 @@ function reducirEstructura() {
 }
 
 function resetearEstructura() {
-  if (confirm('¿Estás seguro de que deseas resetear la estructura?')) {
-    estructuraCreada.value = false;
-    estructura.value = {
-      cubetas: 0,
-      registrosPorCubeta: 0,
-      capacidadTotal: 0,
-      tabla: [],
-      desbordamientos: [],
-      expansiones: 0,
-      reducciones: 0,
-      expansionesParciales: 0,
-      reduccionesParciales: 0
-    };
-    elementoInsertar.value = null;
-    mensaje.value = '';
-    resultado.value = '';
-    ultimaCubetaAfectada.value = null;
-    ultimoElementoInsertado.value = null;
-  }
+  mostrarModalReset.value = true;
+}
+
+function confirmarReset() {
+  estructuraCreada.value = false;
+  estructura.value = {
+    cubetas: 0,
+    registrosPorCubeta: 0,
+    capacidadTotal: 0,
+    tabla: [],
+    desbordamientos: [],
+    expansiones: 0,
+    reducciones: 0,
+    expansionesParciales: 0,
+    reduccionesParciales: 0
+  };
+  elementoInsertar.value = null;
+  mensaje.value = '';
+  resultado.value = '';
+  ultimaCubetaAfectada.value = null;
+  ultimoElementoInsertado.value = null;
+  mostrarModalReset.value = false;
+}
+
+function cancelarReset() {
+  mostrarModalReset.value = false;
 }
 </script>
 
@@ -934,5 +1027,76 @@ h1 {
   .registro .value {
     font-size: 0.9rem;
   }
+}
+
+/* Modal de confirmación */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: var(--card-background-color);
+  border: 2px solid var(--primary);
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  text-align: center;
+  color: var(--primary);
+}
+
+.modal-content p {
+  margin-bottom: 1.5rem;
+  text-align: center;
+  color: var(--color);
+}
+
+.modal-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.modal-buttons button {
+  flex: 1;
+  max-width: 150px;
+}
+
+.btn-secondary {
+  background: #6b7280;
+  border-color: #6b7280;
+}
+
+.btn-secondary:hover {
+  background: #4b5563;
+  border-color: #4b5563;
 }
 </style>
