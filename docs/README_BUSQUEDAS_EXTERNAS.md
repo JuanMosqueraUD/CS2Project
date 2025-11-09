@@ -814,27 +814,84 @@ Para crear una estructura de índices se requieren los siguientes parámetros:
 
 #### Cálculos Básicos
 
-**Factor de Bloque (bfr - Blocking Factor):**
+El sistema de índices diferencia entre dos estructuras: la **estructura principal** (archivo de datos) y la **estructura de índices**.
+
+##### Estructura Principal (Archivo de Datos)
+
+**Factor de Bloque Principal (bfr - Blocking Factor):**
 ```
 bfr = ⌊B / Rl⌋
 ```
-Representa el número de registros que caben en un bloque.
+Representa el número de registros que caben en un bloque del archivo de datos.
 
-**Número de Bloques Necesarios:**
+**Número de Bloques en Estructura Principal (b):**
 ```
-bloques = ⌈r / bfr⌉
+b = ⌈r / bfr⌉
 ```
-Calcula cuántos bloques se necesitan para almacenar todos los registros.
+Calcula cuántos bloques se necesitan para almacenar todos los registros en el archivo de datos.
 
-**Ejemplo:**
-```
-Rl = 100 bytes
-B = 512 bytes
-r = 1000 registros
+##### Estructura de Índices
 
-bfr = ⌊512 / 100⌋ = 5 registros por bloque
-bloques = ⌈1000 / 5⌉ = 200 bloques
+**Constantes del Índice:**
 ```
+Rli = 15 bytes
+```
+Longitud fija de cada registro de índice (clave + puntero).
+
+**Factor de Bloque de Índices (bfri):**
+```
+bfri = ⌊B / Rli⌋
+```
+Número de entradas de índice que caben en un bloque de índices.
+
+**Número de Bloques de Índices (bi):**
+
+La fórmula varía según el tipo de índice:
+
+- **Para Índice Primario:**
+  ```
+  bi = ⌈b / bfri⌉
+  ```
+  Se calcula en base a los bloques de la estructura principal (b), ya que cada bloque del archivo de datos tiene una entrada en el índice.
+
+- **Para Índice Secundario:**
+  ```
+  bi = ⌈r / bfri⌉
+  ```
+  Se calcula en base al número de registros (r), ya que cada registro puede tener su propia entrada en el índice secundario.
+
+**Ejemplo Completo:**
+```
+Parámetros:
+  Rl = 100 bytes (longitud registro de datos)
+  B = 512 bytes (capacidad del bloque)
+  r = 1000 registros
+  Rli = 15 bytes (longitud registro de índice)
+
+Estructura Principal:
+  bfr = ⌊512 / 100⌋ = 5 registros por bloque
+  b = ⌈1000 / 5⌉ = 200 bloques en archivo de datos
+
+Estructura de Índices:
+  bfri = ⌊512 / 15⌋ = 34 entradas de índice por bloque
+
+  Índice Primario:
+    bi = ⌈200 / 34⌉ = 6 bloques de índice
+    (una entrada por cada bloque del archivo de datos)
+
+  Índice Secundario:
+    bi = ⌈1000 / 34⌉ = 30 bloques de índice
+    (una entrada por cada registro)
+```
+
+**Resumen de Variables:**
+| Variable | Descripción | Fórmula | Aplica a |
+|----------|-------------|---------|----------|
+| **bfr** | Registros por bloque (datos) | ⌊B / Rl⌋ | Estructura principal |
+| **b** | Bloques en archivo de datos | ⌈r / bfr⌉ | Estructura principal |
+| **Rli** | Longitud registro de índice | 15 bytes (constante) | Estructura de índices |
+| **bfri** | Registros índice por bloque | ⌊B / Rli⌋ | Estructura de índices |
+| **bi** | Bloques de índices | ⌈b/bfri⌉ o ⌈r/bfri⌉ | Estructura de índices |
 
 ### Tipos de Índices
 
@@ -941,46 +998,352 @@ Nivel 1 (Índice Base):
 
 #### Inserción
 
-**Algoritmo:**
-1. Calcular en qué bloque debe insertarse la entrada
-2. Si hay espacio en el bloque:
-   - Insertar la entrada (clave, puntero)
-3. Si el bloque está lleno:
-   - Crear nuevo bloque o redistribuir entradas
-   - Actualizar referencias
+**Algoritmo de Inserción Ordenada:**
+1. Buscar la posición correcta en el archivo de datos manteniendo el orden
+2. Si la posición está ocupada, hacer corrimiento hacia la derecha
+3. Insertar la clave en el archivo de datos
+4. Actualizar el índice correspondiente:
+   - **Índice Primario**: Actualizar con la última clave del bloque modificado
+   - **Índice Secundario**: Agregar nueva entrada (clave, bloque)
 
-**Complejidad:** O(log₂ b) para búsqueda + O(1) para inserción
+**Complejidad:** O(n) en el peor caso por corrimiento
+
+**Ejemplo - Índice Primario:**
+```
+Archivo de Datos (Bloque 1): [10, 20, 30, 40, 50]
+Índice Primario: (50 → B1)  // Última clave del bloque
+
+Insertar 25:
+1. Encontrar posición: entre 20 y 30
+2. Hacer corrimiento: [10, 20, 25, 30, 40] y 50 se mueve al Bloque 2
+3. Actualizar índice primario: (40 → B1), (50 → B2)
+```
+
+**Implementación - Índice Primario:**
+```typescript
+// El índice primario guarda la ÚLTIMA clave de cada bloque
+// Esto permite búsqueda binaria: buscar primer índice donde clave >= K
+function actualizarIndicePrimario(bloqueModificado: number) {
+  // Encontrar la última clave no nula del bloque
+  let ultimaClave = null;
+  for (let i = bloque.length - 1; i >= 0; i--) {
+    if (bloque[i] !== null) {
+      ultimaClave = bloque[i];
+      break;
+    }
+  }
+  // Actualizar entrada del índice con (ultimaClave → bloqueModificado)
+}
+```
 
 #### Búsqueda
 
-**Algoritmo:**
-1. Localizar el bloque del índice que contiene la clave
-2. Buscar la entrada dentro del bloque
-3. Extraer el puntero al bloque de datos
-4. Acceder al bloque de datos
-5. Recuperar el registro
+**Índice Primario - Búsqueda Binaria:**
 
-**Complejidad:** O(log₂ b) + O(1)
+El índice primario almacena la **última clave** de cada bloque, permitiendo búsqueda binaria eficiente.
+
+**Algoritmo:**
+1. Realizar búsqueda binaria en el índice primario
+2. Encontrar el primer bloque donde `última_clave >= clave_buscada`
+3. Acceder al bloque de datos correspondiente
+4. Buscar la clave dentro del bloque
+
+**Ejemplo:**
+```
+Índices Primarios:
+  (25 → B1)  // B1 contiene claves [10, 15, 20, 25]
+  (50 → B2)  // B2 contiene claves [30, 35, 40, 50]
+  (75 → B3)  // B3 contiene claves [55, 60, 65, 75]
+
+Buscar 35:
+1. Búsqueda binaria en índice:
+   - 35 > 25 → descartar B1
+   - 35 <= 50 → ir a B2
+2. Buscar 35 dentro de B2 → Encontrado
+```
+
+**Complejidad:** O(log₂ b) + O(bfr) = O(log₂ n)
+
+**Índice Secundario - Búsqueda Lineal:**
+
+El índice secundario tiene una entrada por cada registro.
+
+**Algoritmo:**
+1. Recorrer linealmente el índice secundario
+2. Buscar la entrada con la clave
+3. Seguir el puntero al bloque de datos
+4. Recuperar el registro
+
+**Complejidad:** O(r) en el peor caso
 
 #### Eliminación
 
-**Algoritmo:**
-1. Buscar la entrada en el índice
-2. Eliminar la entrada (clave, puntero)
-3. Compactar el bloque si es necesario
-4. Actualizar estructura si el bloque queda vacío
+**Algoritmo de Eliminación con Reorganización:**
+1. Buscar la clave en el archivo de datos
+2. Eliminar la clave y hacer corrimiento hacia la izquierda
+3. Reorganizar TODOS los índices:
+   - **Índice Primario**: Reconstruir con la última clave de cada bloque usado
+   - **Índice Secundario**: Reconstruir todas las entradas en orden
 
-**Complejidad:** O(log₂ b) + O(1)
+**Importante:** Los índices se reorganizan completamente después de cada eliminación para mantener consistencia.
+
+**Ejemplo - Reorganización de Índice Primario:**
+```
+Antes de eliminar 30:
+  Archivo: B1[10,20,30] B2[40,50,60]
+  Índice:  (30→B1) (60→B2)
+
+Después de eliminar 30:
+  Archivo: B1[10,20,40] B2[50,60,--]
+  Índice:  (40→B1) (60→B2)  // Reconstruido con nuevas últimas claves
+```
+
+**Implementación - Reorganización:**
+```typescript
+function reorganizarIndices() {
+  // 1. Limpiar todos los índices
+  limpiarIndices();
+  
+  if (indicePrimario) {
+    // 2. Recorrer bloques con datos
+    for (cada bloque con datos) {
+      // 3. Encontrar última clave del bloque
+      ultimaClave = encontrarUltimaClave(bloque);
+      // 4. Agregar entrada (ultimaClave → bloque)
+      agregarEntradaIndice(ultimaClave, bloque);
+    }
+  } else {
+    // Índice secundario: una entrada por cada clave
+    for (cada clave en archivo_datos) {
+      agregarEntradaIndice(clave, bloque_que_contiene);
+    }
+  }
+}
+```
+
+**Complejidad:** O(n) por reorganización completa
+
+### Numeración de Registros
+
+**Numeración Global Continua:**
+
+Los registros y las entradas de índice se numeran de forma **global y continua** a través de todos los bloques (no se reinicia la numeración en cada bloque):
+
+**Archivo de Datos:**
+```
+Bloque 1 (bfr=5):
+  R1:  10
+  R2:  20
+  R3:  30
+  R4:  40
+  R5:  50
+
+Bloque 2 (bfr=5):
+  R6:  60   ← Continúa desde R5
+  R7:  70
+  R8:  80
+  R9:  90
+  R10: 100
+
+Bloque 3 (bfr=5):
+  R11: 110  ← Continúa desde R10
+  R12: 120
+  ...
+```
+
+**Estructura de Índices:**
+```
+Bloque Índice 1 (bfri=34):
+  E1:  (10 → B1)
+  E2:  (20 → B1)
+  E3:  (30 → B1)
+  ...
+  E34: (340 → B10)
+
+Bloque Índice 2 (bfri=34):
+  E35:  (350 → B11)  ← Continúa desde E34
+  E36:  (360 → B11)
+  ...
+  E68:  (680 → B20)
+
+Bloque Índice 3 (bfri=34):
+  E69:  (690 → B21)  ← Continúa desde E68
+  ...
+```
+
+**Fórmulas:**
+```
+Número de Registro Global = (bloqueIdx × bfr) + registroIdx + 1
+Número de Entrada Global  = (bloqueIdx × bfri) + entradaIdx + 1
+```
+
+**Ejemplos:**
+- Archivo de Datos - Bloque 2, Registro 3: `(2 × 5) + 3 + 1 = R14`
+- Índices - Bloque 1, Entrada 20: `(1 × 34) + 20 + 1 = E55`
+
+**Implementación:**
+```typescript
+function getNumeroRegistroGlobal(bloqueIdx: number, regIdx: number): number {
+  return bloqueIdx * estructura.value.bfr + regIdx + 1;
+}
+
+function getNumeroEntradaGlobal(bloqueIdx: number, entIdx: number): number {
+  return bloqueIdx * estructura.value.bfri + entIdx + 1;
+}
+```
+
+### Diferencias Clave entre Índice Primario y Secundario
+
+#### Índice Primario
+
+**Características:**
+- Una entrada por **bloque** del archivo de datos
+- Almacena la **última clave** de cada bloque
+- Requiere archivo de datos **ordenado**
+- Utiliza **búsqueda binaria** en el índice
+
+**Razón de usar la última clave:**
+```
+Si buscamos una clave K:
+1. Búsqueda binaria en índice
+2. Encontramos primer bloque donde última_clave >= K
+3. La clave K (si existe) está en ese bloque
+
+Ejemplo:
+  Índice: [(25→B1), (50→B2), (75→B3)]
+  Buscar 35:
+  - 35 > 25 ✗
+  - 35 <= 50 ✓ → Ir a B2
+  - B2 contiene [30,35,40,50] → Encontrado
+```
+
+**Ventajas:**
+- Menor espacio (una entrada por bloque)
+- Búsqueda O(log₂ b) muy eficiente
+- Ideal para claves primarias
+
+**Desventajas:**
+- Requiere mantener orden en archivo de datos
+- Reorganización costosa en eliminación
+
+#### Índice Secundario
+
+**Características:**
+- Una entrada por **registro** del archivo de datos
+- Almacena todas las claves
+- No requiere archivo de datos ordenado
+- Utiliza **búsqueda lineal** en el índice
+
+**Ventajas:**
+- Permite búsqueda por campos no primarios
+- No requiere orden en archivo de datos
+- Múltiples índices secundarios posibles
+
+**Desventajas:**
+- Mayor espacio (una entrada por registro)
+- Búsqueda O(r) menos eficiente
+- Más entradas a reorganizar en eliminación
+
+### Detalles de Implementación
+
+#### Estructura de Datos
+
+```typescript
+interface EntradaIndice {
+  clave: number | null;           // Clave almacenada
+  bloqueReferencia: number;       // Bloque al que apunta (1-indexed)
+}
+
+interface Estructura {
+  archivoDatos: (number | null)[][];  // [bloque][registro]
+  indiceSimple: EntradaIndice[][];    // [bloque_indice][entrada]
+  bfr: number;      // Registros por bloque de datos
+  bfri: number;     // Entradas por bloque de índice
+  b: number;        // Bloques en archivo de datos
+  bi: number;       // Bloques en índice
+}
+```
+
+#### Flujo de Inserción
+
+```
+1. insertar(clave)
+   ↓
+2. encontrarPosicionInsercion(clave)
+   ↓ (si posición ocupada)
+3. hacerCorrimiento(bloque, registro)
+   ↓
+4. archivo_datos[bloque][registro] = clave
+   ↓
+5. if (indicePrimario)
+      actualizarIndicePrimario(bloque)  // Última clave del bloque
+   else
+      insertarIndiceSecundario(clave, bloque)  // Nueva entrada
+```
+
+#### Flujo de Eliminación
+
+```
+1. eliminar(clave)
+   ↓
+2. Buscar clave en archivo_datos
+   ↓
+3. eliminarYCorrerIzquierda(bloque, registro)
+   ↓
+4. reorganizarIndices()  // Reconstrucción completa
+   ↓
+5. if (indicePrimario)
+      Para cada bloque con datos:
+        Agregar (ultimaClave → bloque)
+   else
+      Para cada registro:
+        Agregar (clave → bloque)
+```
+
+#### Corrimiento de Elementos
+
+**Inserción - Corrimiento a la Derecha:**
+```
+Estado: [10, 20, 30, 40, 50]
+Insertar 25 en posición 2:
+
+1. Guardar 50
+2. [10, 20, _, 30, 40] ← Correr 30 y 40
+3. [10, 20, 25, 30, 40] ← Insertar 25
+4. 50 se mueve al siguiente bloque
+```
+
+**Eliminación - Corrimiento a la Izquierda:**
+```
+Estado: [10, 20, 30, 40, 50]
+Eliminar 30 en posición 2:
+
+1. [10, 20, _, 40, 50]
+2. [10, 20, 40, 50, _] ← Correr todo a la izquierda
+```
 
 ### Visualización
 
 La interfaz muestra:
 
+**Disposición:**
+- **Columna Izquierda**: Estructura de Índices
+- **Columna Derecha**: Estructura Principal (Archivo de Datos)
+- Ambas estructuras se muestran verticalmente (de arriba hacia abajo)
+
+**Renderizado Condicional:**
+
+Para estructuras grandes, se aplica renderizado optimizado:
+- Muestra **primer y último bloque** siempre
+- Muestra **bloques con datos**
+- Dentro de cada bloque: muestra **primer y último registro** + registros ocupados
+- Indicadores `⋮` para elementos omitidos
+
 **Panel de Configuración:**
 - Tipo de índice (Primario/Secundario)
 - Estructura (Simple/Multinivel)
 - Parámetros: Rl, B, r
-- Cálculos: bfr, bloques necesarios
+- Cálculos: bfr, b, bfri, bi
 
 **Visualización de Índice Simple:**
 - Bloques dispuestos horizontalmente
