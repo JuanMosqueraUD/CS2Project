@@ -1,7 +1,7 @@
 // Utilidades comunes para validación de importación/exportación de estructuras
 import * as funciones from "./funciones.ts";
 
-export type StructureType = 'lineal' | 'binaria' | 'hash' | 'residuo-simple' | 'residuo-multiple' | 'residuo-digital' | 'lineal-externa' | 'binaria-externa' | 'hash-externa' | 'hash-modulo-externo' | 'hash-cuadrado-externo' | 'hash-plegamiento-externo' | 'hash-truncamiento-externo' | 'hash-cambio-base-externo';
+export type StructureType = 'lineal' | 'binaria' | 'hash' | 'residuo-simple' | 'residuo-multiple' | 'residuo-digital' | 'lineal-externa' | 'binaria-externa' | 'hash-externa' | 'hash-modulo-externo' | 'hash-cuadrado-externo' | 'hash-plegamiento-externo' | 'hash-truncamiento-externo' | 'hash-cambio-base-externo' | 'dinamica';
 export type HashFunction = 'mod' | 'cuadrado' | 'truncamiento' | 'plegamiento' | 'cambio-base';
 export type CollisionStrategy = 'lineal' | 'cuadratica' | 'doble-hash' | 'arreglos' | 'listas-anidadas' | 'encadenamiento';
 
@@ -441,43 +441,26 @@ export function validateExternalLinearImport(importData: any): ValidationResult 
     return { isValid: false, error: 'Los datos de la estructura deben ser un objeto válido.' };
   }
 
-  const { estructura, elementosOriginales } = importData.data;
+  const estructura = importData.data;
 
-  // Validar estructura de bloques
+  // Validar estructura de bloques (debe ser un array de arrays)
   if (!Array.isArray(estructura)) {
     return { isValid: false, error: 'La estructura debe ser un arreglo de bloques.' };
-  }
-
-  // Validar elementos originales
-  if (!Array.isArray(elementosOriginales)) {
-    return { isValid: false, error: 'Los elementos originales deben ser un arreglo.' };
   }
 
   // Validar que cada bloque tenga la estructura correcta
   for (let i = 0; i < estructura.length; i++) {
     const bloque = estructura[i];
-    if (!bloque || typeof bloque !== 'object') {
-      return { isValid: false, error: `El bloque ${i + 1} debe ser un objeto válido.` };
+    if (!Array.isArray(bloque)) {
+      return { isValid: false, error: `El bloque ${i + 1} debe ser un arreglo.` };
     }
 
-    if (!Array.isArray(bloque.elementos)) {
-      return { isValid: false, error: `El bloque ${i + 1} debe tener un arreglo de elementos.` };
-    }
-
-    if (typeof bloque.indiceInicio !== 'number' || bloque.indiceInicio < 0) {
-      return { isValid: false, error: `El bloque ${i + 1} debe tener un índice de inicio válido.` };
-    }
-
-    if (typeof bloque.indiceFin !== 'number' || bloque.indiceFin < bloque.indiceInicio) {
-      return { isValid: false, error: `El bloque ${i + 1} debe tener un índice de fin válido.` };
-    }
-  }
-
-  // Validar elementos originales (deben ser números válidos)
-  for (let i = 0; i < elementosOriginales.length; i++) {
-    const elemento = elementosOriginales[i];
-    if (typeof elemento !== 'number' || !Number.isInteger(elemento) || elemento < 0) {
-      return { isValid: false, error: `El elemento original ${i + 1} debe ser un número entero positivo.` };
+    // Validar elementos del bloque (deben ser números válidos o null)
+    for (let j = 0; j < bloque.length; j++) {
+      const elemento = bloque[j];
+      if (elemento !== null && (typeof elemento !== 'number' || !Number.isInteger(elemento) || elemento < 0)) {
+        return { isValid: false, error: `El elemento en bloque ${i + 1}, posición ${j + 1} debe ser un número entero positivo o null.` };
+      }
     }
   }
 
@@ -632,6 +615,113 @@ export function validateExternalHashImport(importData: any): ValidationResult {
         return { isValid: false, error: `El elemento en bloque ${i + 1}, posición ${j + 1} debe ser un número entero positivo o null.` };
       }
     }
+  }
+
+  return { isValid: true };
+}
+
+/**
+ * Valida un archivo de importación para estructuras dinámicas (hash con expansión/reducción)
+ */
+export function validateDynamicImport(importData: any): ValidationResult {
+  // Validación básica de estructura
+  const basicValidation = validateBasicFormat(importData, 'dinamica');
+  if (!basicValidation.isValid) return basicValidation;
+
+  // Validar configuración específica de estructuras dinámicas
+  const config = importData.config;
+
+  if (typeof config.cubetas !== 'number' || config.cubetas <= 0) {
+    return { isValid: false, error: 'El número de cubetas debe ser un número positivo.' };
+  }
+
+  if (typeof config.registrosPorCubeta !== 'number' || config.registrosPorCubeta <= 0) {
+    return { isValid: false, error: 'Los registros por cubeta deben ser un número positivo.' };
+  }
+
+  if (typeof config.tamanioClave !== 'number' || config.tamanioClave <= 0) {
+    return { isValid: false, error: 'El tamaño de clave debe ser un número positivo.' };
+  }
+
+  if (!config.tipoOperacion || (config.tipoOperacion !== 'total' && config.tipoOperacion !== 'parcial')) {
+    return { isValid: false, error: 'El tipo de operación debe ser "total" o "parcial".' };
+  }
+
+  // Validar estructura de datos
+  if (!importData.data || typeof importData.data !== 'object') {
+    return { isValid: false, error: 'Los datos de la estructura deben ser un objeto válido.' };
+  }
+
+  const estructura = importData.data;
+
+  // Validar propiedades de la estructura
+  if (typeof estructura.cubetas !== 'number' || estructura.cubetas <= 0) {
+    return { isValid: false, error: 'La estructura debe tener un número válido de cubetas.' };
+  }
+
+  if (typeof estructura.registrosPorCubeta !== 'number' || estructura.registrosPorCubeta <= 0) {
+    return { isValid: false, error: 'La estructura debe tener un número válido de registros por cubeta.' };
+  }
+
+  if (typeof estructura.capacidadTotal !== 'number' || estructura.capacidadTotal <= 0) {
+    return { isValid: false, error: 'La estructura debe tener una capacidad total válida.' };
+  }
+
+  // Validar tabla (array de arrays)
+  if (!Array.isArray(estructura.tabla)) {
+    return { isValid: false, error: 'La tabla debe ser un arreglo de cubetas.' };
+  }
+
+  for (let i = 0; i < estructura.tabla.length; i++) {
+    const cubeta = estructura.tabla[i];
+    if (!Array.isArray(cubeta)) {
+      return { isValid: false, error: `La cubeta ${i + 1} debe ser un arreglo.` };
+    }
+
+    // Validar elementos de la cubeta
+    for (let j = 0; j < cubeta.length; j++) {
+      const elemento = cubeta[j];
+      if (elemento !== null && (typeof elemento !== 'number' || !Number.isInteger(elemento) || elemento < 0)) {
+        return { isValid: false, error: `El elemento en cubeta ${i + 1}, posición ${j + 1} debe ser un número entero positivo o null.` };
+      }
+    }
+  }
+
+  // Validar desbordamientos (array de arrays)
+  if (!Array.isArray(estructura.desbordamientos)) {
+    return { isValid: false, error: 'Los desbordamientos deben ser un arreglo.' };
+  }
+
+  for (let i = 0; i < estructura.desbordamientos.length; i++) {
+    const desbordamiento = estructura.desbordamientos[i];
+    if (!Array.isArray(desbordamiento)) {
+      return { isValid: false, error: `El desbordamiento de la cubeta ${i + 1} debe ser un arreglo.` };
+    }
+
+    // Validar elementos desbordados
+    for (let j = 0; j < desbordamiento.length; j++) {
+      const elemento = desbordamiento[j];
+      if (typeof elemento !== 'number' || !Number.isInteger(elemento) || elemento < 0) {
+        return { isValid: false, error: `El elemento desbordado en cubeta ${i + 1}, posición ${j + 1} debe ser un número entero positivo.` };
+      }
+    }
+  }
+
+  // Validar contadores
+  if (typeof estructura.expansiones !== 'number' || estructura.expansiones < 0) {
+    return { isValid: false, error: 'El contador de expansiones debe ser un número no negativo.' };
+  }
+
+  if (typeof estructura.reducciones !== 'number' || estructura.reducciones < 0) {
+    return { isValid: false, error: 'El contador de reducciones debe ser un número no negativo.' };
+  }
+
+  if (typeof estructura.expansionesParciales !== 'number' || estructura.expansionesParciales < 0) {
+    return { isValid: false, error: 'El contador de expansiones parciales debe ser un número no negativo.' };
+  }
+
+  if (typeof estructura.reduccionesParciales !== 'number' || estructura.reduccionesParciales < 0) {
+    return { isValid: false, error: 'El contador de reducciones parciales debe ser un número no negativo.' };
   }
 
   return { isValid: true };

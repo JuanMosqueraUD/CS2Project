@@ -98,6 +98,13 @@
 
       <!-- Operaciones -->
       <div class="operations">
+        <!-- Controles de exportación e importación -->
+        <div class="import-export-controls">
+          <button @click="exportarEstructura" class="secondary">Guardar Estructura</button>
+          <label for="import-file" class="secondary file-upload-btn">Abrir Estructura</label>
+          <input id="import-file" type="file" accept=".json" @change="importarEstructura" style="display: none;">
+        </div>
+
         <input 
           type="number" 
           v-model.number="elementoInsertar" 
@@ -190,6 +197,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { HashModulo } from '../utils/funciones';
+import { 
+  createExportData, 
+  downloadJsonFile, 
+  generateExportFileName,
+  validateDynamicImport
+} from '../utils/importExportUtils';
 
 interface Config {
   cubetas: number;
@@ -710,6 +723,75 @@ function confirmarReset() {
 function cancelarReset() {
   mostrarModalReset.value = false;
 }
+
+function exportarEstructura() {
+  if (!estructuraCreada.value) {
+    mensaje.value = "Primero debes crear una estructura para exportar.";
+    setTimeout(() => mensaje.value = '', 3000);
+    return;
+  }
+
+  const exportConfig = {
+    cubetas: config.value.cubetas,
+    registrosPorCubeta: config.value.registrosPorCubeta,
+    tamanioClave: config.value.tamanioClave,
+    tipoOperacion: config.value.tipoOperacion
+  };
+
+  const exportData = createExportData('dinamica', exportConfig, estructura.value);
+  const filename = generateExportFileName('dinamica');
+  
+  downloadJsonFile(exportData, filename);
+  mensaje.value = "Estructura dinámica exportada exitosamente.";
+  setTimeout(() => mensaje.value = '', 3000);
+}
+
+function importarEstructura(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const importData = JSON.parse(e.target?.result as string);
+      
+      // Usar la utilidad común para validación
+      const validation = validateDynamicImport(importData);
+      if (!validation.isValid) {
+        mensaje.value = validation.error!;
+        setTimeout(() => mensaje.value = '', 5000);
+        return;
+      }
+      
+      // Importar configuración
+      config.value.cubetas = importData.config.cubetas;
+      config.value.registrosPorCubeta = importData.config.registrosPorCubeta;
+      config.value.tamanioClave = importData.config.tamanioClave;
+      config.value.tipoOperacion = importData.config.tipoOperacion;
+      
+      // Importar estructura
+      estructura.value = importData.data;
+      estructuraCreada.value = true;
+      resultado.value = '';
+      ultimaCubetaAfectada.value = null;
+      ultimoElementoInsertado.value = null;
+      
+      mensaje.value = `Estructura dinámica importada exitosamente. Cubetas: ${config.value.cubetas}, Tipo: ${config.value.tipoOperacion}`;
+      setTimeout(() => mensaje.value = '', 3000);
+      
+    } catch (error) {
+      mensaje.value = "Error al leer el archivo. Asegúrate de que sea un JSON válido.";
+      setTimeout(() => mensaje.value = '', 3000);
+    }
+  };
+  
+  reader.readAsText(file);
+  // Limpiar el input para permitir seleccionar el mismo archivo otra vez
+  target.value = '';
+}
+
 </script>
 
 <style scoped>
@@ -791,6 +873,14 @@ h1 {
 .operations {
   max-width: 600px;
   margin: 2rem auto;
+}
+
+.import-export-controls {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
 }
 
 .operations input {
