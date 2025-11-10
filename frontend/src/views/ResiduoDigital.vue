@@ -242,7 +242,13 @@ onBeforeUnmount(() => {
 
 watch([root, highlightPath, useGraph], () => {
   nextTick(() => {
-    if (useGraph.value) renderGraph();
+    if (useGraph.value && root.value) {
+      renderGraph();
+    } else if (useGraph.value && !root.value && network) {
+      // Si no hay root pero hay network, destruirlo
+      network.destroy();
+      network = null;
+    }
   });
 }, { deep: true });
 
@@ -326,6 +332,12 @@ function resetTree() {
   highlightPath.value = [];
   message.value = 'Árbol reiniciado correctamente';
   input.value = '';
+  
+  // Limpiar el network si existe
+  if (network) {
+    network.destroy();
+    network = null;
+  }
 }
 
 // Funciones de exportación e importación

@@ -148,6 +148,12 @@ function resetTree() {
   currentBinaryCode.value = '';
   binaryGroups.value = [];
   message.value = '';
+  
+  // Limpiar el network si existe
+  if (network) {
+    network.destroy();
+    network = null;
+  }
 }
 
 function updateBinaryInfo(letter: string) {
@@ -532,7 +538,17 @@ watch([root, useGraph], () => {
     }
   }
 });
-watch([root, pathIdx, useGraph, m], () => { nextTick(() => { if (useGraph.value) renderGraph(); }); }, { deep: true });
+watch([root, pathIdx, useGraph, m], () => {
+  nextTick(() => {
+    if (useGraph.value && root.value) {
+      renderGraph();
+    } else if (useGraph.value && !root.value && network) {
+      // Si no hay root pero hay network, destruirlo
+      network.destroy();
+      network = null;
+    }
+  });
+}, { deep: true });
 </script>
 
 <style scoped>

@@ -8,6 +8,7 @@
     <input v-model="inputText" placeholder="Ingresa un mensaje a enviar" @input="onTextInput" />
     <button @click="buildTree" class="outline contrast">Construir Árbol</button>
     <button @click="recoverString" class="outline" :disabled="!huffmanResult">Recuperar Cadena</button>
+    <button @click="resetTree" class="secondary outline" title="Reiniciar árbol">Reiniciar</button>
     
     <div class="import-export-controls">
       <button @click="exportarEstructura" class="secondary" :disabled="!huffmanResult">Guardar</button>
@@ -36,6 +37,13 @@
         <span class="freq">{{ freq.frequency }}</span>
         <span class="code">{{ freq.code || '-' }}</span>
       </div>
+    </div>
+    
+    <!-- Métrica de Longitud L -->
+    <div class="metric-section">
+      <span class="metric-label">Longitud L:</span>
+      <span class="metric-value-compact">{{ longitudL }}</span>
+      <span class="metric-hint">(Σ frecuencia × long. código)</span>
     </div>
   </section>
 
@@ -96,6 +104,19 @@ const sortedFrequencies = computed(() => {
   return [...huffmanResult.value.frequencies].sort((a, b) => b.frequency - a.frequency);
 });
 
+// Calcular la longitud promedio L (longitud ponderada)
+const longitudL = computed(() => {
+  if (!huffmanResult.value || !huffmanResult.value.frequencies) return 0;
+  
+  // L = Σ(frecuencia × longitud_código)
+  const sumaPonderada = huffmanResult.value.frequencies.reduce((sum, freq) => {
+    const longitudCodigo = freq.code ? freq.code.length : 0;
+    return sum + (freq.frequency * longitudCodigo);
+  }, 0);
+  
+  return sumaPonderada;
+});
+
 function onTextInput() {
   message.value = '';
   huffmanResult.value = null;
@@ -125,6 +146,19 @@ function recoverString() {
   };
   
   message.value = `Cadena recuperada: "${originalText}" → ${encodedText}`;
+}
+
+function resetTree() {
+  inputText.value = '';
+  huffmanResult.value = null;
+  recoveryResult.value = null;
+  message.value = 'Árbol reiniciado correctamente';
+  
+  // Limpiar el network si existe
+  if (network) {
+    network.destroy();
+    network = null;
+  }
 }
 
 function buildGraphData(node: HuffmanNode, baseId = 'r'): { nodes: any[]; edges: any[] } {
@@ -352,7 +386,13 @@ onBeforeUnmount(() => {
 
 watch([huffmanResult, useGraph], () => {
   nextTick(() => {
-    if (useGraph.value) renderGraph();
+    if (useGraph.value && huffmanResult.value && huffmanResult.value.tree) {
+      renderGraph();
+    } else if (useGraph.value && (!huffmanResult.value || !huffmanResult.value.tree) && network) {
+      // Si no hay resultado pero hay network, destruirlo
+      network.destroy();
+      network = null;
+    }
   });
 }, { deep: true });
 </script>
@@ -444,6 +484,41 @@ watch([huffmanResult, useGraph], () => {
   font-family: monospace;
   color: #34d399;
   font-weight: 500;
+}
+
+.metric-section {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid #475569;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.metric-label {
+  font-size: 0.9rem;
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.metric-value-compact {
+  font-size: 1.25rem;
+  color: #3b82f6;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.metric-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-style: italic;
 }
 
 .recovery-section {
