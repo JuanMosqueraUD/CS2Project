@@ -21,6 +21,9 @@ import HashCambioBaseExterno from '../views/external-searches/hash/HashCambioBas
 import DinamicaView from '../views/DinamicaView.vue';
 import IndicesView from '../views/external-searches/IndicesView.vue';
 
+// Importar vistas de grafos
+import OperacionesUnGrafo from '../views/grafos/OperacionesUnGrafo.vue';
+
 const routes = [
   { path: "/", name: "home", component: HomeView },
   { path: "/lineal", name: "lineal", component: LinealView },
@@ -53,6 +56,9 @@ const routes = [
   { path: "/external/hash/cambio-base", name: "external-hash-cambio-base", component: HashCambioBaseExterno },
   { path: "/external/estructuras-dinamicas", name: "external-estructuras-dinamicas", component: DinamicaView },
   { path: "/external/indices", name: "external-indices", component: IndicesView },
+  
+  // Rutas de Grafos
+  { path: "/grafos/operaciones/un-grafo", name: "grafos-operaciones-un-grafo", component: OperacionesUnGrafo },
 ]
 
 const router = createRouter({

@@ -6,6 +6,7 @@ const searchMode = ref('');
 const internalAlgorithm = ref('');
 const hashFunction = ref('');
 const residuosOpen = ref(false);
+const graphMode = ref('');
 </script>
 
 
@@ -115,8 +116,60 @@ const residuosOpen = ref(false);
     </div>
   </div>
 
-  <div v-if="mode === 'Grafos'">
-    <router-link to="/grafos" href="# " class="contrast"> Ir a Grafos</router-link>
+  <div v-if="mode === 'Grafos'" id="subnav">
+    <div id="general-nav">
+      <button @click="graphMode = graphMode === 'Operaciones' ? '' : 'Operaciones'" class="outline contrast">Operaciones con Grafos</button>
+      <button @click="graphMode = graphMode === 'Arboles' ? '' : 'Arboles'" class="outline contrast">Árboles</button>
+      <button @click="graphMode = graphMode === 'Representacion' ? '' : 'Representacion'" class="outline contrast">Representación de Grafos</button>
+    </div>
+
+    <!-- Operaciones de Grafos -->
+    <div v-if="graphMode === 'Operaciones'" class="graph-operations">
+      <h4>Tipo de operaciones:</h4>
+      <div id="general-nav">
+        <button class="outline contrast">
+          <router-link to="/grafos/operaciones/entre-grafos" class="outline contrast">Operaciones entre 2 Grafos</router-link>
+        </button>
+        <button class="outline contrast">
+          <router-link to="/grafos/operaciones/un-grafo" class="outline contrast">Operaciones en un Grafo</router-link>
+        </button>
+      </div>
+    </div>
+
+    <!-- Árboles -->
+    <div v-if="graphMode === 'Arboles'" class="graph-trees">
+      <h4>Tipos de árboles:</h4>
+      <div id="general-nav">
+        <button class="outline contrast">
+          <router-link to="/grafos/arboles/binario" class="outline contrast">Árbol Binario</router-link>
+        </button>
+        <button class="outline contrast">
+          <router-link to="/grafos/arboles/avl" class="outline contrast">Árbol AVL</router-link>
+        </button>
+        <button class="outline contrast">
+          <router-link to="/grafos/arboles/b" class="outline contrast">Árbol B</router-link>
+        </button>
+        <button class="outline contrast">
+          <router-link to="/grafos/arboles/rojo-negro" class="outline contrast">Árbol Rojo-Negro</router-link>
+        </button>
+      </div>
+    </div>
+
+    <!-- Representación de Grafos -->
+    <div v-if="graphMode === 'Representacion'" class="graph-representation">
+      <h4>Formas de representación:</h4>
+      <div id="general-nav">
+        <button class="outline contrast">
+          <router-link to="/grafos/representacion/matriz-adyacencia" class="outline contrast">Matriz de Adyacencia</router-link>
+        </button>
+        <button class="outline contrast">
+          <router-link to="/grafos/representacion/lista-adyacencia" class="outline contrast">Lista de Adyacencia</router-link>
+        </button>
+        <button class="outline contrast">
+          <router-link to="/grafos/representacion/matriz-incidencia" class="outline contrast">Matriz de Incidencia</router-link>
+        </button>
+      </div>
+    </div>
   </div>
 
 </template>
@@ -144,6 +197,22 @@ const residuosOpen = ref(false);
 }
 
 .hash-options h4 {
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.graph-operations,
+.graph-trees,
+.graph-representation {
+  margin-top: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--primary);
+  border-radius: 0.5rem;
+}
+
+.graph-operations h4,
+.graph-trees h4,
+.graph-representation h4 {
   margin-bottom: 0.5rem;
   text-align: center;
 }
