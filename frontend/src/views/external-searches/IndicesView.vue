@@ -107,23 +107,15 @@
           <div class="info-item">
             <strong>bi (bloques índice):</strong> {{ estructura.bi }}
           </div>
+          <div class="info-item">
+            <strong>Número de accesos:</strong> {{ numeroAccesos }}
+          </div>
         </div>
       </div>
 
-      <!-- Operaciones -->
+      <!-- Botón de reset -->
       <div class="operations">
-        <input 
-          type="number" 
-          v-model.number="elementoInsertar" 
-          placeholder="Clave a insertar/buscar"
-          @keyup.enter="insertar"
-        />
-        <div id="general-nav">
-          <button @click="insertar">Insertar</button>
-          <button @click="buscar">Buscar</button>
-          <button @click="eliminar">Eliminar</button>
-          <button @click="mostrarModalReset = true" class="btn-danger">Resetear</button>
-        </div>
+        <button @click="mostrarModalReset = true" class="btn-secondary">Resetear Estructura</button>
       </div>
 
       <!-- Modal de confirmación para resetear -->
@@ -148,32 +140,39 @@
       <div class="structure-display">
         <div v-if="config.estructura === 'simple'" class="estructuras-lado-a-lado">
           <!-- Estructura de Índices (IZQUIERDA) -->
-          <div class="estructura-container">
+          <div class="estructura-container" id="estructura-indices">
             <h3>Estructura de Índices ({{ config.tipoIndice === 'primario' ? 'Primario' : 'Secundario' }})</h3>
             <div class="bloques-verticales">
               <template v-for="bloqueIdx in getBloquesARenderizar(estructura.indiceSimple)" :key="`indice-${bloqueIdx}`">
                 <div class="bloque-vertical bloque-indice">
                   <div class="bloque-header-vertical">Bloque Índice {{ bloqueIdx + 1 }}</div>
                   <div class="registros-container">
-                    <template v-for="entIdx in getRegistrosARenderizar(estructura.indiceSimple[bloqueIdx])" :key="`ent-${bloqueIdx}-${entIdx}`">
+                    <template v-for="entIdx in getRegistrosARenderizarConLimite(
+                      estructura.indiceSimple[bloqueIdx], 
+                      bloqueIdx, 
+                      config.tipoIndice === 'primario' ? estructura.b : config.r
+                    )" :key="`ent-${bloqueIdx}-${entIdx}`">
                       <div class="entrada-indice-item"
                            :class="{ 
-                             'empty': estructura.indiceSimple[bloqueIdx][entIdx].clave === null,
-                             'highlight': estructura.indiceSimple[bloqueIdx][entIdx].clave === ultimaClaveInsertada
+                             'highlight': bloqueIdx === 0 && entIdx === 0
                            }">
                         <span class="entrada-pos">E{{ getNumeroEntradaGlobal(bloqueIdx, entIdx) }}</span>
-                        <span class="entrada-clave">
-                          {{ estructura.indiceSimple[bloqueIdx][entIdx].clave !== null ? 
-                             estructura.indiceSimple[bloqueIdx][entIdx].clave : '-' }}
-                        </span>
-                        <span v-if="estructura.indiceSimple[bloqueIdx][entIdx].clave !== null" 
-                              class="entrada-puntero">
-                          → B{{ estructura.indiceSimple[bloqueIdx][entIdx].bloqueReferencia }}
+                        <span class="entrada-puntero">
+                          <template v-if="config.tipoIndice === 'primario'">
+                            → Bloque {{ getNumeroEntradaGlobal(bloqueIdx, entIdx) }}
+                          </template>
+                          <template v-else>
+                            → Registro {{ getNumeroEntradaGlobal(bloqueIdx, entIdx) }}
+                          </template>
                         </span>
                       </div>
                       <!-- Indicador de elementos omitidos -->
                       <div v-if="entIdx < estructura.indiceSimple[bloqueIdx].length - 1 && 
-                                  !getRegistrosARenderizar(estructura.indiceSimple[bloqueIdx]).includes(entIdx + 1)"
+                                  !getRegistrosARenderizarConLimite(
+                                    estructura.indiceSimple[bloqueIdx], 
+                                    bloqueIdx, 
+                                    config.tipoIndice === 'primario' ? estructura.b : config.r
+                                  ).includes(entIdx + 1)"
                            class="elementos-omitidos">
                         ⋮
                       </div>
@@ -191,25 +190,44 @@
             </div>
           </div>
 
+          <!-- Flecha de demostración (conecta primer índice con primera referencia) -->
+          <div class="arrow-demo" v-if="estructura.indiceSimple[0] && estructura.indiceSimple[0][0].clave !== null">
+            <svg class="connection-arrow" viewBox="0 0 200 100" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                  <polygon points="0 0, 10 3, 0 6" fill="var(--primary)" />
+                </marker>
+              </defs>
+              <path d="M 20 50 Q 100 50, 180 50" 
+                    stroke="var(--primary)" 
+                    stroke-width="2" 
+                    fill="none" 
+                    marker-end="url(#arrowhead)" 
+                    class="animated-arrow"/>
+              <text x="100" y="35" text-anchor="middle" fill="var(--primary)" font-size="12" font-weight="bold">
+                Apunta a
+              </text>
+            </svg>
+          </div>
+
           <!-- Estructura Principal (DERECHA) - Archivo de Datos -->
-          <div class="estructura-container">
+          <div class="estructura-container" id="estructura-principal">
             <h3>Estructura Principal (Archivo de Datos)</h3>
             <div class="bloques-verticales">
               <template v-for="bloqueIdx in getBloquesARenderizar(estructura.archivoDatos)" :key="`datos-${bloqueIdx}`">
-                <div class="bloque-vertical" 
-                     :class="{ 'highlight-bloque': ultimoBloqueAfectado === bloqueIdx }">
+                <div class="bloque-vertical">
                   <div class="bloque-header-vertical">Bloque {{ bloqueIdx + 1 }}</div>
                   <div class="registros-container">
                     <template v-for="regIdx in getRegistrosARenderizar(estructura.archivoDatos[bloqueIdx])" :key="`reg-${bloqueIdx}-${regIdx}`">
-                      <div class="registro-item"
-                           :class="{ 
-                             'empty': estructura.archivoDatos[bloqueIdx][regIdx] === null,
-                             'highlight': estructura.archivoDatos[bloqueIdx][regIdx] === ultimaClaveInsertada
-                           }">
+                      <div class="registro-item empty">
                         <span class="registro-pos">R{{ getNumeroRegistroGlobal(bloqueIdx, regIdx) }}</span>
-                        <span class="registro-valor">
-                          {{ estructura.archivoDatos[bloqueIdx][regIdx] !== null ? estructura.archivoDatos[bloqueIdx][regIdx] : '-' }}
-                        </span>
+                        <span class="registro-valor">-</span>
+                      </div>
+                      <!-- Indicador de elementos omitidos -->
+                      <div v-if="regIdx < estructura.archivoDatos[bloqueIdx].length - 1 && 
+                                  !getRegistrosARenderizar(estructura.archivoDatos[bloqueIdx]).includes(regIdx + 1)"
+                           class="elementos-omitidos">
+                        ⋮
                       </div>
                       <!-- Indicador de elementos omitidos -->
                       <div v-if="regIdx < estructura.archivoDatos[bloqueIdx].length - 1 && 
@@ -232,8 +250,95 @@
           </div>
         </div>
 
-        <div v-else class="indices-multinivel">
-          <p class="info-multinivel">Estructura multinivel (implementación próximamente)</p>
+        <!-- Estructura Multinivel -->
+        <div v-else class="estructuras-lado-a-lado">
+          <!-- Niveles de índices en orden inverso (nivel superior a la izquierda) -->
+          <div v-for="(nivel, nivelIdx) in estructura.indicesMultinivel.slice().reverse()" 
+               :key="`nivel-${nivelIdx}`"
+               class="estructura-container">
+            <h3>Nivel {{ estructura.indicesMultinivel.length - nivelIdx }} de Índices</h3>
+            <div class="bloques-verticales">
+              <template v-for="bloqueIdx in getBloquesARenderizar(nivel)" :key="`nivel${nivelIdx}-bloque-${bloqueIdx}`">
+                <div class="bloque-vertical bloque-indice">
+                  <div class="bloque-header-vertical">Bloque Índice {{ bloqueIdx + 1 }}</div>
+                  <div class="registros-container">
+                    <template v-for="entIdx in getRegistrosARenderizarConLimite(
+                      nivel[bloqueIdx], 
+                      bloqueIdx, 
+                      getLimiteDestinoMultinivel(nivelIdx)
+                    )" :key="`nivel${nivelIdx}-ent-${bloqueIdx}-${entIdx}`">
+                      <div class="entrada-indice-item">
+                        <span class="entrada-pos">E{{ bloqueIdx * estructura.bfri + entIdx + 1 }}</span>
+                        <span class="entrada-puntero">
+                          <template v-if="nivelIdx === estructura.indicesMultinivel.length - 1">
+                            <!-- Último nivel (nivel 1) apunta a estructura principal -->
+                            <template v-if="config.tipoIndice === 'primario'">
+                              → Bloque {{ bloqueIdx * estructura.bfri + entIdx + 1 }}
+                            </template>
+                            <template v-else>
+                              → Registro {{ bloqueIdx * estructura.bfri + entIdx + 1 }}
+                            </template>
+                          </template>
+                          <template v-else>
+                            <!-- Niveles superiores apuntan al nivel inferior -->
+                            → Bloque {{ bloqueIdx * estructura.bfri + entIdx + 1 }} (Nivel {{ estructura.indicesMultinivel.length - nivelIdx - 1 }})
+                          </template>
+                        </span>
+                      </div>
+                      <!-- Indicador de elementos omitidos -->
+                      <div v-if="entIdx < nivel[bloqueIdx].length - 1 && 
+                                  !getRegistrosARenderizarConLimite(
+                                    nivel[bloqueIdx], 
+                                    bloqueIdx, 
+                                    getLimiteDestinoMultinivel(nivelIdx)
+                                  ).includes(entIdx + 1)"
+                           class="elementos-omitidos">
+                        ⋮
+                      </div>
+                    </template>
+                  </div>
+                </div>
+                <!-- Indicador de bloques omitidos -->
+                <div v-if="bloqueIdx < nivel.length - 1 && 
+                           !getBloquesARenderizar(nivel).includes(bloqueIdx + 1)"
+                     class="bloques-omitidos">
+                  <span>⋮ (bloques {{ bloqueIdx + 2 }} - {{ nivel.length }})</span>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- Estructura Principal a la derecha -->
+          <div class="estructura-container">
+            <h3>Estructura Principal (Archivo de Datos)</h3>
+            <div class="bloques-verticales">
+              <template v-for="bloqueIdx in getBloquesARenderizar(estructura.archivoDatos)" :key="`datos-multi-${bloqueIdx}`">
+                <div class="bloque-vertical">
+                  <div class="bloque-header-vertical">Bloque {{ bloqueIdx + 1 }}</div>
+                  <div class="registros-container">
+                    <template v-for="regIdx in getRegistrosARenderizar(estructura.archivoDatos[bloqueIdx])" :key="`reg-multi-${bloqueIdx}-${regIdx}`">
+                      <div class="registro-item empty">
+                        <span class="registro-pos">R{{ getNumeroRegistroGlobal(bloqueIdx, regIdx) }}</span>
+                        <span class="registro-valor">-</span>
+                      </div>
+                      <!-- Indicador de elementos omitidos -->
+                      <div v-if="regIdx < estructura.archivoDatos[bloqueIdx].length - 1 && 
+                                  !getRegistrosARenderizar(estructura.archivoDatos[bloqueIdx]).includes(regIdx + 1)"
+                           class="elementos-omitidos">
+                        ⋮
+                      </div>
+                    </template>
+                  </div>
+                </div>
+                <!-- Indicador de bloques omitidos -->
+                <div v-if="bloqueIdx < estructura.archivoDatos.length - 1 && 
+                           !getBloquesARenderizar(estructura.archivoDatos).includes(bloqueIdx + 1)"
+                     class="bloques-omitidos">
+                  <span>⋮ (bloques {{ bloqueIdx + 2 }} - {{ estructura.archivoDatos.length }})</span>
+                </div>
+              </template>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -269,6 +374,7 @@ interface Estructura {
   // Datos
   archivoDatos: (number | null)[][];  // Estructura principal de datos [bloque][registro]
   indiceSimple: EntradaIndice[][];    // Estructura de índices [bloque][entrada]
+  indicesMultinivel: EntradaIndice[][][]; // Array de niveles de índices para multinivel [nivel][bloque][entrada]
   registrosInsertados: number;
 }
 
@@ -289,14 +395,12 @@ const estructura = ref<Estructura>({
   bi: 0,
   archivoDatos: [],
   indiceSimple: [],
+  indicesMultinivel: [],
   registrosInsertados: 0
 });
 
-const elementoInsertar = ref<number | null>(null);
 const mensaje = ref('');
 const resultado = ref('');
-const ultimoBloqueAfectado = ref<number | null>(null);
-const ultimaClaveInsertada = ref<number | null>(null);
 const mostrarModalReset = ref(false);
 
 // Computed properties para cálculos
@@ -333,6 +437,16 @@ const bloquesIndices = computed(() => {
     // Índice Secundario: bi = ⌈r / bfri⌉ (usa cantidad de registros)
     if (config.value.r <= 0) return 0;
     return Math.ceil(config.value.r / bfriIndices.value);
+  }
+});
+
+const numeroAccesos = computed(() => {
+  if (!estructuraCreada.value) return 0;
+  if (config.value.estructura === 'simple') {
+    return 2; // 1 acceso al índice + 1 acceso a datos
+  } else {
+    // Multinivel: cantidad de niveles de índices + 1 acceso a datos
+    return estructura.value.indicesMultinivel.length + 1;
   }
 });
 
@@ -394,12 +508,62 @@ function crearEstructura() {
     bi,
     archivoDatos,
     indiceSimple,
+    indicesMultinivel: [],
     registrosInsertados: 0
   };
 
+  // Si es multinivel, construir los niveles adicionales de índices
+  if (config.value.estructura === 'multinivel') {
+    construirMultinivel();
+  }
+
+  // Pre-cargar datos de ejemplo para demostración
+  precargarDatosEjemplo();
+
   estructuraCreada.value = true;
-  mensaje.value = 'Estructura de índices creada correctamente';
+  mensaje.value = 'Estructura de índices creada correctamente con datos de ejemplo';
   setTimeout(() => mensaje.value = '', 3000);
+}
+
+function construirMultinivel() {
+  const niveles: EntradaIndice[][][] = [];
+  
+  // Nivel 1: Índice que apunta a la estructura principal (ya creado como indiceSimple)
+  niveles.push(estructura.value.indiceSimple);
+  
+  let nivelActual = estructura.value.indiceSimple;
+  let bloquesNivelActual = nivelActual.length;
+  
+  // Construir niveles superiores hasta que solo necesitemos 1 bloque
+  while (bloquesNivelActual > 1) {
+    // Calcular cuántos bloques necesita el siguiente nivel para indexar el actual
+    const bloquesNuevoNivel = Math.ceil(bloquesNivelActual / estructura.value.bfri);
+    
+    // Crear nuevo nivel de índices
+    const nuevoNivel: EntradaIndice[][] = [];
+    for (let i = 0; i < bloquesNuevoNivel; i++) {
+      const bloque: EntradaIndice[] = [];
+      for (let j = 0; j < estructura.value.bfri; j++) {
+        bloque.push({
+          clave: null,
+          bloqueReferencia: -1
+        });
+      }
+      nuevoNivel.push(bloque);
+    }
+    
+    niveles.push(nuevoNivel);
+    nivelActual = nuevoNivel;
+    bloquesNivelActual = bloquesNuevoNivel;
+  }
+  
+  estructura.value.indicesMultinivel = niveles;
+}
+
+// Pre-carga datos de ejemplo ordenados en la estructura
+function precargarDatosEjemplo() {
+  // No llenar ninguna estructura - todo se renderiza dinámicamente
+  estructura.value.registrosInsertados = 0;
 }
 
 // Funciones auxiliares para renderizado condicional
@@ -431,28 +595,51 @@ function getBloquesARenderizar(estructura: (number | null)[][] | EntradaIndice[]
 }
 
 // Obtiene los índices de registros a renderizar dentro de un bloque
-function getRegistrosARenderizar(bloque: (number | null)[] | EntradaIndice[], maxRegistros = 20): number[] {
+function getRegistrosARenderizar(bloque: (number | null)[] | EntradaIndice[]): number[] {
   const totalRegistros = bloque.length;
   if (totalRegistros === 0) return [];
-  if (totalRegistros <= maxRegistros) return Array.from({ length: totalRegistros }, (_, i) => i);
+  if (totalRegistros === 1) return [0];
+  if (totalRegistros === 2) return [0, 1];
   
-  const registrosConDatos = bloque
-    .map((elem, index) => {
-      if (elem === null) return -1;
-      if (typeof elem === 'object' && 'clave' in elem) {
-        return elem.clave !== null ? index : -1;
-      }
-      return index;
-    })
-    .filter(i => i >= 0)
-    .sort((a, b) => a - b);
+  // Solo mostrar primer y último registro
+  return [0, totalRegistros - 1];
+}
+
+// Obtiene los registros a renderizar considerando el límite de la estructura destino
+function getRegistrosARenderizarConLimite(bloque: EntradaIndice[], bloqueIdx: number, limiteDestino: number): number[] {
+  const totalRegistros = bloque.length;
+  if (totalRegistros === 0) return [];
   
-  const set = new Set<number>();
-  set.add(0); // Primer registro
-  set.add(totalRegistros - 1); // Último registro
-  registrosConDatos.forEach(i => set.add(i));
+  const registrosValidos: number[] = [];
   
-  return Array.from(set).sort((a, b) => a - b);
+  // Calcular cuáles registros de este bloque apuntan a destinos válidos
+  for (let i = 0; i < totalRegistros; i++) {
+    const numeroGlobal = bloqueIdx * estructura.value.bfri + i + 1;
+    if (numeroGlobal <= limiteDestino) {
+      registrosValidos.push(i);
+    }
+  }
+  
+  if (registrosValidos.length === 0) return [];
+  if (registrosValidos.length === 1) return [registrosValidos[0]];
+  if (registrosValidos.length === 2) return registrosValidos;
+  
+  // Mostrar primero y último válido
+  return [registrosValidos[0], registrosValidos[registrosValidos.length - 1]];
+}
+
+// Obtiene el límite de destino para un nivel específico en multinivel
+function getLimiteDestinoMultinivel(nivelIdx: number): number {
+  const nivelReal = estructura.value.indicesMultinivel.length - nivelIdx;
+  
+  if (nivelReal === 1) {
+    // Nivel 1 apunta a estructura principal
+    return config.value.tipoIndice === 'primario' ? estructura.value.b : config.value.r;
+  } else {
+    // Niveles superiores apuntan al nivel inferior
+    const nivelInferior = estructura.value.indicesMultinivel[estructura.value.indicesMultinivel.length - nivelReal + 1];
+    return nivelInferior.length * estructura.value.bfri;
+  }
 }
 
 // Calcula el número de registro global (continuo a través de los bloques)
@@ -465,464 +652,6 @@ function getNumeroEntradaGlobal(bloqueIdx: number, entIdx: number): number {
   return bloqueIdx * estructura.value.bfri + entIdx + 1;
 }
 
-function insertar() {
-  if (elementoInsertar.value === null || elementoInsertar.value === undefined) {
-    mensaje.value = 'Por favor ingrese una clave válida';
-    setTimeout(() => mensaje.value = '', 3000);
-    return;
-  }
-
-  const clave = elementoInsertar.value;
-
-  // Verificar si la clave ya existe
-  if (existeClave(clave)) {
-    mensaje.value = `La clave ${clave} ya existe en la estructura`;
-    setTimeout(() => mensaje.value = '', 3000);
-    return;
-  }
-
-  // Verificar si hay espacio disponible
-  if (estructura.value.registrosInsertados >= config.value.r) {
-    mensaje.value = 'No hay espacio disponible en la estructura';
-    setTimeout(() => mensaje.value = '', 3000);
-    return;
-  }
-
-  // Insertar en el archivo de datos de forma ordenada
-  const posicionInsercion = encontrarPosicionInsercion(clave);
-  const bloqueDestino = posicionInsercion.bloque;
-  const registroDestino = posicionInsercion.registro;
-
-  // Insertar en el archivo de datos
-  estructura.value.archivoDatos[bloqueDestino][registroDestino] = clave;
-  estructura.value.registrosInsertados++;
-
-  // Actualizar índice según el tipo
-  if (config.value.tipoIndice === 'primario') {
-    // Índice Primario: Una entrada por bloque (primera clave del bloque)
-    actualizarIndicePrimario(bloqueDestino);
-  } else {
-    // Índice Secundario: Una entrada por registro
-    insertarIndiceSecundario(clave, bloqueDestino);
-  }
-
-  ultimoBloqueAfectado.value = bloqueDestino;
-  ultimaClaveInsertada.value = clave;
-  
-  mensaje.value = `Clave ${clave} insertada en Bloque ${bloqueDestino + 1}, Registro ${registroDestino + 1}`;
-  elementoInsertar.value = null;
-  
-  setTimeout(() => {
-    mensaje.value = '';
-    ultimoBloqueAfectado.value = null;
-    ultimaClaveInsertada.value = null;
-  }, 2000);
-}
-
-// Encuentra la posición de inserción manteniendo el orden
-function encontrarPosicionInsercion(clave: number): { bloque: number; registro: number } {
-  // Buscar la posición correcta para mantener el orden
-  for (let i = 0; i < estructura.value.archivoDatos.length; i++) {
-    for (let j = 0; j < estructura.value.archivoDatos[i].length; j++) {
-      const valorActual = estructura.value.archivoDatos[i][j];
-      
-      if (valorActual === null) {
-        // Espacio vacío encontrado
-        // Verificar si debe ir aquí (es menor que el siguiente valor o es el último)
-        const siguienteValor = encontrarSiguienteValor(i, j);
-        if (siguienteValor === null || clave < siguienteValor) {
-          return { bloque: i, registro: j };
-        }
-      } else if (clave < valorActual) {
-        // Necesita hacer corrimiento
-        hacerCorrimiento(i, j);
-        return { bloque: i, registro: j };
-      }
-    }
-  }
-  
-  // Si no se encontró posición, significa que va al final
-  for (let i = estructura.value.archivoDatos.length - 1; i >= 0; i--) {
-    for (let j = estructura.value.archivoDatos[i].length - 1; j >= 0; j--) {
-      if (estructura.value.archivoDatos[i][j] === null) {
-        return { bloque: i, registro: j };
-      }
-    }
-  }
-  
-  return { bloque: 0, registro: 0 };
-}
-
-// Encuentra el siguiente valor no nulo en la estructura
-function encontrarSiguienteValor(bloqueActual: number, registroActual: number): number | null {
-  for (let i = bloqueActual; i < estructura.value.archivoDatos.length; i++) {
-    const startJ = (i === bloqueActual) ? registroActual + 1 : 0;
-    for (let j = startJ; j < estructura.value.archivoDatos[i].length; j++) {
-      if (estructura.value.archivoDatos[i][j] !== null) {
-        return estructura.value.archivoDatos[i][j];
-      }
-    }
-  }
-  
-  return null;
-}
-
-// Hace corrimiento de elementos para insertar en medio
-function hacerCorrimiento(bloqueInicio: number, registroInicio: number) {
-  // Encontrar el último elemento no nulo
-  let ultimoBloque = -1;
-  let ultimoRegistro = -1;
-  
-  for (let i = estructura.value.archivoDatos.length - 1; i >= 0; i--) {
-    for (let j = estructura.value.archivoDatos[i].length - 1; j >= 0; j--) {
-      if (estructura.value.archivoDatos[i][j] !== null) {
-        ultimoBloque = i;
-        ultimoRegistro = j;
-        break;
-      }
-    }
-    if (ultimoBloque !== -1) break;
-  }
-  
-  if (ultimoBloque === -1) return; // No hay elementos para correr
-  
-  // Correr elementos hacia la derecha
-  let bloqueActual = ultimoBloque;
-  let registroActual = ultimoRegistro;
-  
-  while (bloqueActual > bloqueInicio || (bloqueActual === bloqueInicio && registroActual >= registroInicio)) {
-    const valorActual = estructura.value.archivoDatos[bloqueActual][registroActual];
-    
-    // Calcular siguiente posición
-    let siguienteBloque = bloqueActual;
-    let siguienteRegistro = registroActual + 1;
-    
-    if (siguienteRegistro >= estructura.value.archivoDatos[siguienteBloque].length) {
-      siguienteBloque++;
-      siguienteRegistro = 0;
-    }
-    
-    if (siguienteBloque < estructura.value.archivoDatos.length) {
-      estructura.value.archivoDatos[siguienteBloque][siguienteRegistro] = valorActual;
-    }
-    
-    // Retroceder
-    registroActual--;
-    if (registroActual < 0) {
-      bloqueActual--;
-      if (bloqueActual >= 0) {
-        registroActual = estructura.value.archivoDatos[bloqueActual].length - 1;
-      }
-    }
-  }
-  
-  // Limpiar la posición de inserción
-  estructura.value.archivoDatos[bloqueInicio][registroInicio] = null;
-}
-
-// Actualiza el índice primario (una entrada por bloque con la ÚLTIMA clave del bloque)
-function actualizarIndicePrimario(bloqueModificado: number) {
-  // En índice primario, cada entrada apunta a un bloque y contiene la ÚLTIMA clave del bloque
-  // Esto permite hacer búsqueda binaria: si buscamos K, encontramos el primer índice donde clave >= K
-  
-  // Encontrar la última clave no nula del bloque
-  let ultimaClave: number | null = null;
-  for (let i = estructura.value.archivoDatos[bloqueModificado].length - 1; i >= 0; i--) {
-    if (estructura.value.archivoDatos[bloqueModificado][i] !== null) {
-      ultimaClave = estructura.value.archivoDatos[bloqueModificado][i];
-      break;
-    }
-  }
-  
-  if (ultimaClave !== null) {
-    // Buscar o crear entrada en el índice para este bloque
-    let entradaEncontrada = false;
-    
-    for (let i = 0; i < estructura.value.indiceSimple.length && !entradaEncontrada; i++) {
-      for (let j = 0; j < estructura.value.indiceSimple[i].length && !entradaEncontrada; j++) {
-        const entrada = estructura.value.indiceSimple[i][j];
-        
-        if (entrada.bloqueReferencia === bloqueModificado + 1) {
-          // Actualizar entrada existente con la última clave
-          entrada.clave = ultimaClave;
-          entradaEncontrada = true;
-        } else if (entrada.clave === null) {
-          // Crear nueva entrada con la última clave
-          entrada.clave = ultimaClave;
-          entrada.bloqueReferencia = bloqueModificado + 1;
-          entradaEncontrada = true;
-        }
-      }
-    }
-  }
-}
-
-// Inserta una entrada en el índice secundario (una por registro)
-function insertarIndiceSecundario(clave: number, bloqueReferencia: number) {
-  // En índice secundario, cada registro tiene su propia entrada
-  for (let i = 0; i < estructura.value.indiceSimple.length; i++) {
-    for (let j = 0; j < estructura.value.indiceSimple[i].length; j++) {
-      if (estructura.value.indiceSimple[i][j].clave === null) {
-        estructura.value.indiceSimple[i][j].clave = clave;
-        estructura.value.indiceSimple[i][j].bloqueReferencia = bloqueReferencia + 1;
-        return;
-      }
-    }
-  }
-}
-
-function existeClave(clave: number): boolean {
-  for (let i = 0; i < estructura.value.archivoDatos.length; i++) {
-    for (let j = 0; j < estructura.value.archivoDatos[i].length; j++) {
-      if (estructura.value.archivoDatos[i][j] === clave) {
-        return true;
-      }
-    }
-  }
-  return false;
-}
-
-function buscar() {
-  if (elementoInsertar.value === null || elementoInsertar.value === undefined) {
-    resultado.value = 'Por favor ingrese una clave válida';
-    setTimeout(() => resultado.value = '', 3000);
-    return;
-  }
-
-  const clave = elementoInsertar.value;
-
-  if (config.value.tipoIndice === 'primario') {
-    // Búsqueda en Índice Primario usando búsqueda binaria
-    const bloqueDestino = busquedaBinariaIndicePrimario(clave);
-    
-    if (bloqueDestino !== -1) {
-      // Buscar dentro del bloque encontrado
-      const bloque = estructura.value.archivoDatos[bloqueDestino];
-      for (let i = 0; i < bloque.length; i++) {
-        if (bloque[i] === clave) {
-          ultimoBloqueAfectado.value = bloqueDestino;
-          ultimaClaveInsertada.value = clave;
-          resultado.value = `✓ Clave ${clave} encontrada en Bloque ${bloqueDestino + 1}, Registro ${getNumeroRegistroGlobal(bloqueDestino, i)}`;
-          
-          setTimeout(() => {
-            resultado.value = '';
-            ultimoBloqueAfectado.value = null;
-            ultimaClaveInsertada.value = null;
-          }, 3000);
-          return;
-        }
-      }
-    }
-  } else {
-    // Búsqueda en Índice Secundario (búsqueda lineal en índice)
-    for (let i = 0; i < estructura.value.indiceSimple.length; i++) {
-      for (let j = 0; j < estructura.value.indiceSimple[i].length; j++) {
-        if (estructura.value.indiceSimple[i][j].clave === clave) {
-          const bloqueRef = estructura.value.indiceSimple[i][j].bloqueReferencia - 1;
-          ultimoBloqueAfectado.value = bloqueRef;
-          ultimaClaveInsertada.value = clave;
-          resultado.value = `✓ Clave ${clave} encontrada (Índice Secundario apunta al Bloque ${estructura.value.indiceSimple[i][j].bloqueReferencia})`;
-          
-          setTimeout(() => {
-            resultado.value = '';
-            ultimoBloqueAfectado.value = null;
-            ultimaClaveInsertada.value = null;
-          }, 3000);
-          return;
-        }
-      }
-    }
-  }
-
-  resultado.value = `✗ Clave ${clave} no encontrada`;
-  setTimeout(() => resultado.value = '', 3000);
-}
-
-// Búsqueda binaria en el índice primario para encontrar el bloque correspondiente
-function busquedaBinariaIndicePrimario(clave: number): number {
-  // Obtener todas las entradas no nulas del índice ordenadas
-  const entradasIndice: { clave: number; bloque: number }[] = [];
-  
-  for (let i = 0; i < estructura.value.indiceSimple.length; i++) {
-    for (let j = 0; j < estructura.value.indiceSimple[i].length; j++) {
-      const entrada = estructura.value.indiceSimple[i][j];
-      if (entrada.clave !== null) {
-        entradasIndice.push({
-          clave: entrada.clave,
-          bloque: entrada.bloqueReferencia - 1
-        });
-      }
-    }
-  }
-  
-  if (entradasIndice.length === 0) return -1;
-  
-  // Ordenar por clave (aunque ya deberían estar ordenadas)
-  entradasIndice.sort((a, b) => a.clave - b.clave);
-  
-  // Búsqueda binaria: encontrar el primer índice donde la clave sea >= clave buscada
-  let izq = 0;
-  let der = entradasIndice.length - 1;
-  let resultado = -1;
-  
-  while (izq <= der) {
-    const med = Math.floor((izq + der) / 2);
-    
-    if (entradasIndice[med].clave >= clave) {
-      resultado = entradasIndice[med].bloque;
-      der = med - 1;
-    } else {
-      izq = med + 1;
-    }
-  }
-  
-  return resultado;
-}
-
-function eliminar() {
-  if (elementoInsertar.value === null || elementoInsertar.value === undefined) {
-    mensaje.value = 'Por favor ingrese una clave válida';
-    setTimeout(() => mensaje.value = '', 3000);
-    return;
-  }
-
-  const clave = elementoInsertar.value;
-
-  // Buscar y eliminar del archivo de datos
-  let encontrado = false;
-  for (let i = 0; i < estructura.value.archivoDatos.length && !encontrado; i++) {
-    for (let j = 0; j < estructura.value.archivoDatos[i].length && !encontrado; j++) {
-      if (estructura.value.archivoDatos[i][j] === clave) {
-        // Eliminar y hacer corrimiento hacia la izquierda
-        eliminarYCorrerIzquierda(i, j);
-        estructura.value.registrosInsertados--;
-        encontrado = true;
-        
-        // Reorganizar índices después de la eliminación
-        reorganizarIndices();
-        
-        ultimoBloqueAfectado.value = i;
-        mensaje.value = `Clave ${clave} eliminada del Bloque ${i + 1}`;
-        elementoInsertar.value = null;
-        
-        setTimeout(() => {
-          mensaje.value = '';
-          ultimoBloqueAfectado.value = null;
-        }, 2000);
-        return;
-      }
-    }
-  }
-
-  mensaje.value = `Clave ${clave} no encontrada`;
-  setTimeout(() => mensaje.value = '', 3000);
-}
-
-// Elimina un elemento y corre todos los elementos posteriores hacia la izquierda
-function eliminarYCorrerIzquierda(bloqueInicio: number, registroInicio: number) {
-  // Encontrar el último elemento no nulo
-  let ultimoBloque = -1;
-  let ultimoRegistro = -1;
-  
-  for (let i = estructura.value.archivoDatos.length - 1; i >= 0; i--) {
-    for (let j = estructura.value.archivoDatos[i].length - 1; j >= 0; j--) {
-      if (estructura.value.archivoDatos[i][j] !== null) {
-        ultimoBloque = i;
-        ultimoRegistro = j;
-        break;
-      }
-    }
-    if (ultimoBloque !== -1) break;
-  }
-  
-  // Correr todos los elementos hacia la izquierda desde la posición de eliminación
-  let bloqueActual = bloqueInicio;
-  let registroActual = registroInicio;
-  
-  while (bloqueActual < ultimoBloque || (bloqueActual === ultimoBloque && registroActual < ultimoRegistro)) {
-    // Calcular siguiente posición
-    let siguienteBloque = bloqueActual;
-    let siguienteRegistro = registroActual + 1;
-    
-    if (siguienteRegistro >= estructura.value.archivoDatos[siguienteBloque].length) {
-      siguienteBloque++;
-      siguienteRegistro = 0;
-    }
-    
-    if (siguienteBloque < estructura.value.archivoDatos.length) {
-      // Copiar el siguiente valor a la posición actual
-      estructura.value.archivoDatos[bloqueActual][registroActual] = 
-        estructura.value.archivoDatos[siguienteBloque][siguienteRegistro];
-    }
-    
-    // Avanzar
-    bloqueActual = siguienteBloque;
-    registroActual = siguienteRegistro;
-  }
-  
-  // Limpiar la última posición
-  if (ultimoBloque !== -1) {
-    estructura.value.archivoDatos[ultimoBloque][ultimoRegistro] = null;
-  }
-}
-
-// Reorganiza todos los índices después de una eliminación
-function reorganizarIndices() {
-  // Limpiar todos los índices
-  for (let i = 0; i < estructura.value.indiceSimple.length; i++) {
-    for (let j = 0; j < estructura.value.indiceSimple[i].length; j++) {
-      estructura.value.indiceSimple[i][j].clave = null;
-      estructura.value.indiceSimple[i][j].bloqueReferencia = -1;
-    }
-  }
-  
-  if (config.value.tipoIndice === 'primario') {
-    // Índice Primario: Reconstruir con la última clave de cada bloque usado
-    let indiceGlobal = 0;
-    for (let bloqueIdx = 0; bloqueIdx < estructura.value.archivoDatos.length; bloqueIdx++) {
-      // Verificar si el bloque tiene datos
-      const tieneDatos = estructura.value.archivoDatos[bloqueIdx].some(v => v !== null);
-      
-      if (tieneDatos) {
-        // Encontrar la última clave del bloque
-        let ultimaClave: number | null = null;
-        for (let i = estructura.value.archivoDatos[bloqueIdx].length - 1; i >= 0; i--) {
-          if (estructura.value.archivoDatos[bloqueIdx][i] !== null) {
-            ultimaClave = estructura.value.archivoDatos[bloqueIdx][i];
-            break;
-          }
-        }
-        
-        if (ultimaClave !== null && indiceGlobal < estructura.value.indiceSimple.length * estructura.value.bfri) {
-          const bloqueIndice = Math.floor(indiceGlobal / estructura.value.bfri);
-          const posIndice = indiceGlobal % estructura.value.bfri;
-          
-          estructura.value.indiceSimple[bloqueIndice][posIndice].clave = ultimaClave;
-          estructura.value.indiceSimple[bloqueIndice][posIndice].bloqueReferencia = bloqueIdx + 1;
-          indiceGlobal++;
-        }
-      }
-    }
-  } else {
-    // Índice Secundario: Reconstruir con todas las claves
-    let indiceGlobal = 0;
-    for (let bloqueIdx = 0; bloqueIdx < estructura.value.archivoDatos.length; bloqueIdx++) {
-      for (let regIdx = 0; regIdx < estructura.value.archivoDatos[bloqueIdx].length; regIdx++) {
-        const clave = estructura.value.archivoDatos[bloqueIdx][regIdx];
-        
-        if (clave !== null && indiceGlobal < estructura.value.indiceSimple.length * estructura.value.bfri) {
-          const bloqueIndice = Math.floor(indiceGlobal / estructura.value.bfri);
-          const posIndice = indiceGlobal % estructura.value.bfri;
-          
-          estructura.value.indiceSimple[bloqueIndice][posIndice].clave = clave;
-          estructura.value.indiceSimple[bloqueIndice][posIndice].bloqueReferencia = bloqueIdx + 1;
-          indiceGlobal++;
-        }
-      }
-    }
-  }
-}
-
 function confirmarReset() {
   estructuraCreada.value = false;
   estructura.value = {
@@ -933,13 +662,11 @@ function confirmarReset() {
     bi: 0,
     archivoDatos: [],
     indiceSimple: [],
+    indicesMultinivel: [],
     registrosInsertados: 0
   };
-  elementoInsertar.value = null;
   mensaje.value = '';
   resultado.value = '';
-  ultimoBloqueAfectado.value = null;
-  ultimaClaveInsertada.value = null;
   mostrarModalReset.value = false;
 }
 
@@ -1025,15 +752,41 @@ h1 {
 }
 
 .operations {
-  max-width: 600px;
+  max-width: 800px;
   margin: 2rem auto;
 }
 
-.operations input {
-  width: 100%;
-  max-width: 300px;
-  margin: 0 auto 1rem auto;
-  display: block;
+.indice-description {
+  background: var(--card-background-color);
+  border: 1px solid var(--primary);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.indice-description h4 {
+  color: var(--primary);
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.indice-description p {
+  margin: 0.75rem 0;
+  line-height: 1.6;
+}
+
+.indice-description strong {
+  color: var(--primary);
+}
+
+.indice-description em {
+  color: var(--accent);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.indice-description button {
+  margin-top: 1rem;
 }
 
 #general-nav {
@@ -1094,15 +847,52 @@ h1 {
 
 .estructuras-lado-a-lado {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3rem;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 2rem;
   align-items: start;
+}
+
+.arrow-demo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 200px;
+}
+
+.connection-arrow {
+  width: 200px;
+  height: 100px;
+}
+
+.animated-arrow {
+  stroke-dasharray: 300;
+  stroke-dashoffset: 300;
+  animation: drawArrow 2s ease-in-out forwards, pulse 2s ease-in-out 2s infinite;
+}
+
+@keyframes drawArrow {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
 }
 
 @media (max-width: 1200px) {
   .estructuras-lado-a-lado {
     grid-template-columns: 1fr;
     gap: 2rem;
+  }
+  
+  .arrow-demo {
+    display: none;
   }
 }
 
@@ -1352,10 +1142,12 @@ h1 {
 
 /* Estilos para visualización vertical lado a lado */
 .estructuras-lado-a-lado {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3rem;
+  display: flex;
+  justify-content: center;
+  align-items: start;
+  gap: 2rem;
   margin-top: 2rem;
+  flex-wrap: wrap;
 }
 
 .estructura-container {
