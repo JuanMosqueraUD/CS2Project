@@ -325,7 +325,7 @@ function inicializarVisualizacion() {
         springConstant: 0.04
       },
       stabilization: {
-        iterations: 100
+        iterations: 100 
       }
     },
     interaction: {
