@@ -136,6 +136,87 @@ Vista dedicada a la visualización y cálculo de árboles de expansión en grafo
 
 **Diferencia Mínimo vs Máximo:** Únicamente el orden de clasificación de aristas cambia (ascendente vs descendente).
 
+---
+
+## Algoritmo de Floyd-Warshall
+
+Vista para calcular los caminos más cortos entre todos los pares de vértices en un grafo.
+
+### Requisitos
+
+- El grafo puede ser dirigido o no dirigido
+- El grafo puede ser ponderado o no ponderado
+- Si no es ponderado, todas las aristas tienen peso 1 por defecto
+- Los pesos son opcionales al agregar aristas (solo si el grafo es ponderado)
+- Formato de entrada: "12" o "1 2" para conectar nodos 1 y 2
+
+### Funcionalidades
+
+- Creación de grafos con configuración flexible (dirigido/no dirigido, ponderado/no ponderado)
+- Gestión de aristas con pesos opcionales según configuración
+- Visualización interactiva del grafo
+- Representación en teoría de conjuntos (V, A)
+- Cálculo de caminos más cortos entre todos los pares de nodos
+
+### Algoritmo de Floyd-Warshall
+
+**Propósito:** Encontrar la distancia más corta entre todos los pares de vértices en un grafo, permitiendo aristas con pesos negativos (pero sin ciclos negativos).
+
+**Método:** Programación dinámica que considera todos los vértices como intermediarios potenciales.
+
+**Pasos del Algoritmo:**
+
+1. **Inicializar Matriz de Distancias:**
+   - Crear matriz D de tamaño n×n (donde n = número de vértices)
+   - Diagonal principal = 0 (distancia de un vértice a sí mismo)
+   - Si existe arista directa de i a j: D[i][j] = peso de la arista
+   - Si no existe arista: D[i][j] = ∞
+   - Para grafos dirigidos: solo se consideran aristas salientes
+   - Para grafos no dirigidos: aristas bidireccionales
+
+2. **Aplicar Algoritmo (Triple Iteración):**
+   ```
+   Para k = 1 hasta n:
+     Para i = 1 hasta n:
+       Para j = 1 hasta n:
+         Si D[i][k] + D[k][j] < D[i][j]:
+           D[i][j] = D[i][k] + D[k][j]
+   ```
+   - k: vértice intermediario considerado
+   - i: vértice origen
+   - j: vértice destino
+   - Condición: si el camino i→k→j es más corto que i→j directo, actualizar
+
+3. **Calcular Métricas del Grafo:**
+   - **Excentricidad de vértice v:** Distancia máxima desde v a cualquier otro vértice
+   - **Mediana (Radio):** Excentricidad mínima del grafo
+   - **Centro:** Vértice(s) con excentricidad mínima
+   - **Bicentro:** Cuando hay exactamente 2 centros
+   - **Diámetro:** Excentricidad máxima del grafo (distancia más larga entre cualquier par)
+
+**Complejidad Temporal:** O(n³) donde n es el número de vértices.
+
+**Ventajas:**
+- Calcula todas las distancias en una sola ejecución
+- Funciona con pesos negativos (sin ciclos negativos)
+- Permite detectar ciclos negativos
+- Simple de implementar
+
+**Aplicaciones:**
+- Cálculo de matriz de distancias mínimas
+- Detección de ciclos negativos
+- Problemas de caminos en redes de transporte
+- Análisis de conectividad en grafos
+- Identificación de centros y diámetros de grafos
+
+**Visualización de Resultados:**
+- Matriz de distancias final con símbolo ∞ para distancias inalcanzables
+- Lista de excentricidades por vértice
+- Identificación de centro/bicentro (vértices con menor excentricidad)
+- Valor del diámetro del grafo
+
+**Estado:** ✅ Implementado completamente
+
 ### Consideraciones Técnicas
 
 **Dependencias:**

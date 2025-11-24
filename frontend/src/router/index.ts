@@ -24,6 +24,7 @@ import IndicesView from '../views/external-searches/IndicesView.vue';
 // Importar vistas de grafos
 import OperacionesUnGrafo from '../views/grafos/OperacionesUnGrafo.vue';
 import ArbolesExpansion from '../views/grafos/ArbolesExpansion.vue';
+import AlgoritmoFloyd from '../views/grafos/AlgoritmoFloyd.vue';
 
 const routes = [
   { path: "/", name: "home", component: HomeView },
@@ -61,6 +62,7 @@ const routes = [
   // Rutas de Grafos
   { path: "/grafos/operaciones/un-grafo", name: "grafos-operaciones-un-grafo", component: OperacionesUnGrafo },
   { path: "/grafos/arboles/expansion", name: "grafos-arboles-expansion", component: ArbolesExpansion },
+  { path: "/grafos/arboles/floyd", name: "grafos-arboles-floyd", component: AlgoritmoFloyd },
 ]
 
 const router = createRouter({

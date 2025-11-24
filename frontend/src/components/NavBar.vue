@@ -142,6 +142,9 @@ const graphMode = ref('');
         <button class="outline contrast">
           <router-link to="/grafos/arboles/expansion" class="outline contrast">Árboles de Expansión</router-link>
         </button>
+        <button class="outline contrast">
+          <router-link to="/grafos/arboles/floyd" class="outline contrast">Algoritmo de Floyd</router-link>
+        </button>
       </div>
     </div>
 
