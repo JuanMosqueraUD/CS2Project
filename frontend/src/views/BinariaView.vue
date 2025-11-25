@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, computed } from "vue";
-import * as funciones from "../utils/funciones.ts";
+import * as funciones from "../utils/funciones";
 
 const valor = ref("");
 const estructura = ref<(number | null)[]>([]);
