@@ -4,6 +4,18 @@
     
     <h1>Operaciones en un Grafo</h1>
 
+    <!-- Botón Importar Grafo (siempre visible) -->
+    <div class="import-section">
+      <button @click="triggerFileInput" class="btn-import">📥 Importar Grafo</button>
+      <input 
+        ref="fileInput" 
+        type="file" 
+        accept=".json" 
+        style="display: none" 
+        @change="importarGrafo"
+      />
+    </div>
+
     <!-- Crear grafo -->
     <div v-if="!grafoCreado" class="create-structure">
       <h3>Crear Grafo</h3>
@@ -62,15 +74,6 @@
           <div class="info-item">
             <strong>Ponderado:</strong> {{ config.esPonderado ? 'Sí' : 'No' }}
           </div>
-        </div>
-      </div>
-
-      <!-- Notación de Teoría de Conjuntos -->
-      <div class="set-notation">
-        <h4>Representación en Teoría de Conjuntos:</h4>
-        <div class="notation-content">
-          <p><strong>V =</strong> {{ formatearConjuntoNodos() }}</p>
-          <p><strong>A =</strong> {{ formatearConjuntoAristas() }}</p>
         </div>
       </div>
 
@@ -138,7 +141,7 @@
 
           <!-- Fusionar Vértices -->
           <div class="operation-card">
-            <h4>Fusionar Vértices</h4>
+            <h4>Fusionar nodos</h4>
             <input 
               type="text" 
               v-model="verticesFusionar" 
@@ -159,11 +162,29 @@
             />
             <button @click="contraerArista">Contraer</button>
           </div>
+
+          <!-- Generar Grafo Línea -->
+          <div class="operation-card">
+            <h4>Generar Grafo Línea</h4>
+            <button @click="iniciarGrafoLinea" :disabled="grafoLineaAplicado || complementoAplicado">Generar Línea</button>
+          </div>
+
+          <!-- Generar Complemento -->
+          <div class="operation-card">
+            <h4>Generar Complemento del Grafo</h4>
+            <button @click="iniciarComplemento" :disabled="grafoLineaAplicado || complementoAplicado" style="font-size: 90%;">Generar Complemento</button>
+          </div>
         </div>
       </div>
 
       <!-- Mensaje -->
       <p v-if="mensaje" class="message" :class="{ error: esError }">{{ mensaje }}</p>
+
+      <!-- Botones de reversión -->
+      <div v-if="grafoLineaAplicado || complementoAplicado" class="revert-section">
+        <button v-if="grafoLineaAplicado" @click="revertirGrafoLinea" class="btn-revert">Revertir Grafo Línea</button>
+        <button v-if="complementoAplicado" @click="revertirComplemento" class="btn-revert">Revertir Complemento</button>
+      </div>
 
       <!-- Visualización del Grafo -->
       <div class="graph-visualization">
@@ -171,16 +192,35 @@
         <div id="graph-container" ref="graphContainer"></div>
       </div>
 
-      <!-- Botón de reseteo -->
+      <!-- Panel de notación del grafo original -->
+      <div class="set-notation">
+        <h4>Representación en Teoría de Conjuntos:</h4>
+        <div class="notation-content">
+          <p><strong>V =</strong> {{ formatearConjuntoNodos() }}</p>
+          <p><strong>A =</strong> {{ formatearConjuntoAristas() }}</p>
+        </div>
+      </div>
+
+      <!-- Panel de notación del complemento (si aplica) -->
+      <div v-if="complementoAplicado && complementoInfo && complementoInfo.aristas.length > 0" class="set-notation complemento-notation">
+        <h4>Complemento del Grafo:</h4>
+        <div class="notation-content">
+          <p><strong>V =</strong> {{ formatearConjuntoNodosComplemento() }}</p>
+          <p><strong>A =</strong> {{ formatearConjuntoAristasComplemento() }}</p>
+        </div>
+      </div>
+
+      <!-- Botón de reseteo y guardado -->
       <div class="reset-section">
-        <button @click="resetearGrafo" class="btn-danger">Resetear Grafo</button>
+        <button @click="resetearGrafo" class="btn-danger" :disabled="grafoLineaAplicado || complementoAplicado">Resetear Grafo</button>
+        <button @click="guardarGrafo" class="btn-save">💾 Guardar Grafo</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from 'vue';
+import { ref, onMounted, nextTick, toRaw } from 'vue';
 import { DataSet, Network } from 'vis-network/standalone';
 import 'vis-network/styles/vis-network.css';
 
@@ -191,13 +231,13 @@ interface Config {
 }
 
 interface Nodo {
-  id: number;
+  id: number | string;
   label: string;
 }
 
 interface Arista {
-  from: number;
-  to: number;
+  from: number | string;
+  to: number | string;
   peso?: number;
 }
 
@@ -227,7 +267,15 @@ const aristaContraer = ref('');
 const mensaje = ref('');
 const esError = ref(false);
 
+// Estados para transformaciones de grafo
+const grafoLineaAplicado = ref(false);
+const complementoAplicado = ref(false);
+const grafoOriginal = ref<Grafo | null>(null);
+const complementoInfo = ref<{ nodos: (number | string)[]; aristas: Arista[] } | null>(null);
+
 const graphContainer = ref<HTMLElement | null>(null);
+const fileInput = ref<HTMLInputElement | null>(null);
+
 let network: Network | null = null;
 let nodesDataSet: DataSet<any> | null = null;
 let edgesDataSet: DataSet<any> | null = null;
@@ -313,7 +361,9 @@ function inicializarVisualizacion() {
     edges: {
       width: 2,
       smooth: {
-        type: 'continuous'
+        enabled: true,
+        type: 'continuous',
+        roundness: 0.5
       }
     },
     physics: {
@@ -336,7 +386,18 @@ function inicializarVisualizacion() {
     }
   };
 
-  network = new Network(graphContainer.value, data, options);
+  // Debug logs para asegurar que el contenedor y los datos existen
+  console.log('Inicializando visualización:', { container: graphContainer.value, nodes: grafo.value.nodos.length, edges: grafo.value.aristas.length });
+  if (!graphContainer.value) {
+    console.error('Graph container no disponible - abortando inicialización de vis-network');
+    return;
+  }
+
+  try {
+    network = new Network(graphContainer.value, data, options);
+  } catch (e) {
+    console.error('Error al inicializar vis-network:', e);
+  }
 }
 
 function actualizarVisualizacion() {
@@ -446,11 +507,10 @@ function agregarArista() {
 }
 
 function insertarNodo() {
-  const nuevoId = Math.max(...grafo.value.nodos.map(n => n.id)) + 1;
-  grafo.value.nodos.push({
-    id: nuevoId,
-    label: `${nuevoId}`
-  });
+  // Calcular el nuevo id a partir de los ids numéricos actuales
+  const numericIds = grafo.value.nodos.map(n => Number(n.id)).filter(x => !isNaN(x));
+  const nuevoId = numericIds.length ? Math.max(...numericIds) + 1 : 1;
+  grafo.value.nodos.push({ id: nuevoId, label: `${nuevoId}` });
 
   actualizarVisualizacion();
   mostrarMensaje(`Nodo ${nuevoId} insertado`, false);
@@ -494,9 +554,9 @@ function borrarArista() {
   const [nodo1, nodo2] = nodos;
 
   const aristaIndex = grafo.value.aristas.findIndex(
-    arista => 
-      (arista.from === nodo1 && arista.to === nodo2) ||
-      (!config.value.esDirigido && arista.from === nodo2 && arista.to === nodo1)
+    arista =>
+      (String(arista.from) === String(nodo1) && String(arista.to) === String(nodo2)) ||
+      (!config.value.esDirigido && String(arista.from) === String(nodo2) && String(arista.to) === String(nodo1))
   );
 
   if (aristaIndex === -1) {
@@ -511,53 +571,142 @@ function borrarArista() {
 }
 
 function fusionarVertices() {
+  console.log("Iniciando fusión de nodos...");
+  
   if (!verticesFusionar.value || verticesFusionar.value.length < 2) {
     mostrarMensaje('Por favor ingrese dos nodos válidos (ej: 12)', true);
+    console.log("No se ingresaron dos nodos válidos.");
     return;
   }
 
   const nodos = extraerNodos(verticesFusionar.value);
+  console.log("Nodos a fusionar:", nodos);
+
   if (!nodos) return;
 
   const [nodo1, nodo2] = nodos;
 
+  // Verificar si los nodos existen
+  console.log(`Verificando si los nodos ${nodo1} y ${nodo2} existen...`);
   if (!existeNodo(nodo1) || !existeNodo(nodo2)) {
     mostrarMensaje('Uno o ambos nodos no existen', true);
+    console.log("Al menos uno de los nodos no existe.");
     return;
   }
 
   if (nodo1 === nodo2) {
     mostrarMensaje('No se puede fusionar un nodo consigo mismo', true);
+    console.log("Intento de fusionar un nodo consigo mismo.");
     return;
   }
 
-  // Mantener nodo1, eliminar nodo2
-  // Redirigir todas las aristas de nodo2 a nodo1
-  grafo.value.aristas = grafo.value.aristas.map(arista => {
-    if (arista.from === nodo2) arista.from = nodo1;
-    if (arista.to === nodo2) arista.to = nodo1;
-    return arista;
-  }).filter(arista => arista.from !== arista.to); // Eliminar auto-loops
+  // Crear el nuevo nodo fusionado (usar string para evitar colisión con ids numéricos)
+  const nuevoNodo = `${nodo1}${nodo2}`;
+  console.log("Nuevo nodo fusionado:", nuevoNodo);
+  // Guardar copia de aristas antes de modificar para comprobar si existía arista entre nodo1 y nodo2
+  const aristasAntes = grafo.value.aristas.map(a => ({ ...a }));
+  console.log("Aristas antes de la fusión:", aristasAntes);
 
-  // Eliminar duplicados de aristas
-  const aristasUnicas = new Map<string, Arista>();
-  grafo.value.aristas.forEach(arista => {
-    const key = config.value.esDirigido 
-      ? `${arista.from}-${arista.to}`
-      : [arista.from, arista.to].sort().join('-');
-    
-    if (!aristasUnicas.has(key)) {
-      aristasUnicas.set(key, arista);
-    }
+  // Mapear sobre la copia para producir las nuevas aristas con el nodo fusionado
+  let nuevasAristas = aristasAntes.map(arista => {
+    const aristaRaw = { ...arista };
+    if (aristaRaw.from === nodo1 || aristaRaw.from === nodo2) aristaRaw.from = nuevoNodo;
+    if (aristaRaw.to === nodo1 || aristaRaw.to === nodo2) aristaRaw.to = nuevoNodo;
+    return aristaRaw;
   });
+
+  console.log("Aristas después de mapear la fusión:", nuevasAristas);
+
+  // Eliminar los nodos fusionados (nodo1 y nodo2)
+  grafo.value.nodos = grafo.value.nodos.filter(nodo => nodo.id !== nodo1 && nodo.id !== nodo2);
+  console.log("Nodos después de la fusión:", grafo.value.nodos);
+
+  // Agregar el nuevo nodo fusionado
+  grafo.value.nodos.push({ id: nuevoNodo, label: nuevoNodo });
+
+  // Comprobar si existía arista entre nodo1 y nodo2 antes de la fusión
+  const huboAristaEntre = aristasAntes.some(ar =>
+    (ar.from === nodo1 && ar.to === nodo2) || (!config.value.esDirigido && ar.from === nodo2 && ar.to === nodo1)
+  );
+
+  // Si hubo una arista entre los dos nodos, al mapearla habremos creado un bucle; si no hubo, no crear uno nuevo.
+  if (huboAristaEntre) {
+    // Asegurar que exista al menos un bucle para el nuevo nodo (si hubo arista entre ambos)
+    const existeBucle = nuevasAristas.some(a => a.from === nuevoNodo && a.to === nuevoNodo);
+    if (!existeBucle) {
+      nuevasAristas.push({ from: nuevoNodo, to: nuevoNodo, peso: config.value.esPonderado ? 1 : undefined });
+    }
+  }
+
+  // Eliminar duplicados de aristas resultantes (mantener una copia representativa)
+  const aristasUnicas = new Map();
+  nuevasAristas.forEach(arista => {
+    const key = config.value.esDirigido ? `${arista.from}-${arista.to}` : [arista.from, arista.to].sort().join('-');
+    if (!aristasUnicas.has(key)) aristasUnicas.set(key, arista);
+  });
+
   grafo.value.aristas = Array.from(aristasUnicas.values());
 
-  // Eliminar nodo2
-  grafo.value.nodos = grafo.value.nodos.filter(n => n.id !== nodo2);
+  console.log("Aristas después de la fusión y deduplicación:", grafo.value.aristas);
 
+  // Actualizar la visualización y la notación
   actualizarVisualizacion();
-  mostrarMensaje(`Vértices ${nodo1} y ${nodo2} fusionados en ${nodo1}`, false);
+  mostrarMensaje(`Vértices ${nodo1} y ${nodo2} fusionados en ${nuevoNodo}`, false);
+
+  // Limpiar input
   verticesFusionar.value = '';
+  // Actualizar la notación en teoría de conjuntos
+  actualizarNotacionTeoriaConjuntos();
+}
+
+
+function actualizarNotacionTeoriaConjuntos() {
+  console.log("Actualizando la notación de teoría de conjuntos...");
+  
+  // Actualizar el conjunto de nodos
+  const conjuntoNodos = grafo.value.nodos.map(nodo => nodo.id);
+  console.log("Conjunto de nodos:", conjuntoNodos);
+
+  // Crear un conjunto de aristas únicas para evitar duplicados
+  const aristasUnicas = new Set<string>();
+
+  grafo.value.aristas.forEach(arista => {
+    // Convertimos la arista en un objeto plano para asegurar la comparación
+    const aristaRaw = { ...arista };
+
+    // Generamos una clave única para cada arista
+    const aristaKey = config.value.esDirigido
+      ? `${aristaRaw.from}-${aristaRaw.to}`
+      : [aristaRaw.from, aristaRaw.to].sort().join('-'); // Para grafos no dirigidos, ordenar las aristas
+
+    console.log("Comprobando arista:", aristaKey);
+
+    // Solo agregar la arista si no está duplicada
+    if (!aristasUnicas.has(aristaKey)) {
+      aristasUnicas.add(aristaKey);
+      console.log("Arista única añadida:", aristaRaw);
+    } else {
+      console.log("Arista duplicada encontrada, no se añade:", aristaRaw);
+    }
+  });
+
+  // Obtener las aristas únicas
+  const conjuntoAristas = Array.from(aristasUnicas).map(aristaKey => {
+    const [from, to] = aristaKey.split('-');
+    const arista = grafo.value.aristas.find(a => `${a.from}-${a.to}` === aristaKey);
+    const peso = config.value.esPonderado && arista?.peso !== undefined ? `, ${arista.peso}` : '';
+    return `(${from}, ${to}${peso})`;
+  });
+  
+  console.log("Conjunto de aristas (sin duplicados):", conjuntoAristas);
+
+  // Formatear la representación en conjunto
+  const conjuntoNodosStr = `{${conjuntoNodos.join(', ')}}`;
+  const conjuntoAristasStr = `{${conjuntoAristas.join(', ')}}`;
+
+  // Mostrar la notación actualizada en el UI
+  console.log(`V = ${conjuntoNodosStr}`);
+  console.log(`A = ${conjuntoAristasStr}`);
 }
 
 function contraerArista() {
@@ -575,38 +724,49 @@ function contraerArista() {
     mostrarMensaje('La arista no existe', true);
     return;
   }
+  // Crear nuevo nodo fusionado con notación "12"
+  const nuevoNodo = `${nodo1}${nodo2}`;
 
-  // Eliminar la arista
-  grafo.value.aristas = grafo.value.aristas.filter(
-    arista => 
-      !((arista.from === nodo1 && arista.to === nodo2) ||
-        (!config.value.esDirigido && arista.from === nodo2 && arista.to === nodo1))
-  );
+  // Copia de aristas antes de modificar
+  const aristasAntes = grafo.value.aristas.map(a => ({ ...a }));
 
-  // Fusionar los nodos
-  grafo.value.aristas = grafo.value.aristas.map(arista => {
-    if (arista.from === nodo2) arista.from = nodo1;
-    if (arista.to === nodo2) arista.to = nodo1;
-    return arista;
-  }).filter(arista => arista.from !== arista.to);
+  // Eliminar todas las aristas que conecten directamente nodo1 y nodo2 (la arista contraída)
+  const restantes = aristasAntes.filter(ar => !(
+    (String(ar.from) === String(nodo1) && String(ar.to) === String(nodo2)) ||
+    (!config.value.esDirigido && String(ar.from) === String(nodo2) && String(ar.to) === String(nodo1))
+  ));
 
-  // Eliminar duplicados
-  const aristasUnicas = new Map<string, Arista>();
-  grafo.value.aristas.forEach(arista => {
-    const key = config.value.esDirigido 
-      ? `${arista.from}-${arista.to}`
-      : [arista.from, arista.to].sort().join('-');
-    
-    if (!aristasUnicas.has(key)) {
-      aristasUnicas.set(key, arista);
-    }
+  // Reemplazar referencias a nodo1 o nodo2 por el nuevo nodo fusionado
+  let nuevasAristas = restantes.map(arista => {
+    const a = { ...arista };
+    if (String(a.from) === String(nodo1) || String(a.from) === String(nodo2)) a.from = nuevoNodo;
+    if (String(a.to) === String(nodo1) || String(a.to) === String(nodo2)) a.to = nuevoNodo;
+    return a;
   });
+
+  // Eliminar auto-bucles resultantes que no deberían permanecer
+  nuevasAristas = nuevasAristas.filter(a => String(a.from) !== String(a.to));
+
+  // Deduplicar aristas resultantes
+  const aristasUnicas = new Map<string, Arista>();
+  nuevasAristas.forEach(arista => {
+    const key = config.value.esDirigido
+      ? `${String(arista.from)}-${String(arista.to)}`
+      : [String(arista.from), String(arista.to)].sort().join('-');
+    if (!aristasUnicas.has(key)) aristasUnicas.set(key, arista);
+  });
+
   grafo.value.aristas = Array.from(aristasUnicas.values());
 
-  grafo.value.nodos = grafo.value.nodos.filter(n => n.id !== nodo2);
+  // Reemplazar nodos: eliminar ambos y añadir el nuevo nodo fusionado
+  grafo.value.nodos = grafo.value.nodos.filter(n => String(n.id) !== String(nodo1) && String(n.id) !== String(nodo2));
+  grafo.value.nodos.push({ id: nuevoNodo, label: nuevoNodo });
 
   actualizarVisualizacion();
-  mostrarMensaje(`Arista ${nodo1}-${nodo2} contraída, nodos fusionados en ${nodo1}`, false);
+  // Actualizar la notación de teoría de conjuntos
+  actualizarNotacionTeoriaConjuntos();
+
+  mostrarMensaje(`Arista ${nodo1}-${nodo2} contraída, nodos fusionados en ${nuevoNodo}`, false);
   aristaContraer.value = '';
 }
 
@@ -632,43 +792,51 @@ function formatearConjuntoNodos(): string {
 
 function formatearConjuntoAristas(): string {
   if (grafo.value.aristas.length === 0) return '∅';
-  
-  const aristasFormateadas = grafo.value.aristas.map(arista => {
-    const peso = config.value.esPonderado && arista.peso !== undefined 
-      ? `, ${arista.peso}` 
-      : '';
+  // Deduplicar aristas antes de formatear (considerar grafos no dirigidos)
+  const aristasUnicas = new Map<string, Arista>();
+  grafo.value.aristas.forEach(arista => {
+    const key = config.value.esDirigido
+      ? `${String(arista.from)}-${String(arista.to)}`
+      : [String(arista.from), String(arista.to)].sort().join('-');
+    if (!aristasUnicas.has(key)) aristasUnicas.set(key, arista);
+  });
+
+  const aristasFormateadas = Array.from(aristasUnicas.values()).map(arista => {
+    const peso = config.value.esPonderado && arista.peso !== undefined ? `, ${arista.peso}` : '';
     return `(${arista.from}, ${arista.to}${peso})`;
   });
-  
+
   return `{${aristasFormateadas.join(', ')}}`;
 }
 
 function existeNodo(id: number): boolean {
-  return grafo.value.nodos.some(n => n.id === id);
+  return grafo.value.nodos.some(n => String(n.id) === String(id));
 }
 
 function existeArista(from: number, to: number): boolean {
   return grafo.value.aristas.some(
-    arista => 
-      (arista.from === from && arista.to === to) ||
-      (!config.value.esDirigido && arista.from === to && arista.to === from)
+    arista =>
+      (String(arista.from) === String(from) && String(arista.to) === String(to)) ||
+      (!config.value.esDirigido && String(arista.from) === String(to) && String(arista.to) === String(from))
   );
 }
 
 function extraerNodos(input: string): [number, number] | null {
-  // Extraer números del string
-  const numeros = input.match(/\d+/g);
+  // Limpiar la entrada (eliminar espacios y caracteres no numéricos)
+  const cleanedInput = input.replace(/\D/g, ''); // Solo conservar números
   
-  if (!numeros || numeros.length < 2) {
+  // Asegurarse de que haya al menos dos números
+  if (cleanedInput.length < 2) {
     mostrarMensaje('Formato inválido. Use formato: 12 (para nodos 1 y 2)', true);
     return null;
   }
 
-  const nodo1 = parseInt(numeros[0]);
-  const nodo2 = parseInt(numeros[1]);
+  const nodo1 = parseInt(cleanedInput[0]);
+  const nodo2 = parseInt(cleanedInput[1]);
 
   return [nodo1, nodo2];
 }
+
 
 function mostrarMensaje(msg: string, error: boolean) {
   mensaje.value = msg;
@@ -677,6 +845,373 @@ function mostrarMensaje(msg: string, error: boolean) {
     mensaje.value = '';
     esError.value = false;
   }, 3000);
+}
+
+// ============ GRAFO LÍNEA ============
+function iniciarGrafoLinea() {
+  if (grafo.value.aristas.length === 0) {
+    mostrarMensaje('El grafo debe tener al menos una arista para generar el grafo línea', true);
+    return;
+  }
+
+  // Mostrar confirmación
+  if (!confirm('¿Deseas generar el grafo línea? Esta acción transformará el grafo actual.')) {
+    return;
+  }
+
+  // Guardar grafo original
+  grafoOriginal.value = {
+    nodos: grafo.value.nodos.map(n => ({ ...n })),
+    aristas: grafo.value.aristas.map(a => ({ ...a }))
+  };
+
+  // Generar grafo línea
+  generarGrafoLinea();
+  grafoLineaAplicado.value = true;
+
+  actualizarVisualizacion();
+  actualizarNotacionTeoriaConjuntos();
+  mostrarMensaje('Grafo Línea generado exitosamente', false);
+}
+
+function generarGrafoLinea() {
+  // En el grafo línea, cada arista se convierte en un nodo
+  // Las aristas del grafo línea conectan nodos que corresponden a aristas adyacentes en el grafo original
+
+  const nuevosNodos: Nodo[] = [];
+  const nuevasAristas: Arista[] = [];
+
+  // Crear nodos a partir de las aristas originales
+  grafo.value.aristas.forEach((arista, index) => {
+    const nuevoId = `${arista.from}${arista.to}`;
+    nuevosNodos.push({
+      id: nuevoId,
+      label: nuevoId
+    });
+  });
+
+  // Crear aristas entre nodos que corresponden a aristas adyacentes
+  for (let i = 0; i < grafo.value.aristas.length; i++) {
+    for (let j = i + 1; j < grafo.value.aristas.length; j++) {
+      const arista1 = grafo.value.aristas[i];
+      const arista2 = grafo.value.aristas[j];
+
+      // Verificar si las aristas comparten un nodo
+      const comparar = (a: number | string, b: number | string) => String(a) === String(b);
+      const adyacentes =
+        comparar(arista1.from, arista2.from) ||
+        comparar(arista1.from, arista2.to) ||
+        comparar(arista1.to, arista2.from) ||
+        comparar(arista1.to, arista2.to);
+
+      if (adyacentes) {
+        const nodo1 = `${arista1.from}${arista1.to}`;
+        const nodo2 = `${arista2.from}${arista2.to}`;
+
+        // Agregar arista (evitar duplicados)
+        const existe = nuevasAristas.some(a =>
+          (String(a.from) === String(nodo1) && String(a.to) === String(nodo2)) ||
+          (String(a.from) === String(nodo2) && String(a.to) === String(nodo1))
+        );
+
+        if (!existe) {
+          nuevasAristas.push({
+            from: nodo1,
+            to: nodo2
+          });
+        }
+      }
+    }
+  }
+
+  // Reemplazar grafo
+  grafo.value.nodos = nuevosNodos;
+  grafo.value.aristas = nuevasAristas;
+}
+
+function revertirGrafoLinea() {
+  if (!grafoOriginal.value) return;
+
+  grafo.value = {
+    nodos: grafoOriginal.value.nodos.map(n => ({ ...n })),
+    aristas: grafoOriginal.value.aristas.map(a => ({ ...a }))
+  };
+
+  grafoLineaAplicado.value = false;
+  grafoOriginal.value = null;
+
+  actualizarVisualizacion();
+  actualizarNotacionTeoriaConjuntos();
+  mostrarMensaje('Grafo Línea revertido', false);
+}
+
+// ============ GRAFO COMPLEMENTO ============
+function iniciarComplemento() {
+  // Verificar si el grafo es completo
+  const nodos = grafo.value.nodos.length;
+  const aristasMaximas = (nodos * (nodos - 1)) / 2;
+  const aristasCactuales = config.value.esDirigido ? grafo.value.aristas.length : grafo.value.aristas.length;
+
+  if (aristasCactuales === aristasMaximas) {
+    mostrarMensaje('El grafo ya es completo. Se resaltará en su color original.', false);
+    complementoAplicado.value = true;
+    complementoInfo.value = { nodos: [], aristas: [] };
+    return;
+  }
+
+  // Guardar grafo original
+  grafoOriginal.value = {
+    nodos: grafo.value.nodos.map(n => ({ ...n })),
+    aristas: grafo.value.aristas.map(a => ({ ...a }))
+  };
+
+  // Calcular aristas del complemento
+  const aristasFaltantes = calcularComplemento();
+
+  if (aristasFaltantes.length === 0) {
+    mostrarMensaje('El grafo ya es completo.', false);
+    complementoAplicado.value = true;
+    complementoInfo.value = { nodos: [], aristas: [] };
+    return;
+  }
+
+  // Guardar información del complemento y agregar aristas
+  const nodosComplemento: (number | string)[] = [];
+  aristasFaltantes.forEach(a => {
+    if (!nodosComplemento.includes(a.from)) nodosComplemento.push(a.from);
+    if (!nodosComplemento.includes(a.to)) nodosComplemento.push(a.to);
+  });
+
+  complementoInfo.value = {
+    nodos: nodosComplemento,
+    aristas: aristasFaltantes
+  };
+
+  // Agregar aristas del complemento al grafo
+  aristasFaltantes.forEach(arista => {
+    grafo.value.aristas.push(arista);
+  });
+
+  complementoAplicado.value = true;
+
+  actualizarVisualizacionComplemento();
+  actualizarNotacionTeoriaConjuntos();
+  mostrarMensaje('Grafo Complemento generado. Las nuevas aristas están resaltadas en naranja.', false);
+}
+
+function calcularComplemento(): Arista[] {
+  const aristasFaltantes: Arista[] = [];
+  const nodosIds = grafo.value.nodos.map(n => n.id);
+
+  for (let i = 0; i < nodosIds.length; i++) {
+    for (let j = i + 1; j < nodosIds.length; j++) {
+      const nodo1 = nodosIds[i];
+      const nodo2 = nodosIds[j];
+
+      // Verificar si ya existe arista entre estos nodos
+      const existe = grafo.value.aristas.some(a =>
+        (String(a.from) === String(nodo1) && String(a.to) === String(nodo2)) ||
+        (String(a.from) === String(nodo2) && String(a.to) === String(nodo1))
+      );
+
+      if (!existe) {
+        aristasFaltantes.push({
+          from: nodo1,
+          to: nodo2
+        });
+      }
+    }
+  }
+
+  return aristasFaltantes;
+}
+
+function actualizarVisualizacionComplemento() {
+  if (!nodesDataSet || !edgesDataSet || !complementoInfo.value) return;
+
+  // Actualizar aristas con colores diferenciados para el complemento
+  edgesDataSet.clear();
+  grafo.value.aristas.forEach((arista, index) => {
+    const esComplemento = complementoInfo.value!.aristas.some(a =>
+      (String(a.from) === String(arista.from) && String(a.to) === String(arista.to)) ||
+      (String(a.from) === String(arista.to) && String(a.to) === String(arista.from))
+    );
+
+    const color = esComplemento ? '#f97316' : '#94a3b8'; // Naranja para complemento, gris por defecto
+
+    edgesDataSet!.add({
+      id: index,
+      from: arista.from,
+      to: arista.to,
+      label: config.value.esPonderado && arista.peso !== undefined ? `${arista.peso}` : '',
+      arrows: config.value.esDirigido ? 'to' : undefined,
+      color: {
+        color: color,
+        highlight: '#f59e0b'
+      },
+      font: {
+        color: '#e5e7eb',
+        size: 14,
+        background: '#111827'
+      },
+      width: esComplemento ? 3 : 2
+    });
+  });
+}
+
+function revertirComplemento() {
+  if (!grafoOriginal.value) return;
+
+  grafo.value = {
+    nodos: grafoOriginal.value.nodos.map(n => ({ ...n })),
+    aristas: grafoOriginal.value.aristas.map(a => ({ ...a }))
+  };
+
+  complementoAplicado.value = false;
+  complementoInfo.value = null;
+  grafoOriginal.value = null;
+
+  actualizarVisualizacion();
+  actualizarNotacionTeoriaConjuntos();
+  mostrarMensaje('Complemento revertido', false);
+}
+
+function formatearConjuntoAristasComplemento(): string {
+  if (!complementoInfo.value || complementoInfo.value.aristas.length === 0) return '∅';
+
+  const aristasFormateadas = complementoInfo.value.aristas.map(arista => {
+    const peso = config.value.esPonderado && arista.peso !== undefined ? `, ${arista.peso}` : '';
+    return `(${arista.from}, ${arista.to}${peso})`;
+  });
+
+  return `{${aristasFormateadas.join(', ')}}`;
+}
+
+function formatearConjuntoNodosComplemento(): string {
+  if (!complementoInfo.value || complementoInfo.value.nodos.length === 0) return '∅';
+  return `{${complementoInfo.value.nodos.join(', ')}}`;
+}
+
+// ============ GUARDAR E IMPORTAR GRAFOS ============
+function triggerFileInput() {
+  if (fileInput.value) {
+    fileInput.value.click();
+  }
+}
+
+interface GrafoJSON {
+  version: string;
+  config: {
+    cantidadNodos: number;
+    esDirigido: boolean;
+    esPonderado: boolean;
+  };
+  grafo: {
+    nodos: Array<{ id: number | string; label: string }>;
+    aristas: Array<{ from: number | string; to: number | string; peso?: number }>;
+  };
+}
+
+function validarFormatoJSON(obj: any): obj is GrafoJSON {
+  return (
+    obj &&
+    typeof obj === 'object' &&
+    obj.version === '1.0' &&
+    obj.config &&
+    typeof obj.config.cantidadNodos === 'number' &&
+    typeof obj.config.esDirigido === 'boolean' &&
+    typeof obj.config.esPonderado === 'boolean' &&
+    obj.grafo &&
+    Array.isArray(obj.grafo.nodos) &&
+    Array.isArray(obj.grafo.aristas) &&
+    obj.grafo.nodos.every((n: any) => n && (typeof n.id === 'number' || typeof n.id === 'string') && typeof n.label === 'string') &&
+    obj.grafo.aristas.every((a: any) => a && (typeof a.from === 'number' || typeof a.from === 'string') && (typeof a.to === 'number' || typeof a.to === 'string') && (a.peso === undefined || typeof a.peso === 'number'))
+  );
+}
+
+function importarGrafo(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const files = target.files;
+
+  if (!files || files.length === 0) {
+    mostrarMensaje('Por favor selecciona un archivo JSON', true);
+    return;
+  }
+
+  const file = files[0];
+  const reader = new FileReader();
+
+  reader.onload = (e) => {
+    try {
+      const contenido = e.target?.result as string;
+      const datosJSON = JSON.parse(contenido);
+
+      if (!validarFormatoJSON(datosJSON)) {
+        mostrarMensaje('Archivo JSON inválido. Por favor selecciona un archivo de grafo válido generado por este módulo.', true);
+        if (fileInput.value) fileInput.value.value = '';
+        return;
+      }
+
+      // Cargar configuración y grafo
+      config.value = { ...datosJSON.config };
+      grafo.value = {
+        nodos: datosJSON.grafo.nodos.map(n => ({ ...n })),
+        aristas: datosJSON.grafo.aristas.map(a => ({ ...a }))
+      };
+
+      grafoCreado.value = true;
+      grafoLineaAplicado.value = false;
+      complementoAplicado.value = false;
+      grafoOriginal.value = null;
+      complementoInfo.value = null;
+
+      // Limpiar input
+      if (fileInput.value) fileInput.value.value = '';
+
+      nextTick(() => {
+        inicializarVisualizacion();
+        actualizarNotacionTeoriaConjuntos();
+      });
+
+      mostrarMensaje('Grafo importado correctamente', false);
+    } catch (error) {
+      mostrarMensaje('Error al procesar el archivo. Asegúrate de que es un JSON válido.', true);
+      if (fileInput.value) fileInput.value.value = '';
+    }
+  };
+
+  reader.onerror = () => {
+    mostrarMensaje('Error al leer el archivo', true);
+    if (fileInput.value) fileInput.value.value = '';
+  };
+
+  reader.readAsText(file);
+}
+
+function guardarGrafo() {
+  const datosGuardar: GrafoJSON = {
+    version: '1.0',
+    config: {
+      cantidadNodos: config.value.cantidadNodos,
+      esDirigido: config.value.esDirigido,
+      esPonderado: config.value.esPonderado
+    },
+    grafo: {
+      nodos: grafo.value.nodos.map(n => ({ ...n })),
+      aristas: grafo.value.aristas.map(a => ({ ...a }))
+    }
+  };
+
+  const json = JSON.stringify(datosGuardar, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `grafo_${new Date().getTime()}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+
+  mostrarMensaje('Grafo guardado exitosamente', false);
 }
 </script>
 
@@ -688,6 +1223,29 @@ function mostrarMensaje(msg: string, error: boolean) {
 h1 {
   text-align: center;
   margin: 2rem 0;
+}
+
+.import-section {
+  max-width: 600px;
+  margin: 1rem auto;
+  text-align: center;
+  padding: 1rem;
+}
+
+.btn-import {
+  background: #10b981;
+  border: 1px solid #10b981;
+  color: #fff;
+  padding: 0.7rem 1.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.btn-import:hover {
+  background: #059669;
+  border-color: #059669;
 }
 
 .create-structure {
@@ -910,6 +1468,49 @@ h1 {
   max-width: 600px;
   margin: 2rem auto;
   text-align: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-save {
+  background: #8b5cf6;
+  border: 1px solid #8b5cf6;
+  color: #fff;
+  padding: 0.7rem 1.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.btn-save:hover {
+  background: #7c3aed;
+  border-color: #7c3aed;
+}
+
+.revert-section {
+  max-width: 600px;
+  margin: 1rem auto;
+  text-align: center;
+  padding: 1rem;
+}
+
+.btn-revert {
+  background: #3b82f6;
+  border: 1px solid #3b82f6;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-weight: 600;
+  margin: 0.5rem;
+}
+
+.btn-revert:hover {
+  background: #2563eb;
+  border-color: #2563eb;
 }
 
 .btn-danger {
@@ -920,6 +1521,15 @@ h1 {
 .btn-danger:hover {
   background: #b91c1c;
   border-color: #b91c1c;
+}
+
+.complemento-notation {
+  border-color: #f97316;
+  background: linear-gradient(135deg, #7c2d12 0%, #5a1f0f 100%);
+}
+
+.complemento-notation h4 {
+  color: #f97316;
 }
 
 @media (max-width: 768px) {

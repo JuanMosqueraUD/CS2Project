@@ -138,12 +138,19 @@ const graphMode = ref('');
 
     <!-- Árboles -->
     <div v-if="graphMode === 'Arboles'" class="graph-trees">
+      <h4>Tipos de árboles:</h4>
       <div id="general-nav">
         <button class="outline contrast">
-          <router-link to="/grafos/arboles/expansion" class="outline contrast">Árboles de Expansión</router-link>
+          <router-link to="/grafos/arboles/binario" class="outline contrast">Árbol Binario</router-link>
         </button>
         <button class="outline contrast">
-          <router-link to="/grafos/arboles/floyd" class="outline contrast">Algoritmo de Floyd</router-link>
+          <router-link to="/grafos/arboles/avl" class="outline contrast">Árbol AVL</router-link>
+        </button>
+        <button class="outline contrast">
+          <router-link to="/grafos/arboles/b" class="outline contrast">Árbol B</router-link>
+        </button>
+        <button class="outline contrast">
+          <router-link to="/grafos/arboles/rojo-negro" class="outline contrast">Árbol Rojo-Negro</router-link>
         </button>
       </div>
     </div>
