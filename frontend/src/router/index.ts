@@ -20,6 +20,7 @@ import HashTruncamientoExterno from '../views/external-searches/hash/HashTruncam
 import HashCambioBaseExterno from '../views/external-searches/hash/HashCambioBaseExterno.vue';
 import DinamicaView from '../views/DinamicaView.vue';
 import IndicesView from '../views/external-searches/IndicesView.vue';
+import OperacionesDosGrafos from '../views/grafos/OperacionesDosGrafos.vue';
 
 // Importar vistas de grafos
 import OperacionesUnGrafo from '../views/grafos/OperacionesUnGrafo.vue';
@@ -59,6 +60,7 @@ const routes = [
   
   // Rutas de Grafos
   { path: "/grafos/operaciones/un-grafo", name: "grafos-operaciones-un-grafo", component: OperacionesUnGrafo },
+  {path: "/grafos/operaciones/entre-grafos", name: "grafos-operaciones-dos-grafos", component: OperacionesDosGrafos },
 ]
 
 const router = createRouter({
