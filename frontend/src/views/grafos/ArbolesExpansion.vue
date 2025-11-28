@@ -102,6 +102,14 @@
         </div>
       </div>
 
+      <!-- Ramas y Cuerdas (solo visible después de calcular árbol) -->
+      <div v-if="arbolCalculado" class="tree-sets">
+        <div class="notation-content">
+          <p><strong>Ramas (T) =</strong> {{ formatearConjuntoRamas() }}</p>
+          <p><strong>Cuerdas (C) =</strong> {{ formatearConjuntoCuerdas() }}</p>
+        </div>
+      </div>
+
       <!-- Algoritmos de Árboles de Expansión -->
       <div class="expansion-algorithms">
         <button @click="calcularArbolExpansionMinimo" class="outline contrast">
@@ -110,6 +118,65 @@
         <button @click="calcularArbolExpansionMaximo" class="outline contrast">
           Árbol de Expansión Máximo
         </button>
+      </div>
+
+      <!-- Botones de Matrices (solo visible después de calcular árbol) -->
+      <div v-if="arbolCalculado" class="matrix-buttons">
+        <button @click="generarMatrizCortes" class="outline contrast">
+          Generar Matriz de Cortes Fundamentales
+        </button>
+        <button @click="generarMatrizCircuitos" class="outline contrast">
+          Generar Matriz de Circuitos Fundamentales
+        </button>
+      </div>
+
+      <!-- Resultados de Matrices -->
+      <div v-if="matrizCortes" class="matrix-result">
+        <h3>Matriz de Cortes Fundamentales</h3>
+        <div class="matrix-container">
+          <table class="fundamental-matrix">
+            <thead>
+              <tr>
+                <th></th>
+                <th v-for="arista in aristasOriginales" :key="'col-' + arista.id">
+                  {{ formatearAristaCorta(arista) }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(fila, idx) in matrizCortes" :key="'fila-corte-' + idx">
+                <th>C{{ idx + 1 }}</th>
+                <td v-for="(valor, jdx) in fila" :key="'cell-corte-' + idx + '-' + jdx">
+                  {{ valor }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div v-if="matrizCircuitos" class="matrix-result">
+        <h3>Matriz de Circuitos Fundamentales</h3>
+        <div class="matrix-container">
+          <table class="fundamental-matrix">
+            <thead>
+              <tr>
+                <th></th>
+                <th v-for="arista in aristasOriginales" :key="'col-' + arista.id">
+                  {{ formatearAristaCorta(arista) }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(fila, idx) in matrizCircuitos" :key="'fila-circuito-' + idx">
+                <th>Ci{{ idx + 1 }}</th>
+                <td v-for="(valor, jdx) in fila" :key="'cell-circuito-' + idx + '-' + jdx">
+                  {{ valor }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Botón de reseteo -->
@@ -141,6 +208,10 @@ interface Arista {
   peso: number;
 }
 
+interface AristaConId extends Arista {
+  id: string;
+}
+
 interface Grafo {
   nodos: Nodo[];
   aristas: Arista[];
@@ -161,6 +232,14 @@ const aristaInput = ref('');
 const pesoArista = ref<number | null>(null);
 const mensaje = ref('');
 const esError = ref(false);
+
+// Variables para árbol de expansión
+const arbolCalculado = ref(false);
+const aristasOriginales = ref<AristaConId[]>([]);
+const ramasArbol = ref<Arista[]>([]);
+const cuerdasArbol = ref<Arista[]>([]);
+const matrizCortes = ref<number[][] | null>(null);
+const matrizCircuitos = ref<number[][] | null>(null);
 
 const graphContainer = ref<HTMLElement | null>(null);
 let network: Network | null = null;
@@ -383,11 +462,44 @@ function formatearConjuntoAristas(): string {
   return `{ ${aristas.join(', ')} }`;
 }
 
+function formatearConjuntoRamas(): string {
+  if (ramasArbol.value.length === 0) return '{ }';
+  
+  const ramas = ramasArbol.value.map(a => {
+    const simbolo = config.value.esDirigido ? '→' : '↔';
+    return `(${a.from}${simbolo}${a.to}, ${a.peso})`;
+  });
+  
+  return `{ ${ramas.join(', ')} }`;
+}
+
+function formatearConjuntoCuerdas(): string {
+  if (cuerdasArbol.value.length === 0) return '{ }';
+  
+  const cuerdas = cuerdasArbol.value.map(a => {
+    const simbolo = config.value.esDirigido ? '→' : '↔';
+    return `(${a.from}${simbolo}${a.to}, ${a.peso})`;
+  });
+  
+  return `{ ${cuerdas.join(', ')} }`;
+}
+
+function formatearAristaCorta(arista: AristaConId): string {
+  const simbolo = config.value.esDirigido ? '→' : '↔';
+  return `${arista.from}${simbolo}${arista.to}`;
+}
+
 function calcularArbolExpansionMinimo() {
   if (grafo.value.aristas.length === 0) {
     mostrarMensaje('El grafo no tiene aristas', true);
     return;
   }
+
+  // Guardar aristas originales antes de calcular el árbol
+  aristasOriginales.value = grafo.value.aristas.map((a) => ({
+    ...a,
+    id: `${a.from}-${a.to}`
+  }));
 
   // Algoritmo de Kruskal para árbol de expansión mínimo
   // 1. Ordenar aristas por peso (menor a mayor)
@@ -427,10 +539,19 @@ function calcularArbolExpansionMinimo() {
     }
   }
   
+  // Calcular ramas (aristas del árbol) y cuerdas (aristas no incluidas)
+  ramasArbol.value = arbolExpansion;
+  cuerdasArbol.value = aristasOriginales.value.filter(original => 
+    !arbolExpansion.some(rama => 
+      rama.from === original.from && rama.to === original.to
+    )
+  );
+  
   // Actualizar visualización
   grafo.value.aristas = arbolExpansion;
   actualizarVisualizacion();
   
+  arbolCalculado.value = true;
   const pesoTotal = arbolExpansion.reduce((sum, a) => sum + a.peso, 0);
   mostrarMensaje(`Árbol de expansión mínimo calculado. Peso total: ${pesoTotal}`, false);
 }
@@ -440,6 +561,12 @@ function calcularArbolExpansionMaximo() {
     mostrarMensaje('El grafo no tiene aristas', true);
     return;
   }
+
+  // Guardar aristas originales antes de calcular el árbol
+  aristasOriginales.value = grafo.value.aristas.map((a) => ({
+    ...a,
+    id: `${a.from}-${a.to}`
+  }));
 
   // Algoritmo de Kruskal para árbol de expansión máximo
   // 1. Ordenar aristas por peso (mayor a menor)
@@ -479,10 +606,19 @@ function calcularArbolExpansionMaximo() {
     }
   }
   
+  // Calcular ramas (aristas del árbol) y cuerdas (aristas no incluidas)
+  ramasArbol.value = arbolExpansion;
+  cuerdasArbol.value = aristasOriginales.value.filter(original => 
+    !arbolExpansion.some(rama => 
+      rama.from === original.from && rama.to === original.to
+    )
+  );
+  
   // Actualizar visualización
   grafo.value.aristas = arbolExpansion;
   actualizarVisualizacion();
   
+  arbolCalculado.value = true;
   const pesoTotal = arbolExpansion.reduce((sum, a) => sum + a.peso, 0);
   mostrarMensaje(`Árbol de expansión máximo calculado. Peso total: ${pesoTotal}`, false);
 }
@@ -496,6 +632,12 @@ function resetearGrafo() {
   aristaInput.value = '';
   pesoArista.value = null;
   mensaje.value = '';
+  arbolCalculado.value = false;
+  aristasOriginales.value = [];
+  ramasArbol.value = [];
+  cuerdasArbol.value = [];
+  matrizCortes.value = null;
+  matrizCircuitos.value = null;
   
   if (network) {
     network.destroy();
@@ -503,6 +645,150 @@ function resetearGrafo() {
   }
   nodesDataSet = null;
   edgesDataSet = null;
+}
+
+function generarMatrizCortes() {
+  if (!arbolCalculado.value || ramasArbol.value.length === 0) {
+    mostrarMensaje('Primero debe calcular un árbol de expansión', true);
+    return;
+  }
+
+  const numRamas = ramasArbol.value.length;
+  const numAristas = aristasOriginales.value.length;
+  const matriz: number[][] = [];
+
+  // Para cada rama, crear un conjunto de corte fundamental
+  // Un conjunto de corte fundamental contiene:
+  // - Una rama del árbol (obligatorio)
+  // - Las cuerdas que conectan los dos componentes separados al eliminar esa rama
+  for (let i = 0; i < numRamas; i++) {
+    const rama = ramasArbol.value[i];
+    const fila: number[] = [];
+
+    // Para cada arista original, verificar si pertenece al conjunto de corte
+    for (let j = 0; j < numAristas; j++) {
+      const aristaOriginal = aristasOriginales.value[j];
+      
+      // La rama siempre está en su propio conjunto de corte
+      const esLaRama = rama.from === aristaOriginal.from && rama.to === aristaOriginal.to;
+      
+      // Una cuerda está en el conjunto de corte si conecta los dos componentes
+      // que quedan separados al eliminar la rama
+      let esCuerdaEnCorte = false;
+      if (!esLaRama) {
+        // Verificar si es una cuerda
+        const esCuerda = cuerdasArbol.value.some(c => 
+          c.from === aristaOriginal.from && c.to === aristaOriginal.to
+        );
+        
+        if (esCuerda) {
+          // La cuerda está en el corte si conecta los dos lados separados por la rama
+          esCuerdaEnCorte = conectaComponentes(aristaOriginal, rama);
+        }
+      }
+
+      fila.push(esLaRama || esCuerdaEnCorte ? 1 : 0);
+    }
+
+    matriz.push(fila);
+  }
+
+  matrizCortes.value = matriz;
+  mostrarMensaje('Matriz de cortes fundamentales generada', false);
+}
+
+function generarMatrizCircuitos() {
+  if (!arbolCalculado.value || cuerdasArbol.value.length === 0) {
+    mostrarMensaje('Primero debe calcular un árbol de expansión con cuerdas', true);
+    return;
+  }
+
+  const numCuerdas = cuerdasArbol.value.length;
+  const numAristas = aristasOriginales.value.length;
+  const matriz: number[][] = [];
+
+  // Para cada cuerda, crear un circuito fundamental
+  // Un circuito fundamental contiene:
+  // - Una cuerda (obligatorio)
+  // - Las ramas del árbol que forman el camino único entre los extremos de la cuerda
+  for (let i = 0; i < numCuerdas; i++) {
+    const cuerda = cuerdasArbol.value[i];
+    const fila: number[] = [];
+
+    // Encontrar el camino único en el árbol entre los extremos de la cuerda
+    const caminoRamas = encontrarCaminoEnArbol(cuerda.from, cuerda.to);
+
+    // Para cada arista original, verificar si pertenece al circuito
+    for (let j = 0; j < numAristas; j++) {
+      const aristaOriginal = aristasOriginales.value[j];
+      
+      // La cuerda siempre está en su propio circuito
+      const esLaCuerda = cuerda.from === aristaOriginal.from && cuerda.to === aristaOriginal.to;
+      
+      // Una rama está en el circuito si forma parte del camino único
+      const esRamaEnCircuito = caminoRamas.some(rama => 
+        (rama.from === aristaOriginal.from && rama.to === aristaOriginal.to) ||
+        (rama.from === aristaOriginal.to && rama.to === aristaOriginal.from)
+      );
+
+      fila.push(esLaCuerda || esRamaEnCircuito ? 1 : 0);
+    }
+
+    matriz.push(fila);
+  }
+
+  matrizCircuitos.value = matriz;
+  mostrarMensaje('Matriz de circuitos fundamentales generada', false);
+}
+
+function conectaComponentes(cuerda: Arista, rama: Arista): boolean {
+  // Una cuerda conecta los componentes separados por una rama si:
+  // - Un extremo de la cuerda está en un componente
+  // - El otro extremo está en el otro componente
+  // Simplificación: verificar si la cuerda cruza la rama
+  const comparteFuenteConRama = cuerda.from === rama.from || cuerda.from === rama.to;
+  const comparteDestinoConRama = cuerda.to === rama.from || cuerda.to === rama.to;
+  
+  // Si comparte exactamente un extremo, probablemente cruza el corte
+  return (comparteFuenteConRama && !comparteDestinoConRama) || 
+         (!comparteFuenteConRama && comparteDestinoConRama);
+}
+
+function encontrarCaminoEnArbol(desde: number, hasta: number): Arista[] {
+  // BFS para encontrar el camino único entre dos nodos en el árbol
+  const visitados = new Set<number>();
+  const cola: { nodo: number; camino: Arista[] }[] = [{ nodo: desde, camino: [] }];
+  
+  // Construir mapa de adyacencia del árbol
+  const adyacencia = new Map<number, Arista[]>();
+  ramasArbol.value.forEach(rama => {
+    if (!adyacencia.has(rama.from)) adyacencia.set(rama.from, []);
+    if (!adyacencia.has(rama.to)) adyacencia.set(rama.to, []);
+    
+    adyacencia.get(rama.from)!.push(rama);
+    // Para grafos no dirigidos, agregar en ambas direcciones
+    adyacencia.get(rama.to)!.push({ from: rama.to, to: rama.from, peso: rama.peso });
+  });
+
+  while (cola.length > 0) {
+    const { nodo, camino } = cola.shift()!;
+    
+    if (nodo === hasta) {
+      return camino;
+    }
+    
+    if (visitados.has(nodo)) continue;
+    visitados.add(nodo);
+    
+    const vecinos = adyacencia.get(nodo) || [];
+    for (const rama of vecinos) {
+      if (!visitados.has(rama.to)) {
+        cola.push({ nodo: rama.to, camino: [...camino, rama] });
+      }
+    }
+  }
+  
+  return [];
 }
 
 function mostrarMensaje(msg: string, error: boolean) {
@@ -794,5 +1080,81 @@ function mostrarMensaje(msg: string, error: boolean) {
 
 .btn-danger:hover {
   background-color: #dc2626;
+}
+
+.tree-sets {
+  max-width: 800px;
+  margin: 1rem auto;
+  padding: 0.75rem;
+  border: 1px solid var(--muted-border-color);
+  border-radius: 0.25rem;
+  background: var(--code-background-color);
+}
+
+.matrix-buttons {
+  max-width: 900px;
+  margin: 2rem auto;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.matrix-buttons button {
+  flex: 1;
+  max-width: 350px;
+  min-width: 250px;
+}
+
+.matrix-result {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  border: 1px solid var(--muted-border-color);
+  border-radius: 0.5rem;
+  background: var(--card-background-color);
+}
+
+.matrix-result h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  color: var(--primary);
+}
+
+.matrix-container {
+  overflow-x: auto;
+}
+
+.fundamental-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 auto;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+.fundamental-matrix th,
+.fundamental-matrix td {
+  padding: 0.5rem;
+  text-align: center;
+  border: 1px solid var(--muted-border-color);
+}
+
+.fundamental-matrix thead th {
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+}
+
+.fundamental-matrix tbody th {
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+}
+
+.fundamental-matrix td {
+  background: var(--card-background-color);
+  color: var(--color);
 }
 </style>

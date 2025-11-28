@@ -122,9 +122,9 @@
       <div v-if="resultadosFloyd" class="floyd-results">
         <h3>Resultados del Algoritmo de Floyd-Warshall</h3>
         
-        <!-- Matriz de Distancias -->
+        <!-- Matriz Final del Algoritmo -->
         <div class="result-section">
-          <h4>Matriz de Distancias</h4>
+          <h4>Matriz Final del Algoritmo</h4>
           <div class="matrix-container">
             <table class="distance-matrix">
               <thead>
@@ -838,7 +838,7 @@ function resetearGrafo() {
 }
 
 .distance-matrix td {
-  background: white;
+  background: var(--card-background-color);
   color: var(--color);
 }
 
@@ -850,10 +850,12 @@ function resetearGrafo() {
 
 .excentricidad-item {
   padding: 0.5rem;
-  background: white;
+  background: var(--code-background-color);
+  border: 1px solid var(--muted-border-color);
   border-radius: 0.25rem;
   text-align: center;
   font-size: 0.95rem;
+  color: var(--color);
 }
 
 .result-value {
