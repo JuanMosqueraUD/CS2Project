@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
+import { useRouter } from 'vue-router';
+import { useNavigation } from '../composables/useNavigation';
 import * as funciones from "../utils/funciones.ts";
 import { sondeoLineal, sondeoPorCuadrados, sondeoDobleHash } from "../utils/colisiones.ts";
+
+const router = useRouter();
+const { navigateTo } = useNavigation();
+
+function volverAlMenu() {
+  navigateTo('hash');
+  router.push('/');
+}
 
 type EstrategiaColision =
   |  ""
@@ -380,9 +390,11 @@ const displayIndices = computed<number[]>(() => {
 </script>
 
 <template>
-  <!-- Botón para volver al inicio -->
+  <!-- Botón para volver al menú -->
   <div class="btn-back">
-    <router-link to="/" class="outline contrast">Volver al inicio</router-link>
+    <button @click="volverAlMenu" class="outline contrast">
+      ← Volver
+    </button>
   </div>
 
   <h1>Búsqueda Funcion Hash ({{ funcionHash }})</h1>

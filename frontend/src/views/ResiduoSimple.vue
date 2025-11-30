@@ -1,6 +1,8 @@
 <template>
   <div class="btn-back">
-    <router-link to="/" class="outline contrast">Volver al inicio</router-link>
+    <button @click="volverAlMenu" class="outline contrast">
+      ← Volver
+    </button>
   </div>
   <h1>Árbol de Residuos</h1>
 
@@ -42,10 +44,20 @@
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, watch, onBeforeUnmount } from 'vue';
+import { useRouter } from 'vue-router';
+import { useNavigation } from '../composables/useNavigation';
 import { letterToCode } from '../utils/digitalTree';
 import { type RSNode, insertRS, searchRS } from '../utils/residueTree';
 import { DataSet, Network, type Options } from 'vis-network/standalone';
 import 'vis-network/styles/vis-network.css';
+
+const router = useRouter();
+const { navigateTo } = useNavigation();
+
+function volverAlMenu() {
+  navigateTo('residuos');
+  router.push('/');
+}
 import { 
   createExportData, 
   generateExportFileName, 

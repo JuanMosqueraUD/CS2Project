@@ -102,6 +102,34 @@ Vista dedicada a la visualización y cálculo de árboles de expansión en grafo
 **Algoritmos de Árbol de Expansión:**
 - Calcular Árbol de Expansión Mínimo
 - Calcular Árbol de Expansión Máximo
+- Generar Árbol Complemento (T')
+
+### Árbol Complemento (T')
+
+**Definición:** El árbol complemento T' de un árbol de expansión T es el subgrafo formado por todas las aristas del grafo original G que NO están incluidas en el árbol de expansión T.
+
+**Notación:**
+- G = (V, A): Grafo original con vértices V y aristas A
+- T = (V, E_T): Árbol de expansión con aristas E_T ⊆ A
+- T' = (V, E_T'): Árbol complemento donde E_T' = A - E_T
+
+**Propiedades:**
+- El árbol complemento contiene los mismos vértices que el grafo original
+- Las aristas de T' son exactamente las **cuerdas** del árbol de expansión
+- |E_T'| = |A| - (n-1), donde n es el número de vértices
+- T' no necesariamente forma un árbol (puede ser un bosque o grafo desconectado)
+
+**Aplicaciones:**
+- Análisis de redundancia en redes
+- Identificación de rutas alternativas
+- Estudio de conectividad complementaria
+- Análisis de circuitos fundamentales
+
+**Visualización:** 
+El árbol complemento se muestra en un contenedor separado, etiquetado como "T'", mostrando únicamente las cuerdas del grafo original. La representación en teoría de conjuntos muestra que T' = C (conjunto de cuerdas).
+
+**Ubicación en la Vista:**
+Después de calcular un árbol de expansión (mínimo o máximo), aparece un botón "Generar Árbol Complemento (T')" que permite visualizar el grafo complemento en un contenedor independiente, junto con su notación matemática.
 
 #### Estado de Implementación
 
@@ -116,6 +144,8 @@ Vista dedicada a la visualización y cálculo de árboles de expansión en grafo
 - ✅ Algoritmo de Kruskal para Árbol de Expansión Máximo
 - ✅ Visualización del árbol resultante
 - ✅ Cálculo y visualización del peso total
+- ✅ Identificación de ramas y cuerdas
+- ✅ Generación y visualización del árbol complemento (T')
 
 ### Algoritmo de Kruskal
 

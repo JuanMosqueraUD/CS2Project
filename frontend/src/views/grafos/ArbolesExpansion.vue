@@ -57,9 +57,9 @@
         </div>
       </div>
 
-      <!-- Gestión de Aristas -->
+      <!-- Crear Aristas -->
       <div class="edge-management">
-        <h3>Gestión de Aristas</h3>
+        <h3>Crear Aristas</h3>
         <div class="edge-controls">
           <input 
             type="text" 
@@ -110,6 +110,23 @@
         </div>
       </div>
 
+      <!-- Árbol Complemento (T') - solo visible después de calcular árbol -->
+      <div v-if="arbolCalculado" class="complemento-section">
+        <button @click="generarArbolComplemento" class="outline contrast">
+          Generar Árbol Complemento (T')
+        </button>
+        
+        <div v-if="arbolComplemento.mostrado" class="complemento-visualization">
+          <h3>Árbol Complemento (T')</h3>
+          <div id="complemento-container" ref="complementoContainer"></div>
+          <div class="set-notation">
+            <div class="notation-content">
+              <p><strong>T' =</strong> {{ formatearConjuntoCuerdas() }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Algoritmos de Árboles de Expansión -->
       <div class="expansion-algorithms">
         <button @click="calcularArbolExpansionMinimo" class="outline contrast">
@@ -118,65 +135,6 @@
         <button @click="calcularArbolExpansionMaximo" class="outline contrast">
           Árbol de Expansión Máximo
         </button>
-      </div>
-
-      <!-- Botones de Matrices (solo visible después de calcular árbol) -->
-      <div v-if="arbolCalculado" class="matrix-buttons">
-        <button @click="generarMatrizCortes" class="outline contrast">
-          Generar Matriz de Cortes Fundamentales
-        </button>
-        <button @click="generarMatrizCircuitos" class="outline contrast">
-          Generar Matriz de Circuitos Fundamentales
-        </button>
-      </div>
-
-      <!-- Resultados de Matrices -->
-      <div v-if="matrizCortes" class="matrix-result">
-        <h3>Matriz de Cortes Fundamentales</h3>
-        <div class="matrix-container">
-          <table class="fundamental-matrix">
-            <thead>
-              <tr>
-                <th></th>
-                <th v-for="arista in aristasOriginales" :key="'col-' + arista.id">
-                  {{ formatearAristaCorta(arista) }}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(fila, idx) in matrizCortes" :key="'fila-corte-' + idx">
-                <th>C{{ idx + 1 }}</th>
-                <td v-for="(valor, jdx) in fila" :key="'cell-corte-' + idx + '-' + jdx">
-                  {{ valor }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div v-if="matrizCircuitos" class="matrix-result">
-        <h3>Matriz de Circuitos Fundamentales</h3>
-        <div class="matrix-container">
-          <table class="fundamental-matrix">
-            <thead>
-              <tr>
-                <th></th>
-                <th v-for="arista in aristasOriginales" :key="'col-' + arista.id">
-                  {{ formatearAristaCorta(arista) }}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(fila, idx) in matrizCircuitos" :key="'fila-circuito-' + idx">
-                <th>Ci{{ idx + 1 }}</th>
-                <td v-for="(valor, jdx) in fila" :key="'cell-circuito-' + idx + '-' + jdx">
-                  {{ valor }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
       </div>
 
       <!-- Botón de reseteo -->
@@ -240,9 +198,14 @@ const ramasArbol = ref<Arista[]>([]);
 const cuerdasArbol = ref<Arista[]>([]);
 const matrizCortes = ref<number[][] | null>(null);
 const matrizCircuitos = ref<number[][] | null>(null);
+const arbolComplemento = ref({
+  mostrado: false
+});
 
 const graphContainer = ref<HTMLElement | null>(null);
+const complementoContainer = ref<HTMLElement | null>(null);
 let network: Network | null = null;
+let networkComplemento: Network | null = null;
 let nodesDataSet: DataSet<any> | null = null;
 let edgesDataSet: DataSet<any> | null = null;
 
@@ -484,11 +447,6 @@ function formatearConjuntoCuerdas(): string {
   return `{ ${cuerdas.join(', ')} }`;
 }
 
-function formatearAristaCorta(arista: AristaConId): string {
-  const simbolo = config.value.esDirigido ? '→' : '↔';
-  return `${arista.from}${simbolo}${arista.to}`;
-}
-
 function calcularArbolExpansionMinimo() {
   if (grafo.value.aristas.length === 0) {
     mostrarMensaje('El grafo no tiene aristas', true);
@@ -638,157 +596,106 @@ function resetearGrafo() {
   cuerdasArbol.value = [];
   matrizCortes.value = null;
   matrizCircuitos.value = null;
+  arbolComplemento.value.mostrado = false;
   
   if (network) {
     network.destroy();
     network = null;
   }
+  if (networkComplemento) {
+    networkComplemento.destroy();
+    networkComplemento = null;
+  }
   nodesDataSet = null;
   edgesDataSet = null;
 }
 
-function generarMatrizCortes() {
-  if (!arbolCalculado.value || ramasArbol.value.length === 0) {
+function generarArbolComplemento() {
+  if (!arbolCalculado.value) {
     mostrarMensaje('Primero debe calcular un árbol de expansión', true);
     return;
   }
 
-  const numRamas = ramasArbol.value.length;
-  const numAristas = aristasOriginales.value.length;
-  const matriz: number[][] = [];
+  arbolComplemento.value.mostrado = true;
+  
+  nextTick(() => {
+    if (!complementoContainer.value) return;
 
-  // Para cada rama, crear un conjunto de corte fundamental
-  // Un conjunto de corte fundamental contiene:
-  // - Una rama del árbol (obligatorio)
-  // - Las cuerdas que conectan los dos componentes separados al eliminar esa rama
-  for (let i = 0; i < numRamas; i++) {
-    const rama = ramasArbol.value[i];
-    const fila: number[] = [];
-
-    // Para cada arista original, verificar si pertenece al conjunto de corte
-    for (let j = 0; j < numAristas; j++) {
-      const aristaOriginal = aristasOriginales.value[j];
-      
-      // La rama siempre está en su propio conjunto de corte
-      const esLaRama = rama.from === aristaOriginal.from && rama.to === aristaOriginal.to;
-      
-      // Una cuerda está en el conjunto de corte si conecta los dos componentes
-      // que quedan separados al eliminar la rama
-      let esCuerdaEnCorte = false;
-      if (!esLaRama) {
-        // Verificar si es una cuerda
-        const esCuerda = cuerdasArbol.value.some(c => 
-          c.from === aristaOriginal.from && c.to === aristaOriginal.to
-        );
-        
-        if (esCuerda) {
-          // La cuerda está en el corte si conecta los dos lados separados por la rama
-          esCuerdaEnCorte = conectaComponentes(aristaOriginal, rama);
+    // Crear visualización del árbol complemento (solo cuerdas)
+    const nodesComplemento = new DataSet(
+      grafo.value.nodos.map(nodo => ({
+        id: nodo.id,
+        label: nodo.label,
+        color: {
+          background: '#c2410c',
+          border: '#ea580c',
+          highlight: {
+            background: '#ea580c',
+            border: '#f97316'
+          }
+        },
+        font: {
+          color: '#ffffff',
+          size: 16,
+          face: 'Arial'
         }
+      }))
+    );
+
+    const edgesComplemento = new DataSet(
+      cuerdasArbol.value.map((arista, index) => ({
+        id: index,
+        from: arista.from,
+        to: arista.to,
+        label: `${arista.peso}`,
+        arrows: config.value.esDirigido ? 'to' : undefined,
+        color: {
+          color: '#94a3b8',
+          highlight: '#f59e0b'
+        },
+        font: {
+          color: '#e5e7eb',
+          size: 14,
+          background: '#1e3a5f'
+        }
+      }))
+    );
+
+    const data = {
+      nodes: nodesComplemento,
+      edges: edgesComplemento
+    };
+
+    const options = {
+      nodes: {
+        shape: 'circle',
+        size: 25,
+        borderWidth: 2,
+        borderWidthSelected: 3
+      },
+      edges: {
+        width: 2,
+        selectionWidth: 3,
+        smooth: {
+          enabled: true,
+          type: 'continuous',
+          roundness: 0.5
+        }
+      },
+      physics: {
+        enabled: true,
+        stabilization: {
+          iterations: 200
+        }
+      },
+      interaction: {
+        hover: true
       }
+    };
 
-      fila.push(esLaRama || esCuerdaEnCorte ? 1 : 0);
-    }
-
-    matriz.push(fila);
-  }
-
-  matrizCortes.value = matriz;
-  mostrarMensaje('Matriz de cortes fundamentales generada', false);
-}
-
-function generarMatrizCircuitos() {
-  if (!arbolCalculado.value || cuerdasArbol.value.length === 0) {
-    mostrarMensaje('Primero debe calcular un árbol de expansión con cuerdas', true);
-    return;
-  }
-
-  const numCuerdas = cuerdasArbol.value.length;
-  const numAristas = aristasOriginales.value.length;
-  const matriz: number[][] = [];
-
-  // Para cada cuerda, crear un circuito fundamental
-  // Un circuito fundamental contiene:
-  // - Una cuerda (obligatorio)
-  // - Las ramas del árbol que forman el camino único entre los extremos de la cuerda
-  for (let i = 0; i < numCuerdas; i++) {
-    const cuerda = cuerdasArbol.value[i];
-    const fila: number[] = [];
-
-    // Encontrar el camino único en el árbol entre los extremos de la cuerda
-    const caminoRamas = encontrarCaminoEnArbol(cuerda.from, cuerda.to);
-
-    // Para cada arista original, verificar si pertenece al circuito
-    for (let j = 0; j < numAristas; j++) {
-      const aristaOriginal = aristasOriginales.value[j];
-      
-      // La cuerda siempre está en su propio circuito
-      const esLaCuerda = cuerda.from === aristaOriginal.from && cuerda.to === aristaOriginal.to;
-      
-      // Una rama está en el circuito si forma parte del camino único
-      const esRamaEnCircuito = caminoRamas.some(rama => 
-        (rama.from === aristaOriginal.from && rama.to === aristaOriginal.to) ||
-        (rama.from === aristaOriginal.to && rama.to === aristaOriginal.from)
-      );
-
-      fila.push(esLaCuerda || esRamaEnCircuito ? 1 : 0);
-    }
-
-    matriz.push(fila);
-  }
-
-  matrizCircuitos.value = matriz;
-  mostrarMensaje('Matriz de circuitos fundamentales generada', false);
-}
-
-function conectaComponentes(cuerda: Arista, rama: Arista): boolean {
-  // Una cuerda conecta los componentes separados por una rama si:
-  // - Un extremo de la cuerda está en un componente
-  // - El otro extremo está en el otro componente
-  // Simplificación: verificar si la cuerda cruza la rama
-  const comparteFuenteConRama = cuerda.from === rama.from || cuerda.from === rama.to;
-  const comparteDestinoConRama = cuerda.to === rama.from || cuerda.to === rama.to;
-  
-  // Si comparte exactamente un extremo, probablemente cruza el corte
-  return (comparteFuenteConRama && !comparteDestinoConRama) || 
-         (!comparteFuenteConRama && comparteDestinoConRama);
-}
-
-function encontrarCaminoEnArbol(desde: number, hasta: number): Arista[] {
-  // BFS para encontrar el camino único entre dos nodos en el árbol
-  const visitados = new Set<number>();
-  const cola: { nodo: number; camino: Arista[] }[] = [{ nodo: desde, camino: [] }];
-  
-  // Construir mapa de adyacencia del árbol
-  const adyacencia = new Map<number, Arista[]>();
-  ramasArbol.value.forEach(rama => {
-    if (!adyacencia.has(rama.from)) adyacencia.set(rama.from, []);
-    if (!adyacencia.has(rama.to)) adyacencia.set(rama.to, []);
-    
-    adyacencia.get(rama.from)!.push(rama);
-    // Para grafos no dirigidos, agregar en ambas direcciones
-    adyacencia.get(rama.to)!.push({ from: rama.to, to: rama.from, peso: rama.peso });
+    networkComplemento = new Network(complementoContainer.value, data, options);
+    mostrarMensaje('Árbol complemento (T\') generado', false);
   });
-
-  while (cola.length > 0) {
-    const { nodo, camino } = cola.shift()!;
-    
-    if (nodo === hasta) {
-      return camino;
-    }
-    
-    if (visitados.has(nodo)) continue;
-    visitados.add(nodo);
-    
-    const vecinos = adyacencia.get(nodo) || [];
-    for (const rama of vecinos) {
-      if (!visitados.has(rama.to)) {
-        cola.push({ nodo: rama.to, camino: [...camino, rama] });
-      }
-    }
-  }
-  
-  return [];
 }
 
 function mostrarMensaje(msg: string, error: boolean) {
@@ -1058,7 +965,7 @@ function mostrarMensaje(msg: string, error: boolean) {
   height: 600px;
   border: 2px solid var(--muted-border-color);
   border-radius: 0.5rem;
-  background: #111827;
+  background: #1e3a5f;
 }
 
 .reset-section {

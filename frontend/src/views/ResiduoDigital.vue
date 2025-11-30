@@ -1,6 +1,8 @@
 <template>
   <div class="btn-back">
-    <router-link to="/" class="outline contrast">Volver al inicio</router-link>
+    <button @click="volverAlMenu" class="outline contrast">
+      ← Volver
+    </button>
   </div>
   <h1>Árbol Digital</h1>
 
@@ -43,9 +45,19 @@
 
 <script setup lang="ts">
 import { ref, defineComponent, h, type VNode, onMounted, watch, nextTick, onBeforeUnmount } from 'vue';
+import { useRouter } from 'vue-router';
+import { useNavigation } from '../composables/useNavigation';
 import type { PropType } from 'vue';
 import { type DTNode, insertNode, letterToCode, searchLetter } from '../utils/digitalTree';
 import { DataSet, Network, type Options } from 'vis-network/standalone';
+
+const router = useRouter();
+const { navigateTo } = useNavigation();
+
+function volverAlMenu() {
+  navigateTo('residuos');
+  router.push('/');
+}
 import 'vis-network/styles/vis-network.css';
 import { 
   createExportData, 

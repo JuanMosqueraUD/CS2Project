@@ -65,9 +65,9 @@
         </div>
       </div>
 
-      <!-- Gestión de Aristas -->
+      <!-- Crear Aristas -->
       <div class="edge-management">
-        <h3>Gestión de Aristas</h3>
+        <h3>Crear Aristas</h3>
         <div class="edge-controls">
           <input 
             type="text" 
@@ -280,12 +280,16 @@ function inicializarVisualizacion() {
       id: n.id,
       label: n.label,
       color: {
-        background: '#3b82f6',
-        border: '#2563eb',
+        background: '#c2410c',
+        border: '#ea580c',
         highlight: {
-          background: '#60a5fa',
-          border: '#1d4ed8'
+          background: '#ea580c',
+          border: '#f97316'
         }
+      },
+      font: {
+        color: '#ffffff',
+        size: 16
       }
     }))
   );
@@ -419,12 +423,16 @@ function actualizarVisualizacion() {
       id: n.id,
       label: n.label,
       color: {
-        background: '#3b82f6',
-        border: '#2563eb',
+        background: '#c2410c',
+        border: '#ea580c',
         highlight: {
-          background: '#60a5fa',
-          border: '#1d4ed8'
+          background: '#ea580c',
+          border: '#f97316'
         }
+      },
+      font: {
+        color: '#ffffff',
+        size: 16
       }
     }))
   );
@@ -749,7 +757,7 @@ function resetearGrafo() {
   height: 500px;
   border: 1px solid var(--muted-border-color);
   border-radius: 0.25rem;
-  background: white;
+  background: #1e3a5f;
 }
 
 .reset-section {
