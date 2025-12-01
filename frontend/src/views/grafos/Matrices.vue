@@ -173,7 +173,7 @@
 				<div class="matrices-row">
 					<!-- Adyacencia: Nodos -->
 					<div class="matrix-panel adjacency">
-						<h4>Matriz de Adyacencia (Nodos)</h4>
+						<h4>Matriz de Adyacencia de Nodos</h4>
 						<div class="matrix-scroll" :style="{ maxHeight: matrixMaxHeight + 'px' }">
 							<table class="matrix-table">
 								<thead>
@@ -194,7 +194,7 @@
 
 					<!-- Adyacencia: Aristas -->
 					<div class="matrix-panel adjacency">
-						<h4>Matriz de Adyacencia (Aristas)</h4>
+						<h4>Adyacencia de Aristas</h4>
 						<div class="matrix-scroll" :style="{ maxHeight: matrixMaxHeight + 'px' }">
 							<table class="matrix-table">
 								<thead>
@@ -216,7 +216,7 @@
 
 				<!-- Incidencia: debajo ocupando todo el ancho -->
 				<div class="matrix-incidence matrix-panel">
-					<h4>Matriz de Incidencia (Nodos × Aristas)</h4>
+					<h4>Matriz de Incidencia</h4>
 						<div class="matrix-scroll" :style="{ maxHeight: matrixMaxHeight + 'px' }">
 						<table class="matrix-table">
 							<thead>
