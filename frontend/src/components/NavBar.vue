@@ -13,7 +13,7 @@ const graphMode = ref('');
 <template>
   <nav class="grid">
     <li><strong>Algoritmo:</strong></li>
-    <button @click="mode = mode === 'Busquedas' ? '' : 'Busquedas'" class="outline contrast"> Busquedas</button>
+    <button @click="mode = mode === 'Busquedas' ? '' : 'Busquedas'" class="outline contrast"> Búsquedas</button>
     <button @click="mode = mode === 'Grafos' ? '' : 'Grafos'" class="outline contrast"> Grafos</button>
   </nav>
 
