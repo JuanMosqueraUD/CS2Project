@@ -57,9 +57,9 @@
         </div>
       </div>
 
-      <!-- Gestión de Aristas -->
+      <!-- Crear Aristas -->
       <div class="edge-management">
-        <h3>Gestión de Aristas</h3>
+        <h3>Crear Aristas</h3>
         <div class="edge-controls">
           <input 
             type="text" 
@@ -102,6 +102,31 @@
         </div>
       </div>
 
+      <!-- Ramas y Cuerdas (solo visible después de calcular árbol) -->
+      <div v-if="arbolCalculado" class="tree-sets">
+        <div class="notation-content">
+          <p><strong>Ramas (T) =</strong> {{ formatearConjuntoRamas() }}</p>
+          <p><strong>Cuerdas (C) =</strong> {{ formatearConjuntoCuerdas() }}</p>
+        </div>
+      </div>
+
+      <!-- Árbol Complemento (T') - solo visible después de calcular árbol -->
+      <div v-if="arbolCalculado" class="complemento-section">
+        <button @click="generarArbolComplemento" class="outline contrast">
+          Generar Árbol Complemento (T')
+        </button>
+        
+        <div v-if="arbolComplemento.mostrado" class="complemento-visualization">
+          <h3>Árbol Complemento (T')</h3>
+          <div id="complemento-container" ref="complementoContainer"></div>
+          <div class="set-notation">
+            <div class="notation-content">
+              <p><strong>T' =</strong> {{ formatearConjuntoCuerdas() }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Algoritmos de Árboles de Expansión -->
       <div class="expansion-algorithms">
         <button @click="calcularArbolExpansionMinimo" class="outline contrast">
@@ -141,6 +166,10 @@ interface Arista {
   peso: number;
 }
 
+interface AristaConId extends Arista {
+  id: string;
+}
+
 interface Grafo {
   nodos: Nodo[];
   aristas: Arista[];
@@ -162,8 +191,21 @@ const pesoArista = ref<number | null>(null);
 const mensaje = ref('');
 const esError = ref(false);
 
+// Variables para árbol de expansión
+const arbolCalculado = ref(false);
+const aristasOriginales = ref<AristaConId[]>([]);
+const ramasArbol = ref<Arista[]>([]);
+const cuerdasArbol = ref<Arista[]>([]);
+const matrizCortes = ref<number[][] | null>(null);
+const matrizCircuitos = ref<number[][] | null>(null);
+const arbolComplemento = ref({
+  mostrado: false
+});
+
 const graphContainer = ref<HTMLElement | null>(null);
+const complementoContainer = ref<HTMLElement | null>(null);
 let network: Network | null = null;
+let networkComplemento: Network | null = null;
 let nodesDataSet: DataSet<any> | null = null;
 let edgesDataSet: DataSet<any> | null = null;
 
@@ -383,11 +425,39 @@ function formatearConjuntoAristas(): string {
   return `{ ${aristas.join(', ')} }`;
 }
 
+function formatearConjuntoRamas(): string {
+  if (ramasArbol.value.length === 0) return '{ }';
+  
+  const ramas = ramasArbol.value.map(a => {
+    const simbolo = config.value.esDirigido ? '→' : '↔';
+    return `(${a.from}${simbolo}${a.to}, ${a.peso})`;
+  });
+  
+  return `{ ${ramas.join(', ')} }`;
+}
+
+function formatearConjuntoCuerdas(): string {
+  if (cuerdasArbol.value.length === 0) return '{ }';
+  
+  const cuerdas = cuerdasArbol.value.map(a => {
+    const simbolo = config.value.esDirigido ? '→' : '↔';
+    return `(${a.from}${simbolo}${a.to}, ${a.peso})`;
+  });
+  
+  return `{ ${cuerdas.join(', ')} }`;
+}
+
 function calcularArbolExpansionMinimo() {
   if (grafo.value.aristas.length === 0) {
     mostrarMensaje('El grafo no tiene aristas', true);
     return;
   }
+
+  // Guardar aristas originales antes de calcular el árbol
+  aristasOriginales.value = grafo.value.aristas.map((a) => ({
+    ...a,
+    id: `${a.from}-${a.to}`
+  }));
 
   // Algoritmo de Kruskal para árbol de expansión mínimo
   // 1. Ordenar aristas por peso (menor a mayor)
@@ -427,10 +497,19 @@ function calcularArbolExpansionMinimo() {
     }
   }
   
+  // Calcular ramas (aristas del árbol) y cuerdas (aristas no incluidas)
+  ramasArbol.value = arbolExpansion;
+  cuerdasArbol.value = aristasOriginales.value.filter(original => 
+    !arbolExpansion.some(rama => 
+      rama.from === original.from && rama.to === original.to
+    )
+  );
+  
   // Actualizar visualización
   grafo.value.aristas = arbolExpansion;
   actualizarVisualizacion();
   
+  arbolCalculado.value = true;
   const pesoTotal = arbolExpansion.reduce((sum, a) => sum + a.peso, 0);
   mostrarMensaje(`Árbol de expansión mínimo calculado. Peso total: ${pesoTotal}`, false);
 }
@@ -440,6 +519,12 @@ function calcularArbolExpansionMaximo() {
     mostrarMensaje('El grafo no tiene aristas', true);
     return;
   }
+
+  // Guardar aristas originales antes de calcular el árbol
+  aristasOriginales.value = grafo.value.aristas.map((a) => ({
+    ...a,
+    id: `${a.from}-${a.to}`
+  }));
 
   // Algoritmo de Kruskal para árbol de expansión máximo
   // 1. Ordenar aristas por peso (mayor a menor)
@@ -479,10 +564,19 @@ function calcularArbolExpansionMaximo() {
     }
   }
   
+  // Calcular ramas (aristas del árbol) y cuerdas (aristas no incluidas)
+  ramasArbol.value = arbolExpansion;
+  cuerdasArbol.value = aristasOriginales.value.filter(original => 
+    !arbolExpansion.some(rama => 
+      rama.from === original.from && rama.to === original.to
+    )
+  );
+  
   // Actualizar visualización
   grafo.value.aristas = arbolExpansion;
   actualizarVisualizacion();
   
+  arbolCalculado.value = true;
   const pesoTotal = arbolExpansion.reduce((sum, a) => sum + a.peso, 0);
   mostrarMensaje(`Árbol de expansión máximo calculado. Peso total: ${pesoTotal}`, false);
 }
@@ -496,13 +590,112 @@ function resetearGrafo() {
   aristaInput.value = '';
   pesoArista.value = null;
   mensaje.value = '';
+  arbolCalculado.value = false;
+  aristasOriginales.value = [];
+  ramasArbol.value = [];
+  cuerdasArbol.value = [];
+  matrizCortes.value = null;
+  matrizCircuitos.value = null;
+  arbolComplemento.value.mostrado = false;
   
   if (network) {
     network.destroy();
     network = null;
   }
+  if (networkComplemento) {
+    networkComplemento.destroy();
+    networkComplemento = null;
+  }
   nodesDataSet = null;
   edgesDataSet = null;
+}
+
+function generarArbolComplemento() {
+  if (!arbolCalculado.value) {
+    mostrarMensaje('Primero debe calcular un árbol de expansión', true);
+    return;
+  }
+
+  arbolComplemento.value.mostrado = true;
+  
+  nextTick(() => {
+    if (!complementoContainer.value) return;
+
+    // Crear visualización del árbol complemento (solo cuerdas)
+    const nodesComplemento = new DataSet(
+      grafo.value.nodos.map(nodo => ({
+        id: nodo.id,
+        label: nodo.label,
+        color: {
+          background: '#c2410c',
+          border: '#ea580c',
+          highlight: {
+            background: '#ea580c',
+            border: '#f97316'
+          }
+        },
+        font: {
+          color: '#ffffff',
+          size: 16,
+          face: 'Arial'
+        }
+      }))
+    );
+
+    const edgesComplemento = new DataSet(
+      cuerdasArbol.value.map((arista, index) => ({
+        id: index,
+        from: arista.from,
+        to: arista.to,
+        label: `${arista.peso}`,
+        arrows: config.value.esDirigido ? 'to' : undefined,
+        color: {
+          color: '#94a3b8',
+          highlight: '#f59e0b'
+        },
+        font: {
+          color: '#e5e7eb',
+          size: 14,
+          background: '#1e3a5f'
+        }
+      }))
+    );
+
+    const data = {
+      nodes: nodesComplemento,
+      edges: edgesComplemento
+    };
+
+    const options = {
+      nodes: {
+        shape: 'circle',
+        size: 25,
+        borderWidth: 2,
+        borderWidthSelected: 3
+      },
+      edges: {
+        width: 2,
+        selectionWidth: 3,
+        smooth: {
+          enabled: true,
+          type: 'continuous',
+          roundness: 0.5
+        }
+      },
+      physics: {
+        enabled: true,
+        stabilization: {
+          iterations: 200
+        }
+      },
+      interaction: {
+        hover: true
+      }
+    };
+
+    networkComplemento = new Network(complementoContainer.value, data, options);
+    mostrarMensaje('Árbol complemento (T\') generado', false);
+  });
 }
 
 function mostrarMensaje(msg: string, error: boolean) {
@@ -772,7 +965,7 @@ function mostrarMensaje(msg: string, error: boolean) {
   height: 600px;
   border: 2px solid var(--muted-border-color);
   border-radius: 0.5rem;
-  background: #111827;
+  background: #1e3a5f;
 }
 
 .reset-section {
@@ -794,5 +987,81 @@ function mostrarMensaje(msg: string, error: boolean) {
 
 .btn-danger:hover {
   background-color: #dc2626;
+}
+
+.tree-sets {
+  max-width: 800px;
+  margin: 1rem auto;
+  padding: 0.75rem;
+  border: 1px solid var(--muted-border-color);
+  border-radius: 0.25rem;
+  background: var(--code-background-color);
+}
+
+.matrix-buttons {
+  max-width: 900px;
+  margin: 2rem auto;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.matrix-buttons button {
+  flex: 1;
+  max-width: 350px;
+  min-width: 250px;
+}
+
+.matrix-result {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  border: 1px solid var(--muted-border-color);
+  border-radius: 0.5rem;
+  background: var(--card-background-color);
+}
+
+.matrix-result h3 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  text-align: center;
+  color: var(--primary);
+}
+
+.matrix-container {
+  overflow-x: auto;
+}
+
+.fundamental-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 auto;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+.fundamental-matrix th,
+.fundamental-matrix td {
+  padding: 0.5rem;
+  text-align: center;
+  border: 1px solid var(--muted-border-color);
+}
+
+.fundamental-matrix thead th {
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+}
+
+.fundamental-matrix tbody th {
+  background: var(--primary);
+  color: white;
+  font-weight: 600;
+}
+
+.fundamental-matrix td {
+  background: var(--card-background-color);
+  color: var(--color);
 }
 </style>

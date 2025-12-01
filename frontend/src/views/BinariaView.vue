@@ -1,6 +1,16 @@
 <script lang="ts" setup>
 import { ref, computed } from "vue";
+import { useRouter } from 'vue-router';
+import { useNavigation } from '../composables/useNavigation';
 import * as funciones from "../utils/funciones";
+
+const router = useRouter();
+const { navigateTo } = useNavigation();
+
+function volverAlMenu() {
+  navigateTo('interna');
+  router.push('/');
+}
 
 const valor = ref("");
 const estructura = ref<(number | null)[]>([]);
@@ -219,11 +229,11 @@ const displayIndices = computed<number[]>(() => {
 
 <template>
 
-    <!-- Botón para volver al inicio -->
+    <!-- Botón para volver al menú -->
     <div class="btn-back">
-      <router-link to="/" class="outline contrast">
-         Volver al inicio
-      </router-link>
+      <button @click="volverAlMenu" class="outline contrast">
+        ← Volver
+      </button>
     </div>
 
     <h1>Búsqueda Binaria</h1>

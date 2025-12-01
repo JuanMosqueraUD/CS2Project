@@ -65,9 +65,9 @@
         </div>
       </div>
 
-      <!-- Gestión de Aristas -->
+      <!-- Crear Aristas -->
       <div class="edge-management">
-        <h3>Gestión de Aristas</h3>
+        <h3>Crear Aristas</h3>
         <div class="edge-controls">
           <input 
             type="text" 
@@ -122,9 +122,9 @@
       <div v-if="resultadosFloyd" class="floyd-results">
         <h3>Resultados del Algoritmo de Floyd-Warshall</h3>
         
-        <!-- Matriz de Distancias -->
+        <!-- Matriz Final del Algoritmo -->
         <div class="result-section">
-          <h4>Matriz de Distancias</h4>
+          <h4>Matriz Final del Algoritmo</h4>
           <div class="matrix-container">
             <table class="distance-matrix">
               <thead>
@@ -280,12 +280,16 @@ function inicializarVisualizacion() {
       id: n.id,
       label: n.label,
       color: {
-        background: '#3b82f6',
-        border: '#2563eb',
+        background: '#c2410c',
+        border: '#ea580c',
         highlight: {
-          background: '#60a5fa',
-          border: '#1d4ed8'
+          background: '#ea580c',
+          border: '#f97316'
         }
+      },
+      font: {
+        color: '#ffffff',
+        size: 16
       }
     }))
   );
@@ -419,12 +423,16 @@ function actualizarVisualizacion() {
       id: n.id,
       label: n.label,
       color: {
-        background: '#3b82f6',
-        border: '#2563eb',
+        background: '#c2410c',
+        border: '#ea580c',
         highlight: {
-          background: '#60a5fa',
-          border: '#1d4ed8'
+          background: '#ea580c',
+          border: '#f97316'
         }
+      },
+      font: {
+        color: '#ffffff',
+        size: 16
       }
     }))
   );
@@ -749,7 +757,7 @@ function resetearGrafo() {
   height: 500px;
   border: 1px solid var(--muted-border-color);
   border-radius: 0.25rem;
-  background: white;
+  background: #1e3a5f;
 }
 
 .reset-section {
@@ -838,7 +846,7 @@ function resetearGrafo() {
 }
 
 .distance-matrix td {
-  background: white;
+  background: var(--card-background-color);
   color: var(--color);
 }
 
@@ -850,10 +858,12 @@ function resetearGrafo() {
 
 .excentricidad-item {
   padding: 0.5rem;
-  background: white;
+  background: var(--code-background-color);
+  border: 1px solid var(--muted-border-color);
   border-radius: 0.25rem;
   text-align: center;
   font-size: 0.95rem;
+  color: var(--color);
 }
 
 .result-value {

@@ -102,6 +102,34 @@ Vista dedicada a la visualización y cálculo de árboles de expansión en grafo
 **Algoritmos de Árbol de Expansión:**
 - Calcular Árbol de Expansión Mínimo
 - Calcular Árbol de Expansión Máximo
+- Generar Árbol Complemento (T')
+
+### Árbol Complemento (T')
+
+**Definición:** El árbol complemento T' de un árbol de expansión T es el subgrafo formado por todas las aristas del grafo original G que NO están incluidas en el árbol de expansión T.
+
+**Notación:**
+- G = (V, A): Grafo original con vértices V y aristas A
+- T = (V, E_T): Árbol de expansión con aristas E_T ⊆ A
+- T' = (V, E_T'): Árbol complemento donde E_T' = A - E_T
+
+**Propiedades:**
+- El árbol complemento contiene los mismos vértices que el grafo original
+- Las aristas de T' son exactamente las **cuerdas** del árbol de expansión
+- |E_T'| = |A| - (n-1), donde n es el número de vértices
+- T' no necesariamente forma un árbol (puede ser un bosque o grafo desconectado)
+
+**Aplicaciones:**
+- Análisis de redundancia en redes
+- Identificación de rutas alternativas
+- Estudio de conectividad complementaria
+- Análisis de circuitos fundamentales
+
+**Visualización:** 
+El árbol complemento se muestra en un contenedor separado, etiquetado como "T'", mostrando únicamente las cuerdas del grafo original. La representación en teoría de conjuntos muestra que T' = C (conjunto de cuerdas).
+
+**Ubicación en la Vista:**
+Después de calcular un árbol de expansión (mínimo o máximo), aparece un botón "Generar Árbol Complemento (T')" que permite visualizar el grafo complemento en un contenedor independiente, junto con su notación matemática.
 
 #### Estado de Implementación
 
@@ -116,6 +144,8 @@ Vista dedicada a la visualización y cálculo de árboles de expansión en grafo
 - ✅ Algoritmo de Kruskal para Árbol de Expansión Máximo
 - ✅ Visualización del árbol resultante
 - ✅ Cálculo y visualización del peso total
+- ✅ Identificación de ramas y cuerdas
+- ✅ Generación y visualización del árbol complemento (T')
 
 ### Algoritmo de Kruskal
 
@@ -216,6 +246,66 @@ Vista para calcular los caminos más cortos entre todos los pares de vértices e
 - Valor del diámetro del grafo
 
 **Estado:** ✅ Implementado completamente
+
+---
+
+## Matrices Fundamentales en Árboles de Expansión
+
+### Conceptos Básicos
+
+Cuando se calcula un árbol de expansión T de un grafo conexo G, las aristas se dividen en dos conjuntos:
+
+- **Ramas**: Aristas que pertenecen al árbol T (exactamente n-1 aristas para n vértices)
+- **Cuerdas**: Aristas de G que no están en T (m - (n-1) aristas, donde m es el total de aristas)
+
+### Matriz de Circuitos Fundamentales
+
+**Definición:** Para cada cuerda del grafo, existe un único circuito fundamental que se forma al agregar esa cuerda al árbol de expansión.
+
+**Propiedades:**
+- Número de circuitos fundamentales = Número de cuerdas = m - (n-1)
+- Cada circuito contiene:
+  - Una cuerda (la que define el circuito)
+  - Solo ramas del árbol (las que forman el camino único entre los extremos de la cuerda)
+  - **Nunca contiene otras cuerdas**
+
+**Construcción:** Para cada cuerda e = (u,v):
+1. Identificar la cuerda e
+2. Encontrar el camino único en el árbol T entre los vértices u y v usando BFS
+3. El circuito fundamental es: cuerda e + ramas del camino único
+
+**Representación:** Matriz Bf de dimensión [cuerdas × aristas]
+- Bf[i][j] = 1 si la arista j pertenece al circuito fundamental de la cuerda i
+- Bf[i][j] = 0 en caso contrario
+
+### Matriz de Cortes Fundamentales
+
+**Definición:** Para cada rama del árbol, existe un único conjunto de corte fundamental que separa el grafo en dos componentes al eliminar esa rama.
+
+**Propiedades:**
+- Número de cortes fundamentales = Número de ramas = n-1
+- Cada conjunto de corte contiene:
+  - Una rama del árbol (la que define el corte)
+  - Solo cuerdas que conectan los dos componentes separados
+  - **Nunca contiene otras ramas**
+
+**Construcción:** Para cada rama e = (u,v):
+1. Eliminar temporalmente la rama e del árbol
+2. Esto divide el árbol en dos componentes: C1 (contiene u) y C2 (contiene v)
+3. Identificar cuerdas que tienen un extremo en C1 y otro en C2
+4. El conjunto de corte fundamental es: rama e + cuerdas que cruzan entre C1 y C2
+
+**Representación:** Matriz Qf de dimensión [ramas × aristas]
+- Qf[i][j] = 1 si la arista j pertenece al conjunto de corte fundamental de la rama i
+- Qf[i][j] = 0 en caso contrario
+
+**Aplicaciones:**
+- Análisis de conectividad en grafos
+- Circuitos eléctricos (Leyes de Kirchhoff)
+- Diseño de redes tolerantes a fallos
+- Identificación de rutas redundantes
+
+**Estado:** ✅ Implementado en vista de Árboles de Expansión
 
 ### Consideraciones Técnicas
 

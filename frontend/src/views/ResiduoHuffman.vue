@@ -1,6 +1,8 @@
 <template>
   <div class="btn-back">
-    <router-link to="/" class="outline contrast">Volver al inicio</router-link>
+    <button @click="volverAlMenu" class="outline contrast">
+      ← Volver
+    </button>
   </div>
   <h1>Árbol de Huffman</h1>
 
@@ -80,6 +82,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue';
+import { useRouter } from 'vue-router';
+import { useNavigation } from '../composables/useNavigation';
 import { 
   type HuffmanResult, 
   type HuffmanNode, 
@@ -89,6 +93,14 @@ import {
 } from '../utils/huffmanTree';
 import { DataSet, Network, type Options } from 'vis-network/standalone';
 import 'vis-network/styles/vis-network.css';
+
+const router = useRouter();
+const { navigateTo } = useNavigation();
+
+function volverAlMenu() {
+  navigateTo('residuos');
+  router.push('/');
+}
 
 const inputText = ref('');
 const message = ref('');

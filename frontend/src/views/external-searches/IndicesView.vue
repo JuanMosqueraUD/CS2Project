@@ -28,12 +28,34 @@
 
       <div class="config-row">
         <div>
-          <label>Longitud del Registro (Rl - bytes):</label>
+          <label>Cantidad de Registros (r):</label>
           <input 
             type="number" 
-            v-model.number="config.Rl" 
+            v-model.number="config.r" 
+            min="1"
+            placeholder="Ej: 1000"
+          />
+        </div>
+        
+        <div>
+          <label>Longitud Registro Dato (bytes):</label>
+          <input 
+            type="number" 
+            v-model.number="config.RlDatos" 
             min="1"
             placeholder="Ej: 100"
+          />
+        </div>
+      </div>
+
+      <div class="config-row">
+        <div>
+          <label>Longitud Registro Índice (bytes):</label>
+          <input 
+            type="number" 
+            v-model.number="config.RlIndice" 
+            min="1"
+            placeholder="Ej: 15"
           />
         </div>
         
@@ -46,28 +68,19 @@
             placeholder="Ej: 512"
           />
         </div>
-        
-        <div>
-          <label>Cantidad de Registros (r):</label>
-          <input 
-            type="number" 
-            v-model.number="config.r" 
-            min="1"
-            placeholder="Ej: 1000"
-          />
-        </div>
       </div>
 
-      <div class="info-preview" v-if="config.Rl > 0 && config.B > 0 && config.r > 0">
+      <div class="info-preview" v-if="config.RlDatos > 0 && config.RlIndice > 0 && config.B > 0 && config.r > 0">
         <p><strong>Tipo:</strong> Índice {{ config.tipoIndice === 'primario' ? 'Primario' : 'Secundario' }}</p>
         <p><strong>Estructura:</strong> {{ config.estructura === 'simple' ? 'Simple' : 'Multinivel' }}</p>
         
         <h5>Estructura Principal:</h5>
+        <p><strong>Longitud registro dato:</strong> {{ config.RlDatos }} bytes</p>
         <p><strong>Registros por bloque (bfr):</strong> {{ bfrPrincipal }}</p>
         <p><strong>Bloques necesarios (b):</strong> {{ bloquesPrincipal }}</p>
         
         <h5>Estructura de Índices:</h5>
-        <p><strong>Longitud registro índice (Rli):</strong> {{ Rli }} bytes</p>
+        <p><strong>Longitud registro índice:</strong> {{ config.RlIndice }} bytes</p>
         <p><strong>Registros índice por bloque (bfri):</strong> {{ bfriIndices }}</p>
         <p><strong>Bloques de índices (bi):</strong> {{ bloquesIndices }}</p>
       </div>
@@ -87,7 +100,10 @@
             <strong>Estructura:</strong> {{ config.estructura === 'simple' ? 'Simple' : 'Multinivel' }}
           </div>
           <div class="info-item">
-            <strong>Rl:</strong> {{ config.Rl }} bytes
+            <strong>Rl Datos:</strong> {{ config.RlDatos }} bytes
+          </div>
+          <div class="info-item">
+            <strong>Rl Índice:</strong> {{ config.RlIndice }} bytes
           </div>
           <div class="info-item">
             <strong>B:</strong> {{ config.B }} bytes
@@ -143,7 +159,7 @@
           <div class="estructura-container" id="estructura-indices">
             <h3>Estructura de Índices ({{ config.tipoIndice === 'primario' ? 'Primario' : 'Secundario' }})</h3>
             <div class="bloques-verticales">
-              <template v-for="bloqueIdx in getBloquesARenderizar(estructura.indiceSimple)" :key="`indice-${bloqueIdx}`">
+              <template v-for="bloqueIdx in getBloquesARenderizarIndices(estructura.indiceSimple)" :key="`indice-${bloqueIdx}`">
                 <div class="bloque-vertical bloque-indice">
                   <div class="bloque-header-vertical">Bloque Índice {{ bloqueIdx + 1 }}</div>
                   <div class="registros-container">
@@ -182,9 +198,9 @@
                 
                 <!-- Indicador de bloques omitidos -->
                 <div v-if="bloqueIdx < estructura.indiceSimple.length - 1 && 
-                           !getBloquesARenderizar(estructura.indiceSimple).includes(bloqueIdx + 1)"
+                           !getBloquesARenderizarIndices(estructura.indiceSimple).includes(bloqueIdx + 1)"
                      class="bloques-omitidos">
-                  <span>⋮ (bloques {{ bloqueIdx + 2 }} - {{ estructura.indiceSimple.length }})</span>
+                  <span>⋮ (bloques {{ bloqueIdx + 2 }} - {{ estructura.indiceSimple.length - (estructura.indiceSimple.length - bloqueIdx - 2) }})</span>
                 </div>
               </template>
             </div>
@@ -214,7 +230,7 @@
           <div class="estructura-container" id="estructura-principal">
             <h3>Estructura Principal (Archivo de Datos)</h3>
             <div class="bloques-verticales">
-              <template v-for="bloqueIdx in getBloquesARenderizar(estructura.archivoDatos)" :key="`datos-${bloqueIdx}`">
+              <template v-for="bloqueIdx in getBloquesARenderizarPrincipal(estructura.archivoDatos)" :key="`datos-${bloqueIdx}`">
                 <div class="bloque-vertical">
                   <div class="bloque-header-vertical">Bloque {{ bloqueIdx + 1 }}</div>
                   <div class="registros-container">
@@ -241,9 +257,9 @@
                 
                 <!-- Indicador de bloques omitidos -->
                 <div v-if="bloqueIdx < estructura.archivoDatos.length - 1 && 
-                           !getBloquesARenderizar(estructura.archivoDatos).includes(bloqueIdx + 1)"
+                           !getBloquesARenderizarPrincipal(estructura.archivoDatos).includes(bloqueIdx + 1)"
                      class="bloques-omitidos">
-                  <span>⋮ (bloques {{ bloqueIdx + 2 }} - {{ estructura.archivoDatos.length - 1 }})</span>
+                  <span>⋮ (bloques {{ bloqueIdx + 2 }} - {{ getBloquesARenderizarPrincipal(estructura.archivoDatos).length > 0 ? getBloquesARenderizarPrincipal(estructura.archivoDatos)[getBloquesARenderizarPrincipal(estructura.archivoDatos).length - 1] : estructura.archivoDatos.length }})</span>
                 </div>
               </template>
             </div>
@@ -258,7 +274,7 @@
                class="estructura-container">
             <h3>Nivel {{ estructura.indicesMultinivel.length - nivelIdx }} de Índices</h3>
             <div class="bloques-verticales">
-              <template v-for="bloqueIdx in getBloquesARenderizar(nivel)" :key="`nivel${nivelIdx}-bloque-${bloqueIdx}`">
+              <template v-for="bloqueIdx in getBloquesARenderizarIndices(nivel)" :key="`nivel${nivelIdx}-bloque-${bloqueIdx}`">
                 <div class="bloque-vertical bloque-indice">
                   <div class="bloque-header-vertical">Bloque Índice {{ bloqueIdx + 1 }}</div>
                   <div class="registros-container">
@@ -300,9 +316,9 @@
                 </div>
                 <!-- Indicador de bloques omitidos -->
                 <div v-if="bloqueIdx < nivel.length - 1 && 
-                           !getBloquesARenderizar(nivel).includes(bloqueIdx + 1)"
+                           !getBloquesARenderizarIndices(nivel).includes(bloqueIdx + 1)"
                      class="bloques-omitidos">
-                  <span>⋮ (bloques {{ bloqueIdx + 2 }} - {{ nivel.length }})</span>
+                  <span>⋮ (bloques {{ bloqueIdx + 2 }} - {{ nivel.length - (nivel.length - bloqueIdx - 2) }})</span>
                 </div>
               </template>
             </div>
@@ -312,7 +328,7 @@
           <div class="estructura-container">
             <h3>Estructura Principal (Archivo de Datos)</h3>
             <div class="bloques-verticales">
-              <template v-for="bloqueIdx in getBloquesARenderizar(estructura.archivoDatos)" :key="`datos-multi-${bloqueIdx}`">
+              <template v-for="bloqueIdx in getBloquesARenderizarPrincipal(estructura.archivoDatos)" :key="`datos-multi-${bloqueIdx}`">
                 <div class="bloque-vertical">
                   <div class="bloque-header-vertical">Bloque {{ bloqueIdx + 1 }}</div>
                   <div class="registros-container">
@@ -332,9 +348,9 @@
                 </div>
                 <!-- Indicador de bloques omitidos -->
                 <div v-if="bloqueIdx < estructura.archivoDatos.length - 1 && 
-                           !getBloquesARenderizar(estructura.archivoDatos).includes(bloqueIdx + 1)"
+                           !getBloquesARenderizarPrincipal(estructura.archivoDatos).includes(bloqueIdx + 1)"
                      class="bloques-omitidos">
-                  <span>⋮ (bloques {{ bloqueIdx + 2 }} - {{ estructura.archivoDatos.length }})</span>
+                  <span>⋮ (bloques {{ bloqueIdx + 2 }} - {{ getBloquesARenderizarPrincipal(estructura.archivoDatos).length > 0 ? getBloquesARenderizarPrincipal(estructura.archivoDatos)[getBloquesARenderizarPrincipal(estructura.archivoDatos).length - 1] : estructura.archivoDatos.length }})</span>
                 </div>
               </template>
             </div>
@@ -351,9 +367,10 @@ import { ref, computed } from 'vue';
 interface Config {
   tipoIndice: 'primario' | 'secundario';
   estructura: 'simple' | 'multinivel';
-  Rl: number;  // Longitud del registro en bytes
-  B: number;   // Capacidad del bloque en bytes
-  r: number;   // Cantidad de registros
+  RlDatos: number;   // Longitud del registro de datos en bytes
+  RlIndice: number;  // Longitud del registro de índice en bytes
+  B: number;         // Capacidad del bloque en bytes
+  r: number;         // Cantidad de registros
 }
 
 interface EntradaIndice {
@@ -363,12 +380,12 @@ interface EntradaIndice {
 
 interface Estructura {
   // Estructura Principal
-  bfr: number;   // Factor de bloque de estructura principal: ⌊B / Rl⌋
+  bfr: number;   // Factor de bloque de estructura principal: ⌊B / RlDatos⌋
   b: number;     // Bloques de estructura principal: ⌈r / bfr⌉
   
   // Estructura de Índices
-  Rli: number;   // Longitud del registro índice (siempre 15 bytes)
-  bfri: number;  // Factor de bloque de índices: ⌊B / Rli⌋
+  Rli: number;   // Longitud del registro índice (configurada por usuario)
+  bfri: number;  // Factor de bloque de índices: ⌊B / RlIndice⌋
   bi: number;    // Bloques de índices (según tipo: primario usa b, secundario usa r)
   
   // Datos
@@ -381,7 +398,8 @@ interface Estructura {
 const config = ref<Config>({
   tipoIndice: 'primario',
   estructura: 'simple',
-  Rl: 100,
+  RlDatos: 100,
+  RlIndice: 15,
   B: 512,
   r: 1000
 });
@@ -406,9 +424,9 @@ const mostrarModalReset = ref(false);
 // Computed properties para cálculos
 // Estructura Principal
 const bfrPrincipal = computed(() => {
-  if (config.value.Rl <= 0 || config.value.B <= 0) return 0;
-  // bfr = ⌊B / Rl⌋
-  return Math.floor(config.value.B / config.value.Rl);
+  if (config.value.RlDatos <= 0 || config.value.B <= 0) return 0;
+  // bfr = ⌊B / RlDatos⌋
+  return Math.floor(config.value.B / config.value.RlDatos);
 });
 
 const bloquesPrincipal = computed(() => {
@@ -418,12 +436,10 @@ const bloquesPrincipal = computed(() => {
 });
 
 // Estructura de Índices
-const Rli = 15; // Longitud del registro índice (constante)
-
 const bfriIndices = computed(() => {
-  if (config.value.B <= 0) return 0;
-  // bfri = ⌊B / Rli⌋
-  return Math.floor(config.value.B / Rli);
+  if (config.value.RlIndice <= 0 || config.value.B <= 0) return 0;
+  // bfri = ⌊B / RlIndice⌋
+  return Math.floor(config.value.B / config.value.RlIndice);
 });
 
 const bloquesIndices = computed(() => {
@@ -451,7 +467,7 @@ const numeroAccesos = computed(() => {
 });
 
 function crearEstructura() {
-  if (config.value.Rl <= 0 || config.value.B <= 0 || config.value.r <= 0) {
+  if (config.value.RlDatos <= 0 || config.value.RlIndice <= 0 || config.value.B <= 0 || config.value.r <= 0) {
     mensaje.value = 'Por favor ingrese valores válidos para todos los campos';
     setTimeout(() => mensaje.value = '', 3000);
     return;
@@ -462,7 +478,7 @@ function crearEstructura() {
   const b = bloquesPrincipal.value;
 
   if (bfr <= 0) {
-    mensaje.value = 'La capacidad del bloque debe ser mayor que la longitud del registro';
+    mensaje.value = 'La capacidad del bloque debe ser mayor que la longitud del registro de datos';
     setTimeout(() => mensaje.value = '', 3000);
     return;
   }
@@ -472,7 +488,7 @@ function crearEstructura() {
   const bi = bloquesIndices.value;
 
   if (bfri <= 0) {
-    mensaje.value = 'Error en el cálculo del factor de bloque de índices';
+    mensaje.value = 'La capacidad del bloque debe ser mayor que la longitud del registro de índice';
     setTimeout(() => mensaje.value = '', 3000);
     return;
   }
@@ -503,7 +519,7 @@ function crearEstructura() {
   estructura.value = {
     bfr,
     b,
-    Rli,
+    Rli: config.value.RlIndice,
     bfri,
     bi,
     archivoDatos,
@@ -567,29 +583,30 @@ function precargarDatosEjemplo() {
 }
 
 // Funciones auxiliares para renderizado condicional
-// Obtiene los índices de bloques a renderizar (primer y último bloque, más bloques con datos)
-function getBloquesARenderizar(estructura: (number | null)[][] | EntradaIndice[][]): number[] {
+// Obtiene los índices de bloques a renderizar SOLO para estructura de índices (primer, medio, último)
+function getBloquesARenderizarIndices(estructura: EntradaIndice[][]): number[] {
   const totalBloques = estructura.length;
   if (totalBloques === 0) return [];
-  if (totalBloques <= 10) return Array.from({ length: totalBloques }, (_, i) => i);
-  
-  const bloquesConDatos = estructura
-    .map((bloque, index) => {
-      const tieneDatos = bloque.some(elem => {
-        if (elem === null) return false;
-        if (typeof elem === 'object' && elem !== null && 'clave' in elem) {
-          return elem.clave !== null;
-        }
-        return true;
-      });
-      return tieneDatos ? index : -1;
-    })
-    .filter(i => i >= 0);
+  if (totalBloques <= 3) return Array.from({ length: totalBloques }, (_, i) => i);
   
   const set = new Set<number>();
   set.add(0); // Primer bloque
+  set.add(Math.floor(totalBloques / 2)); // Bloque del medio
   set.add(totalBloques - 1); // Último bloque
-  bloquesConDatos.forEach(i => set.add(i));
+  
+  return Array.from(set).sort((a, b) => a - b);
+}
+
+// Obtiene los índices de bloques a renderizar para estructura principal (primer, medio, último)
+function getBloquesARenderizarPrincipal(estructura: (number | null)[][]): number[] {
+  const totalBloques = estructura.length;
+  if (totalBloques === 0) return [];
+  if (totalBloques <= 3) return Array.from({ length: totalBloques }, (_, i) => i);
+  
+  const set = new Set<number>();
+  set.add(0); // Primer bloque
+  set.add(Math.floor(totalBloques / 2)); // Bloque del medio
+  set.add(totalBloques - 1); // Último bloque
   
   return Array.from(set).sort((a, b) => a - b);
 }
@@ -610,35 +627,52 @@ function getRegistrosARenderizarConLimite(bloque: EntradaIndice[], bloqueIdx: nu
   const totalRegistros = bloque.length;
   if (totalRegistros === 0) return [];
   
-  const registrosValidos: number[] = [];
+  // Verificar si el primer registro está dentro del límite
+  const primerNumeroGlobal = bloqueIdx * estructura.value.bfri + 0 + 1;
+  if (primerNumeroGlobal > limiteDestino) return [];
   
-  // Calcular cuáles registros de este bloque apuntan a destinos válidos
-  for (let i = 0; i < totalRegistros; i++) {
+  // Encontrar el último registro válido dentro del límite
+  let ultimoRegistroValido = -1;
+  for (let i = totalRegistros - 1; i >= 0; i--) {
     const numeroGlobal = bloqueIdx * estructura.value.bfri + i + 1;
     if (numeroGlobal <= limiteDestino) {
-      registrosValidos.push(i);
+      ultimoRegistroValido = i;
+      break;
     }
   }
   
-  if (registrosValidos.length === 0) return [];
-  if (registrosValidos.length === 1) return [registrosValidos[0]];
-  if (registrosValidos.length === 2) return registrosValidos;
+  // Si no encontramos último válido (no debería pasar si el primero es válido)
+  if (ultimoRegistroValido === -1) return [0];
   
-  // Mostrar primero y último válido
-  return [registrosValidos[0], registrosValidos[registrosValidos.length - 1]];
+  // Si solo hay un registro válido (el primero)
+  if (ultimoRegistroValido === 0) return [0];
+  
+  // Mostrar primero (0) y último válido
+  return [0, ultimoRegistroValido];
 }
 
 // Obtiene el límite de destino para un nivel específico en multinivel
 function getLimiteDestinoMultinivel(nivelIdx: number): number {
-  const nivelReal = estructura.value.indicesMultinivel.length - nivelIdx;
+  // nivelIdx es el índice en el array INVERTIDO (.slice().reverse())
+  // nivelIdx = 0 es el nivel más alto (ej. Nivel 3)
+  // nivelIdx = length-1 es el nivel más bajo (Nivel 1)
   
-  if (nivelReal === 1) {
+  const totalNiveles = estructura.value.indicesMultinivel.length;
+  const esNivel1 = nivelIdx === totalNiveles - 1;
+  
+  if (esNivel1) {
     // Nivel 1 apunta a estructura principal
     return config.value.tipoIndice === 'primario' ? estructura.value.b : config.value.r;
   } else {
     // Niveles superiores apuntan al nivel inferior
-    const nivelInferior = estructura.value.indicesMultinivel[estructura.value.indicesMultinivel.length - nivelReal + 1];
-    return nivelInferior.length * estructura.value.bfri;
+    // Si nivelIdx = 0 (Nivel 3), debe apuntar al índice 1 en array original (Nivel 2)
+    // Si nivelIdx = 1 (Nivel 2), debe apuntar al índice 0 en array original (Nivel 1)
+    // Fórmula: índice en array original = (totalNiveles - 1 - nivelIdx) - 1
+    //        = totalNiveles - nivelIdx - 2
+    const indiceNivelInferior = totalNiveles - nivelIdx - 2;
+    
+    const nivelInferior = estructura.value.indicesMultinivel[indiceNivelInferior];
+    return nivelInferior.length;
   }
 }
 
@@ -840,16 +874,19 @@ h1 {
 }
 
 .structure-display {
-  max-width: 1400px;
-  margin: 2rem auto;
-  padding: 1rem;
+  width: 100%;
+  margin: 1rem 0;
+  padding: 0.5rem;
+  overflow-x: auto;
 }
 
 .estructuras-lado-a-lado {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 2rem;
+  display: flex;
+  flex-direction: row;
+  gap: 1.5rem;
   align-items: start;
+  min-width: min-content;
+  width: max-content;
 }
 
 .arrow-demo {
@@ -887,28 +924,27 @@ h1 {
 
 @media (max-width: 1200px) {
   .estructuras-lado-a-lado {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-  }
-  
-  .arrow-demo {
-    display: none;
+    gap: 1rem;
   }
 }
 
 .estructura-container {
   display: flex;
   flex-direction: column;
+  min-width: 280px;
+  flex-shrink: 0;
 }
 
 .estructura-container h3 {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   text-align: center;
   position: sticky;
   top: 0;
   background: var(--background-color);
   padding: 0.5rem;
   z-index: 10;
+  font-size: 0.95rem;
+  white-space: nowrap;
 }
 
 .bloques-verticales {
