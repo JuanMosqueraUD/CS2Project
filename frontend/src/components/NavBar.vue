@@ -193,13 +193,10 @@ provide(NavigationKey, { navigateTo });
       <h4>Formas de representación:</h4>
       <div id="general-nav">
         <button class="outline contrast">
-          <router-link to="/grafos/representacion/matriz-adyacencia" class="outline contrast">Matriz de Adyacencia</router-link>
+          <router-link to="/grafos/representacion/matriz-adyacencia" class="outline contrast">Matrices De Incidencia y Adyacencia</router-link>
         </button>
         <button class="outline contrast">
-          <router-link to="/grafos/representacion/lista-adyacencia" class="outline contrast">Lista de Adyacencia</router-link>
-        </button>
-        <button class="outline contrast">
-          <router-link to="/grafos/representacion/matriz-incidencia" class="outline contrast">Matriz de Incidencia</router-link>
+          <router-link to="/grafos/representacion/circuitos-cortes" class="outline contrast">Circuitos y Conjuntos de Corte</router-link>
         </button>
       </div>
     </div>
