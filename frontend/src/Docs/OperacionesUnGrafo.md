@@ -1,213 +1,183 @@
-# Manual técnico y de usuario — OperacionesUnGrafo.vue
+# Operaciones en Un Grafo — Manual de Funcionamiento
 
-Archivo fuente: [frontend/src/views/grafos/OperacionesUnGrafo.vue](frontend/src/views/grafos/OperacionesUnGrafo.vue)
+## Archivos Creados
 
-Resumen rápido
-- Este componente Vue implementa un editor / transformador de grafos con visualización usando vis-network.
-- Provee creación, importación/guardado, inserción/eliminación de nodos y aristas, fusión y contracción de vértices, grafo-línea y complemento del grafo.
-- Las funciones y estados clave están dentro de [frontend/src/views/grafos/OperacionesUnGrafo.vue](frontend/src/views/grafos/OperacionesUnGrafo.vue).
+### 1. OperacionesUnGrafo.vue
+**Ubicación**: `/frontend/src/views/grafos/OperacionesUnGrafo.vue`
 
-Índice
-1. Requerimientos y dependencias
-2. Estructuras de datos y estado
-3. Explicación detallada de funciones y algoritmos
-4. Visualización (vis-network) y sincronización
-5. Escalabilidad y rendimiento
-6. Pruebas recomendadas (unitarias e integración)
-7. Manual de usuario — guía de pruebas y uso
+**Qué hace (resumen)**:
+- Proporciona una interfaz visual para crear, editar y aplicar transformaciones a un solo grafo.
+- Permite insertar y eliminar nodos y aristas, fusionar y contraer vértices, generar el grafo-línea y calcular el complemento.
+- Soporta importación y exportación en formato JSON para guardar o recuperar el estado del grafo.
 
----
+## Algoritmos y funcionalidades principales
 
-1) Requerimientos y dependencias
-- Vue 3 (Composition API) — uso de refs y lifecycle hooks.
-- vis-network (importado como `DataSet`, `Network`) para la visualización.
-- Archivo fuente: [frontend/src/views/grafos/OperacionesUnGrafo.vue](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-- Asegurar que el contenedor DOM referenciado por `graphContainer` exista antes de inicializar la red.
+### Creación y visualización del grafo
+1. **Crear grafo**: el usuario define el número de nodos; el componente inicializa los nodos numerados y lista de aristas vacía.
+2. **Visualización**: el grafo se renderiza con `vis-network` usando `DataSet` para nodos y aristas; la vista se sincroniza con el estado interno tras cada cambio.
 
-2) Estructuras de datos y estado (variables principales)
-- config: configuración del grafo (cantidadNodos, esDirigido, esPonderado).
-  - Referencia: [`config`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-- grafo: { nodos: Nodo[], aristas: Arista[] }.
-  - Tipo Nodo: { id: number | string, label: string }
-  - Tipo Arista: { from: number | string, to: number | string, peso?: number }
-  - Referencia: [`grafo`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-- Estados booleanos: [`grafoCreado`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`grafoLineaAplicado`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`complementoAplicado`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-- Backup para revertir transformaciones: [`grafoOriginal`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-- Complemento info: [`complementoInfo`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-- Vis-network datasets / instancia: [`nodesDataSet`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`edgesDataSet`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`network`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
+### Gestión básica
+1. **Insertar nodo**: añade un nuevo nodo con el siguiente ID numérico disponible y etiqueta correspondiente.
+2. **Eliminar nodo**: elimina el nodo indicado y todas sus aristas incidentes.
+3. **Agregar arista**: crea una arista entre dos nodos si la entrada es válida, no existe ya y no es un bucle (a menos que la operación explícita lo permita).
+4. **Borrar arista**: elimina una arista existente especificada por el usuario.
+5. **Resetear**: reinicia el estado del componente a vacío tras confirmación.
 
-3) Explicación detallada de funciones y algoritmos
-(Se listan las funciones más importantes con su propósito, comportamiento, complejidad esperada y casos límites.)
+### Transformaciones y operaciones
+1. **Fusionar vértices**: une dos nodos en uno solo, reasignando aristas y deduplicando conexiones.
+2. **Contraer arista**: contrae una arista en un único vértice, similar a fusionar, pero orientado a reducir aristas.
+3. **Grafo-línea**: transforma el grafo para que cada arista original sea un nodo nuevo; conecta estos nodos si las aristas originales eran adyacentes.
+4. **Complemento**: genera todas las aristas faltantes para convertir el grafo en completo (según la definición de grafo simple no dirigido).
 
-- Crear y estructura inicial
-  - [`crearGrafo`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-    - Crea nodos numerados del 1 a N y limpia aristas.
-    - Invoca [`inicializarVisualizacion`](frontend/src/views/grafos/OperacionesUnGrafo.vue).
-    - Complejidad O(n) al crear N nodos.
-    - Requerimiento: config.cantidadNodos > 0.
+### Importación y exportación
+1. **Importar**: carga un archivo JSON con la estructura esperada y reconstruye el grafo en memoria.
+2. **Exportar**: serializa el grafo actual a JSON y descarga el archivo para persistencia.
 
-- Visualización con vis-network
-  - [`inicializarVisualizacion`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-    - Crea `nodesDataSet` y `edgesDataSet` con estilos predefinidos y crea `network`.
-    - Maneja errores de inicialización con try/catch.
-    - Requiere que `graphContainer` esté presente.
-    - Consideración: para grafos grandes, desactivar física o cambiar opciones para rendimiento.
-  - [`actualizarVisualizacion`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-    - Sincroniza `nodesDataSet` y `edgesDataSet` con el estado `grafo`.
-    - Elimina nodos obsoletos, añade nuevos nodos y reemplaza aristas (se usa clear + add).
-    - Complejidad O(V + E) por actualización.
+## Parámetros de configuración
 
-- Gestión de aristas y nodos
-  - [`agregarArista`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-    - Valida formato de entrada con [`extraerNodos`](frontend/src/views/grafos/OperacionesUnGrafo.vue).
-    - Verifica existencia con [`existeNodo`](frontend/src/views/grafos/OperacionesUnGrafo.vue) y evita bucles y duplicados ([`existeArista`](frontend/src/views/grafos/OperacionesUnGrafo.vue)).
-    - Añade arista a `grafo.value.aristas` y actualiza visualización.
-    - Complejidad dominada por búsqueda de existencia O(E) por comprobación en arreglo; se puede optimizar con índice o Set para grandes grafos.
-  - [`insertarNodo`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-    - Inserta nuevo id secuencial (máx numérico + 1). O(1) para operación de push.
-  - [`eliminarNodo`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-    - Filtra nodos y aristas conectadas. Complejidad O(V + E).
-  - [`borrarArista`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-    - Localiza arista considerando dirección/no-dirección y la elimina. O(E).
+- **cantidadNodos**: número inicial de nodos al crear el grafo.
+- **esDirigido / esPonderado**: flags que condicionan comportamiento en inserción/visualización de aristas.
 
-- Funciones de utilidad y validación
-  - [`existeNodo`](frontend/src/views/grafos/OperacionesUnGrafo.vue): compara ids con String() para robustez.
-  - [`existeArista`](frontend/src/views/grafos/OperacionesUnGrafo.vue): verifica existencia (dirigido/no dirigido).
-  - [`extraerNodos`](frontend/src/views/grafos/OperacionesUnGrafo.vue): parsea la entrada de texto (p. ej. "12") extrayendo solo dígitos.
-    - Nota: actualmente solo toma los primeros dos dígitos; si se desea soportar ids >9, adaptar el parser (ej: separar por coma o guion).
-  - [`mostrarMensaje`](frontend/src/views/grafos/OperacionesUnGrafo.vue): maneja UI de mensajes temporales.
+## Estado de implementación
 
-- Fusionar y contraer (transformaciones)
-  - [`fusionarVertices`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-    - Algoritmo:
-      1. Valida existencia y obtiene nodos a unir.
-      2. Crea un nuevo id string `nuevoNodo = `${nodo1}${nodo2}``.
-      3. Mapea aristas: reemplaza cualquier referencia a nodo1 o nodo2 por `nuevoNodo`.
-      4. Si había arista entre nodo1 y nodo2, se asegura la existencia de un bucle (self-loop) para el nuevo nodo.
-      5. Deduplica aristas usando Map con key según si es dirigido.
-      6. Actualiza `grafo.value.nodos` y `grafo.value.aristas`.
-    - Complejidad: O(E) para mapear y deduplicar. Debe considerarse el tamaño de las cadenas de `id` al usar string-concatenation.
-    - Consideración: Usar string como id evita choque con ids numéricos; sin embargo, múltiples fusiones pueden generar ids largos. Para escalabilidad, preferir generar uuid o esquema controlado.
-    - Referencia: [`fusionarVertices`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-  - [`contraerArista`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-    - Algoritmo:
-      1. Verifica existencia de la arista.
-      2. Elimina la arista contraída y reemplaza referencias a ambos nodos por `nuevoNodo`.
-      3. Filtra auto-bucles resultantes.
-      4. Deduplica aristas y reemplaza nodos en `grafo`.
-    - Complejidad: O(E).
-    - Observación: Se filtran auto-bucles, a diferencia de `fusionarVertices` que opcionalmente los mantiene si existían antes.
+### Completado
+- Creación y render inicial del grafo con `vis-network`.
+- Inserción y eliminación de nodos y aristas con validaciones básicas.
+- Implementación de fusionar vértices, contraer arista, grafo-línea y complemento.
+- Importación/Exportación en JSON con validación de formato.
 
-- Grafo línea
-  - [`iniciarGrafoLinea`](frontend/src/views/grafos/OperacionesUnGrafo.vue) y [`generarGrafoLinea`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-    - Idea: cada arista del grafo original se convierte en un nodo en el grafo línea. Dos nodos en grafo-línea se conectan si las aristas originales son adyacentes (comparten un vértice).
-    - Implementación:
-      - Crea `nuevosNodos` con ids formados por concatenación `${from}${to}`.
-      - Recorre pares de aristas y si comparten un extremo, crea una arista entre sus nodos transformados.
-    - Complejidad: O(E^2) por doble bucle sobre aristas. Para grafos grandes, hay que optimizar (por ejemplo, construir lista de aristas por vértice y conectar solo pares en el mismo bucket).
-    - Revertir: [`revertirGrafoLinea`](frontend/src/views/grafos/OperacionesUnGrafo.vue) restaura backup en `grafoOriginal`.
-    - Recomendación: para escalabilidad, preindexar aristas por vértice (map<vertex, aristas[]>) y luego generar conexiones en O(sum_k choose 2) local.
+### Limitaciones observadas
+- El parser de entradas distingue solo dígitos consecutivos; no gestiona ids multi-dígito sin separador.
+- Operaciones como grafo-línea y complemento crecen con complejidad cuadrática y pueden ser costosas para grafos grandes.
 
-- Complemento del grafo
-  - [`iniciarComplemento`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`calcularComplemento`](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-    - Fórmula de aristas máximas en grafo no dirigido simple sin loops:
-      $$
-      m = \frac{n(n-1)}{2}
-      $$
-      donde n = número de nodos.
-    - `calcularComplemento` recorre pares (i,j) con j>i y añade arista si no existe. Complejidad O(V^2) (chequeo de existencia dentro O(E) cada vez -> en total puede ser O(V^2 * E) si no se optimiza).
-    - Mejora: construir un Set o Map de pares existentes para consultas O(1); así la generación del complemento es O(V^2).
-    - Visualización: [`actualizarVisualizacionComplemento`](frontend/src/views/grafos/OperacionesUnGrafo.vue) colorea aristas nuevas (complemento) en naranja.
+## Características técnicas (resumen)
 
-- Importar / exportar
-  - [`triggerFileInput`](frontend/src/views/grafos/OperacionesUnGrafo.vue) — dispara input file.
-  - [`validarFormatoJSON`](frontend/src/views/grafos/OperacionesUnGrafo.vue) — valida estructura JSON esperada.
-  - [`importarGrafo`](frontend/src/views/grafos/OperacionesUnGrafo.vue) — usa FileReader, valida y carga grafo, luego `inicializarVisualizacion`.
-  - [`guardarGrafo`](frontend/src/views/grafos/OperacionesUnGrafo.vue) — serializa y descarga JSON versión `1.0`.
+- **Estado separado de visualización**: el estado (`grafo`) se mantiene independiente y solo se sincroniza con `DataSet`/`Network` para la UI.
+- **IDs y etiquetas**: nodos usan ids numéricos o strings, las transformaciones pueden generar ids compuestos (p. ej. "12").
+- **Mensajes de usuario**: todas las operaciones informan éxitos o errores mediante mensajes temporales.
 
-4) Visualización y sincronización
-- El código mantiene datasets separados (`DataSet`) y llama a [`actualizarVisualizacion`] tras cada mutación.
-- Riesgos:
-  - Para muchas actualizaciones rápidas, llamar `clear()` + `add()` repetidamente en `edgesDataSet` puede ser costoso.
-  - Para grafos grandes (>500 nodos, >2000 aristas), se deben desactivar animaciones y física (opciones de vis-network) y aplicar paginación o clustering.
-- Recomendación para pruebas visuales: testear con grafos pequeños (<=50 nodos) y luego escalar progresivamente monitorizando CPU/heap.
+## Manejo de errores y validaciones
 
-5) Escalabilidad y rendimiento — recomendaciones
-- Indexar aristas/nodos:
-  - Mantener estructuras auxiliares: Set<string> con key normalizada para aristas (por ejemplo ordenar ids para no-dirigido) para O(1) en existeArista y evitar iteraciones O(E).
-- Evitar concatenación descontrolada de ids:
-  - Usar id único generado (e.g., `N-F` con separador fijo) o uuid para nuevas entidades.
-- Optimizar generación de complemento y grafo-línea:
-  - Complemento: construir Set de aristas existentes y recorrer pares (i,j) con consultas O(1).
-  - Grafo-línea: indexar por vértice las aristas incidentes y crear conexiones por lista local en lugar de O(E^2).
-- Memory: vis-network datasets consumen memoria; liberar `network.destroy()` cuando no sea visible.
+- Validación al agregar aristas: formato correcto, existencia de nodos, evitar autoconexiones, evitar duplicados.
+- Confirmación del usuario antes de operaciones destructivas (reset, generar grafo-línea, generar complemento).
+- Al importar JSON se valida la estructura mínima requerida antes de aplicar los datos.
 
-6) Estrategia de pruebas (unitarias e integración)
-- Unitarias (sugerido con vitest / jest para utilidades puras):
-  - Probar [`extraerNodos`] con entradas válidas e inválidas (id >9, espacios, caracteres).
-  - Probar [`existeArista`] y [`existeNodo`] con grafos dirigidos/no dirigidos.
-  - Probar `calcularComplemento` en varios tamaños y comparar con cálculo teórico.
-  - Probar `generarGrafoLinea` contra casos conocidos (3 aristas con cadena de conexión).
-  - Probar deduplicación en [`fusionarVertices`] y [`contraerArista`].
-- Integración / E2E (Playwright / Cypress):
-  - Caso: Crear grafo (5 nodos) → agregar aristas → generar complemento → revertir → validar contenido descargado JSON con [`guardarGrafo`].
-  - Caso: Importar fichero válido/ inválido y comprobar mensajes y estado.
-- Testing de UI:
-  - Validar que `graphContainer` se llena con nodos/edges tras acciones y que `network` no sea null.
-  - Simular acciones de fusión y comprobar que la notación de teoría de conjuntos se actualiza.
+## Algoritmos y detalles de implementación
 
-7) Manual de usuario — guía completa de pruebas y uso
-(Interfaz y cada control explicado desde perspectiva del usuario)
+A continuación se describen con detalle los algoritmos y pasos implementados para cada funcionalidad relevante.
 
-Acceso:
-- Ruta del módulo en la aplicación: menú Grafos → Operaciones con Grafos → Operaciones en un Grafo. Archivo fuente: [frontend/src/views/grafos/OperacionesUnGrafo.vue](frontend/src/views/grafos/OperacionesUnGrafo.vue)
+### Inicialización del grafo
+- Entrada: `cantidadNodos`.
+- Resultado: `grafo` con `nodos` numerados del 1..n y `aristas` vacío.
+- Pasos:
+  1. Validar `cantidadNodos > 0`.
+  2. Crear array de nodos con ids 1..n y labels sencillos.
+  3. Inicializar datasets de vis-network y renderizar.
 
-Controles iniciales (Crear grafo)
-- "Cantidad de Nodos": número entero positivo. Si se deja <=0, aparece error.
-- "Tipo de Grafo": seleccionar Dirigido / No Dirigido.
-- "¿Es Ponderado?": activa campo "Peso" al agregar arista.
-- Botón "Crear Grafo": genera nodos numerados 1..N y visualización.
+### Sincronización visual
+- Objetivo: que la interfaz refleje el estado en memoria.
+- Pasos por actualización:
+  1. Obtener nodos actuales del `DataSet`.
+  2. Eliminar nodos que ya no estén en `grafo.nodos`.
+  3. Añadir nodos nuevos que estén en `grafo.nodos` pero no en la visualización.
+  4. Limpiar y volver a insertar todas las aristas desde `grafo.aristas`.
 
-Gestión de aristas
-- Campo "Ej: 12": ingresar dos dígitos consecutivos que representan nodos (ej: `12` = nodo 1 y nodo 2).
-  - Nota: entrada actualmente extrae dígitos consecutivos; para ids > 9 la entrada debe adaptarse (ej: `1,12` no es soportado).
-- Si "Ponderado" está activo, especificar peso numérico antes de añadir.
-- Mensajes emergentes en la interfaz indican éxito/errores (por 3s).
-- Al agregar arista:
-  - Si el grafo es no dirigido, `12` equivale a 1↔2.
-  - Se evita crear aristas duplicadas o auto-bucles (salvo casos concretos en fusión).
+### Insertar nodo
+- Lógica:
+  1. Calcular `nuevoId = max(existing numeric ids) + 1` o 1 si vacío.
+  2. Crear nodo `{ id: nuevoId, label: String(nuevoId) }` y hacer `push` en `grafo.nodos`.
+  3. Llamar a la sincronización visual.
 
-Operaciones
-- Insertar Nodo: añade un nodo con id = maxNum + 1.
-- Eliminar Nodo: ingresar número y pulsar Eliminar; todas las aristas incidentes se eliminan.
-- Borrar Arista: ingresar `12` para eliminar la arista entre 1 y 2.
-- Fusionar nodos: ingresar `12` para fusionar 1 y 2 → nuevo nodo con id "12".
-  - Resultado: todas las aristas a 1 o 2 apuntan ahora a "12". Si existía arista entre 1 y 2, puede crearse un bucle.
-- Contraer arista: ingresar `12` para contraer la arista entre 1 y 2 en un solo vértice "12".
-- Generar Grafo Línea: transforma el grafo actual donde cada arista se convierte en nodo y se conectan si aristas originales eran adyacentes.
-  - Precaución: operación destructiva, hay confirmación. Revertir posible con "Revertir Grafo Línea".
-- Generar Complemento: añade las aristas faltantes para convertir el grafo en completo.
-  - Visual: nuevas aristas mostradas en naranja. Reversible con "Revertir Complemento".
+### Eliminar nodo
+- Lógica:
+  1. Verificar existencia del id.
+  2. Filtrar `grafo.nodos` para eliminarlo.
+  3. Filtrar `grafo.aristas` para quitar todas las aristas incidentes.
+  4. Sincronizar vista.
 
-Importar / Exportar / Guardar
-- "📥 Importar Grafo": abre selector de archivo JSON con esquema esperado.
-  - Formato validado por [`validarFormatoJSON`](frontend/src/views/grafos/OperacionesUnGrafo.vue); muestra error si inválido.
-- "💾 Guardar Grafo": descarga JSON con versión `1.0` y la configuración actual.
+### Agregar arista
+- Validaciones previas:
+  1. Extraer dos nodos desde la entrada (función que limpia y extrae dígitos).
+  2. Comprobar que ambos existan.
+  3. Evitar `from === to` salvo casos permitidos.
+  4. Evitar duplicados (comparación indiferente al orden en grafos no dirigidos).
+- Inserción:
+  1. Insertar objeto `{ from, to, peso? }` en `grafo.aristas`.
+  2. Sincronizar vista.
 
-Sugerencia de pruebas de usuario (Casos)
-1. Crear grafo de 5 nodos. Añadir aristas 12, 23, 34, 45. Generar grafo-línea. Verificar que el número de nodos = número de aristas original y que aristas representen adyacencias.
-2. Crear grafo de 4 nodos. Añadir arista 12. Generar complemento. Verificar que complemento añade todas las aristas faltantes (usar fórmula $m = \frac{n(n-1)}{2}$).
-3. Fusionar nodos 1 y 2 en un grafo con aristas 12 y 23. Verificar que las aristas actualizadas apuntan al nuevo id y que no hay duplicados.
-4. Importar un JSON guardado por la función de guardar y comprobar igualdad estructural.
+### Borrar arista
+- Lógica inversa de agregar:
+  1. Extraer nodos de la entrada.
+  2. Buscar índice de arista coincidente (orden indiferente si no dirigido).
+  3. `splice` para eliminar y luego sincronizar.
 
-Notas finales y mejoras recomendadas
-- Parser de entrada: soportar ids mayores a 9 (ej: "1-12" o "1,12") para robustez.
-- Índices: mantener Set/Map para aristas existentes para acelerar comprobaciones de existencia.
-- IDs generados: utilizar esquema de id-controlado (p. ej. `${nodo1}_${nodo2}`) o UUID para evitar colisiones y ids muy largos tras múltiples fusiones.
-- Tests automatizados: comenzar con unit tests para utilidades puras y mocks de vis-network para pruebas de integración ligera.
+### Resetear grafo
+- Pide confirmación y, si afirmativa, limpia `grafo`, destruye/redes inicializa `network` y datasets.
 
-Referencias (símbolos principales en el archivo)
-- Archivo: [frontend/src/views/grafos/OperacionesUnGrafo.vue](frontend/src/views/grafos/OperacionesUnGrafo.vue)
-- Funciones: [`crearGrafo`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`inicializarVisualizacion`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`actualizarVisualizacion`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`agregarArista`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`insertarNodo`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`eliminarNodo`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`borrarArista`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`fusionarVertices`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`contraerArista`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`generarGrafoLinea`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`iniciarComplemento`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`calcularComplemento`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`importarGrafo`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`guardarGrafo`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`extraerNodos`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`existeNodo`](frontend/src/views/grafos/OperacionesUnGrafo.vue), [`existeArista`](frontend/src/views/grafos/OperacionesUnGrafo.vue).
+## Transformaciones avanzadas — Algoritmos detallados
 
-Fin del manual.
+Estas operaciones modifican la topología del grafo y deben usarse con precaución en grafos grandes.
+
+### Fusionar vértices
+- Objetivo: unir dos nodos u y v en uno solo `uv`.
+- Pasos:
+  1. Verificar existencia de u y v.
+  2. Generar `nuevoId` (p. ej. concatenación o esquema controlado).
+  3. Reemplazar en `grafo.aristas` toda referencia a u o v por `nuevoId`.
+  4. Si existía arista entre u y v, decidir si mantener bucle según la lógica actual (el componente puede conservarlo).
+  5. Deduplicar aristas resultantes (normalizar pares para no dirigir y usar Map/Record para detección).
+  6. Reemplazar nodos y sincronizar visual.
+
+### Contraer arista
+- Objetivo: eliminar una arista y fusionar sus extremos en un solo vértice.
+- Pasos:
+  1. Comprobar que la arista exista.
+  2. Crear `nuevoId` y reemplazar referencias en `grafo.aristas`.
+  3. Filtrar auto-bucles si la operación lo requiere.
+  4. Deduplicar y sincronizar.
+
+### Grafo-línea
+- Objetivo: transformar cada arista del grafo original en un nodo del grafo-línea.
+- Pasos:
+  1. Para cada arista original `(a,b)` crear un nodo con id derivado (ej. `${a}-${b}`).
+  2. Para cada par de aristas originales que compartan un extremo, crear una arista entre sus nodos derivados.
+  3. Reemplazar el grafo actual o mostrar como vista alternativa según la interfaz.
+- Complejidad: O(E^2) si se comparan todas las aristas; optimizar indexando aristas por vértice reduce el trabajo a suma de binomios locales.
+
+### Complemento
+- Objetivo: añadir las aristas faltantes para formar un grafo completo (no dirigido simple).
+- Pasos:
+  1. Construir un Set de aristas existentes con clave normalizada (por ejemplo `min,max`).
+  2. Recorrer pares (i,j) con i<j; si la clave no existe, añadir la arista.
+  3. Insertar todas las nuevas aristas en `grafo.aristas` y sincronizar.
+- Complejidad: O(V^2) con consultas O(1) si se usa Set.
+
+## Importación y exportación (detalles)
+
+- Importación:
+  1. El usuario selecciona un archivo `.json`.
+  2. `FileReader` lee y `JSON.parse` crea el objeto.
+  3. Validar presencia de campos mínimos (`version`, `config`, `grafos` o `grafo`) según esquema.
+  4. Reconstruir `grafo` en memoria y sincronizar la vista.
+
+- Exportación:
+  1. Construir objeto con estructura esperada y versión.
+  2. Serializar con `JSON.stringify` y crear `Blob` para descarga.
+  3. Disparar descarga con nombre que incluye timestamp.
+
+## Manejo de errores y validaciones (recordatorio)
+
+- Validaciones en inserción de aristas: formato, existencia de nodos, evitar duplicados y autoconexiones.
+- Confirmación para operaciones destructivas (reset, generar grafo-línea, complemento).
+- Validación de la estructura JSON al importar.
+
+## Guía rápida para entender el flujo cuando abras el componente
+
+1. Ajusta `cantidadNodos` y pulsa "Crear grafo".
+2. Usa controles de inserción/eliminación de nodos y aristas para editar el grafo.
+3. Aplica transformaciones (fusionar, contraer, grafo-línea, complemento) según necesidad; observa mensajes y confirma acciones destructivas.
+4. Importa o exporta el grafo con los controles correspondientes.
+
+## Notas finales
+
+Este documento ofrece una descripción práctica y detallada del comportamiento implementado en `OperacionesUnGrafo.vue`. Para extender o mantener el módulo, revisa especialmente las funciones que manipulan IDs y la lógica de deduplicación en transformaciones, ya que son las partes con mayor probabilidad de introducir errores o consumos elevados de recursos.
