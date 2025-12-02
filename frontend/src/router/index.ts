@@ -27,6 +27,7 @@ import OperacionesUnGrafo from '../views/grafos/OperacionesUnGrafo.vue';
 import ArbolesExpansion from '../views/grafos/ArbolesExpansion.vue';
 import AlgoritmoFloyd from '../views/grafos/AlgoritmoFloyd.vue';
 import Matrices from '../views/grafos/Matrices.vue';
+import matricesCircuitos from '../views/grafos/matricesCircuitos.vue';
 
 const routes = [
   { path: "/", name: "home", component: HomeView },
@@ -67,6 +68,7 @@ const routes = [
   { path: "/grafos/arboles/expansion", name: "grafos-arboles-expansion", component: ArbolesExpansion },
   { path: "/grafos/arboles/floyd", name: "grafos-arboles-floyd", component: AlgoritmoFloyd },
   { path: "/grafos/representacion/matriz-adyacencia", name: "grafos-matrices", component: Matrices },
+  {path: "/grafos/representacion/circuitos-cortes", name: "grafos-matrices-circuitos", component: matricesCircuitos },
 ]
 
 const router = createRouter({
