@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, type RouteLocationNormalizedLoaded } from 'vue-router'
+import { createRouter, createWebHashHistory, type RouteLocationNormalizedLoaded } from 'vue-router'
 
 // Importar vistas
 import HomeView from "../views/HomeView.vue";
@@ -73,9 +73,13 @@ const routes = [
   {path: "/grafos/representacion/circuitos-cortes", name: "grafos-matrices-circuitos", component: matricesCircuitos },
 ]
 
+// Use hash history in Electron (file://) environments to avoid pathname issues
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(),
   routes,
 })
+
+// Fallback: redirect unknown paths to home
+router.addRoute({ path: '/:pathMatch(.*)*', redirect: '/' });
 
 export default router
