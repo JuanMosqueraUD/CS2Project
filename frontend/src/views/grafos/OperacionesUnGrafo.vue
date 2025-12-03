@@ -202,7 +202,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, toRaw } from 'vue';
+import { ref, nextTick } from 'vue';
 import { DataSet, Network } from 'vis-network/standalone';
 import 'vis-network/styles/vis-network.css';
 
@@ -258,7 +258,6 @@ const complementoInfo = ref<{ nodos: (number | string)[]; aristas: Arista[] } | 
 const graphContainer = ref<HTMLElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 
-let network: Network | null = null;
 let nodesDataSet: DataSet<any> | null = null;
 let edgesDataSet: DataSet<any> | null = null;
 
@@ -864,7 +863,7 @@ function generarGrafoLinea() {
   const nuevasAristas: Arista[] = [];
 
   // Crear nodos a partir de las aristas originales
-  grafo.value.aristas.forEach((arista, index) => {
+  grafo.value.aristas.forEach((arista) => {
     const nuevoId = `${arista.from}${arista.to}`;
     nuevosNodos.push({
       id: nuevoId,
