@@ -296,7 +296,6 @@ const esError = ref(false);
 const graphContainer = ref<HTMLElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 let network: Network | null = null;
 let nodesDataSet: DataSet<any> | null = null;
 let edgesDataSet: DataSet<any> | null = null;

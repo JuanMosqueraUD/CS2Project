@@ -244,7 +244,6 @@ let edgesDataSets: Array<DataSet<any> | null> = [];
 
 let nodesDataSetResultado: DataSet<any> | null = null;
 let edgesDataSetResultado: DataSet<any> | null = null;
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 let _networkResultado: Network | null = null;
 
 const operacionActiva = ref<string>('');
