@@ -624,9 +624,18 @@ export function validateExternalHashImport(importData: any): ValidationResult {
  * Valida un archivo de importación para estructuras dinámicas (hash con expansión/reducción)
  */
 export function validateDynamicImport(importData: any): ValidationResult {
-  // Validación básica de estructura
-  const basicValidation = validateBasicFormat(importData, 'dinamica');
-  if (!basicValidation.isValid) return basicValidation;
+  // Validación básica de estructura (sin validateBasicFormat porque dinamica no tiene capacidad ni digitosClave)
+  if (!importData || typeof importData !== 'object') {
+    return { isValid: false, error: "El archivo no contiene datos válidos." };
+  }
+
+  if (importData.type !== 'dinamica') {
+    return { isValid: false, error: `Este archivo no contiene una estructura dinámica válida.` };
+  }
+
+  if (!importData.config || typeof importData.config !== 'object') {
+    return { isValid: false, error: "El archivo no contiene una configuración válida." };
+  }
 
   // Validar configuración específica de estructuras dinámicas
   const config = importData.config;

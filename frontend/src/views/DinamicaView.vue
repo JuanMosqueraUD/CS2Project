@@ -58,6 +58,12 @@
         <p><strong>Hash:</strong> Módulo sobre {{ config.cubetas }} cubetas</p>
       </div>
 
+      <div class="import-section">
+        <p style="margin: 1rem 0;">O importar estructura existente:</p>
+        <label for="import-file-initial" class="btn-primary" style="cursor: pointer; display: inline-block; padding: 0.65rem 1.5rem;">Abrir Estructura</label>
+        <input id="import-file-initial" type="file" accept=".json" @change="importarEstructura" style="display: none;">
+      </div>
+
       <button @click="crearEstructura">Crear Estructura</button>
     </div>
 
@@ -850,6 +856,31 @@ h1 {
   font-family: monospace;
 }
 
+.import-section {
+  margin-top: 1.5rem;
+  text-align: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.import-section p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.btn-primary {
+  background-color: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 0.25rem;
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  opacity: 0.9;
+}
+
 .structure-info {
   max-width: 1000px;
   margin: 1rem auto;
@@ -900,7 +931,8 @@ h1 {
 #general-nav button {
   flex: 1;
   min-width: 100px;
-  max-width: 150px;
+  max-width: 200px;
+  white-space: nowrap;
 }
 
 .btn-danger {
