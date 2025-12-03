@@ -195,7 +195,7 @@
       <!-- Botón de reseteo y guardado -->
       <div class="reset-section">
         <button @click="resetearGrafo" class="btn-danger" :disabled="grafoLineaAplicado || complementoAplicado">Resetear Grafo</button>
-        <button @click="guardarGrafo" class="btn-save">💾 Guardar Grafo</button>
+        <button @click="guardarGrafo" class="btn-save">Guardar Grafo</button>
       </div>
     </div>
   </div>
