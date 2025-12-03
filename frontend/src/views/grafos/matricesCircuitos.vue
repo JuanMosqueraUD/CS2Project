@@ -1588,9 +1588,22 @@ h1 {
 }
 
 .btn-compact {
-  padding: 0.5rem 1rem;
-  white-space: nowrap;
-  font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    white-space: nowrap;
+    font-size: 0.9rem;
+}
+
+/* Cabecera para todas las matrices indicando las aristas */
+.circuit-matrix thead th:first-child {
+    position: relative;
+    min-width: 100px;
+}
+
+.circuit-matrix thead th:first-child::before {
+    content: 'Aristas';
+    color: var(--primary);
+    font-weight: 600;
+    display: block;
 }
 
 .input-compact {
