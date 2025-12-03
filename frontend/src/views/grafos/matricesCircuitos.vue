@@ -5,7 +5,7 @@
       
 
     
-    <h1>Operaciones en un Grafo</h1>
+    <h1>Matrices</h1>
 
     <!-- Botón Abrir Grafo (siempre visible) -->
     <div class="import-section">

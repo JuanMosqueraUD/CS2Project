@@ -2,11 +2,11 @@
 	<div>
 		<button @click="$router.back()" class="btn-back">← Volver</button>
     
-		<h1>Operaciones en un Grafo</h1>
+		<h1>Matrices</h1>
 
 		<!-- Botón Importar Grafo (siempre visible) -->
 		<div class="import-section">
-			<button @click="triggerFileInput" class="btn-import">📥 Importar Grafo</button>
+			<button @click="triggerFileInput" class="btn-import">Abrir Grafo</button>
 			<input 
 				ref="fileInput" 
 				type="file" 

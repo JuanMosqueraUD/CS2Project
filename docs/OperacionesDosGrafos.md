@@ -179,16 +179,16 @@ Nota: para evitar colisiones de IDs en la visualización cuando se combinan graf
 	3. Operación secuencial para más de dos grafos: resultado intermedio se compone con el siguiente grafo.
 
 ### Composición
-- Objetivo: construir una estructura producto donde las aristas entre vértices fusionados siguen reglas específicas de composición de grafos.
+- Objetivo: construir una estructura producto donde las reglas de conexión permiten encadenar relaciones entre más de dos grafos con condiciones ampliadas (conectar si ambas componentes conectadas, o si una coincide y la otra está conectada en su grafo).
 - Algoritmo (resumen):
 	1. Etiquetar nodos de cada grafo con su letra origen.
 	2. Para operar entre gA (resultado parcial) y gB (siguiente grafo):
 		 - Crear nodos producto combinando las componentes de `gA` y `gB`.
 		 - Para cada par de nodos producto, parsear sus componentes (ej. "1A2B" → ["1A","2B"]).
-		 - Sean (u₁,v₁) y (u₂,v₂) dos vértices fusionados, donde u viene de gA y v de gB.
-		 - Comprobar condiciones para conectarlos:
-				a) u₁ está conectado con u₂ en el grafo A (primera componente conectada), O
-				b) u₁ = u₂ Y v₁ está conectado con v₂ en el grafo B (primera componente igual y segunda conectada).
+		 - Comprobar condiciones:
+				a) Si ambas componentes están conectadas en sus grafos originales → conectar.
+				b) Si la primera componente es igual y las segundas están conectadas en su respectivo grafo → conectar.
+				c) Si la segunda componente es igual y las primeras están conectadas → conectar.
 	3. Repetir secuencialmente por cada grafo adicional.
 
 ## Importación y exportación (detalles)
