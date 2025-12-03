@@ -4,9 +4,9 @@
 
     <h1>Operaciones entre Grafos (N grafos)</h1>
 
-    <!-- Botón Importar Grafos (siempre visible) -->
+    <!-- Botón Abrir Grafos (siempre visible) -->
     <div class="import-section">
-      <button @click="triggerFileInput" class="btn-import">📥 Importar Grafos</button>
+      <button @click="triggerFileInput" class="btn-import">Abrir Grafos</button>
       <input
         ref="fileInput"
         type="file"
@@ -105,35 +105,15 @@
       <!-- Operaciones -->
       <div class="operations">
         <h3>Operaciones del Grafo - {{ `G${grafoSeleccionado + 1}` }}</h3>
-        <div class="operations-grid">
-          <!-- Insertar Nodo -->
-          <div class="operation-card">
-            <h4>Insertar Nodo</h4>
-            <button @click="insertarNodo">Agregar Nodo</button>
+        <div class="operations-horizontal">
+          <button @click="insertarNodo" class="btn-compact">Insertar Nodo</button>
+          <div class="compact-group">
+            <input type="number" v-model.number="nodoEliminar" placeholder="Eliminar nodo" class="input-compact" min="1" />
+            <button @click="eliminarNodo" class="btn-compact">Eliminar</button>
           </div>
-
-          <!-- Eliminar Nodo -->
-          <div class="operation-card">
-            <h4>Eliminar Nodo</h4>
-            <input
-              type="number"
-              v-model.number="nodoEliminar"
-              placeholder="Número de nodo"
-              min="1"
-            />
-            <button @click="eliminarNodo">Eliminar</button>
-          </div>
-
-          <!-- Borrar Arista -->
-          <div class="operation-card">
-            <h4>Borrar Arista</h4>
-            <input
-              type="text"
-              v-model="aristaBorrar"
-              placeholder="Ej: 12"
-              maxlength="10"
-            />
-            <button @click="borrarArista">Borrar</button>
+          <div class="compact-group">
+            <input type="text" v-model="aristaBorrar" placeholder="Borrar arista (ej: 12)" class="input-compact" maxlength="10" />
+            <button @click="borrarArista" class="btn-compact">Borrar</button>
           </div>
         </div>
       </div>
@@ -141,35 +121,14 @@
       <!-- Operaciones entre Grafos -->
       <div class="graph-operations">
         <h3>Operaciones entre Grafos</h3>
-        <div class="operations-grid">
-          <div class="operation-card">
-            <h4>Unión</h4>
-            <button @click="mostrarOperacion('union')">Calcular Unión</button>
-          </div>
-          <div class="operation-card">
-            <h4>Intersección</h4>
-            <button @click="mostrarOperacion('interseccion')">Calcular Intersección</button>
-          </div>
-          <div class="operation-card">
-            <h4>Suma</h4>
-            <button @click="mostrarOperacion('suma')">Calcular Suma</button>
-          </div>
-          <div class="operation-card">
-            <h4>Suma Anillo</h4>
-            <button @click="mostrarOperacion('sumaAnillo')">Calcular Suma Anillo</button>
-          </div>
-          <div class="operation-card">
-            <h4>Producto Cartesiano</h4>
-            <button @click="mostrarOperacion('producto')">Calcular Producto Cartesiano</button>
-          </div>
-          <div class="operation-card">
-            <h4>Producto Tensorial</h4>
-            <button @click="mostrarOperacion('tensorial')">Calcular Producto Tensorial</button>
-          </div>
-          <div class="operation-card">
-            <h4>Composición de Grafos</h4>
-            <button @click="mostrarOperacion('composicion')" style="font-size: 90%;">Calcular Composición</button>
-          </div>
+        <div class="operations-compact">
+          <button @click="mostrarOperacion('union')" class="btn-operation">Unión (G₁ ∪ G₂)</button>
+          <button @click="mostrarOperacion('interseccion')" class="btn-operation">Intersección (G₁ ∩ G₂)</button>
+          <button @click="mostrarOperacion('suma')" class="btn-operation">Suma (G₁ + G₂)</button>
+          <button @click="mostrarOperacion('sumaAnillo')" class="btn-operation">Suma Anillo (G₁ ⊕ G₂)</button>
+          <button @click="mostrarOperacion('producto')" class="btn-operation">Producto Cartesiano (G₁ × G₂)</button>
+          <button @click="mostrarOperacion('tensorial')" class="btn-operation">Producto Tensorial (G₁ ⊗ G₂)</button>
+          <button @click="mostrarOperacion('composicion')" class="btn-operation">Composición (G₁ ∘ G₂)</button>
         </div>
       </div>
 
@@ -233,7 +192,7 @@
       <!-- Botón de reseteo y guardado -->
       <div class="reset-section">
         <button @click="resetearGrafos" class="btn-danger">Resetear Grafos</button>
-        <button @click="guardarGrafos" class="btn-save">💾 Guardar Grafos</button>
+        <button @click="guardarGrafos" class="btn-save">Guardar Grafos</button>
       </div>
     </div>
   </div>
@@ -1493,8 +1452,8 @@ h1 {
 
 .operations {
   max-width: 1200px;
-  margin: 2rem auto;
-  padding: 1.5rem;
+  margin: 1rem auto;
+  padding: 1rem;
   border: 1px solid var(--muted-border-color);
   border-radius: 0.5rem;
   background: var(--card-background-color);
@@ -1502,8 +1461,35 @@ h1 {
 
 .operations h3 {
   margin-top: 0;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   text-align: center;
+  font-size: 1.1rem;
+}
+
+.operations-horizontal {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.compact-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-compact {
+  padding: 0.5rem 1rem;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.input-compact {
+  width: 150px;
+  padding: 0.5rem;
+  font-size: 0.9rem;
 }
 
 .operations-grid {
@@ -1538,8 +1524,8 @@ h1 {
 
 .graph-operations {
   max-width: 1200px;
-  margin: 2rem auto;
-  padding: 1.5rem;
+  margin: 1rem auto;
+  padding: 1rem;
   border: 2px solid #8b5cf6;
   border-radius: 0.5rem;
   background: var(--card-background-color);
@@ -1547,9 +1533,23 @@ h1 {
 
 .graph-operations h3 {
   margin-top: 0;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   text-align: center;
   color: #8b5cf6;
+  font-size: 1.1rem;
+}
+
+.operations-compact {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn-operation {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
 }
 
 .operation-description {

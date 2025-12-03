@@ -7,9 +7,9 @@
     
     <h1>Operaciones en un Grafo</h1>
 
-    <!-- Botón Importar Grafo (siempre visible) -->
+    <!-- Botón Abrir Grafo (siempre visible) -->
     <div class="import-section">
-      <button @click="triggerFileInput" class="btn-import">📥 Importar Grafo</button>
+      <button @click="triggerFileInput" class="btn-import">Abrir Grafo</button>
       <input 
         ref="fileInput" 
         type="file" 
@@ -111,38 +111,16 @@
       <!-- Operaciones -->
       <div class="operations">
         <h3>Operaciones del Grafo</h3>
-        <div class="operations-grid">
-          <!-- Insertar Nodo -->
-          <div class="operation-card">
-            <h4>Insertar Nodo</h4>
-            <button @click="insertarNodo">Agregar Nodo</button>
+        <div class="operations-horizontal">
+          <button @click="insertarNodo" class="btn-compact">Insertar Nodo</button>
+          <div class="compact-group">
+            <input type="number" v-model.number="nodoEliminar" placeholder="Eliminar nodo" class="input-compact" min="1" />
+            <button @click="eliminarNodo" class="btn-compact">Eliminar</button>
           </div>
-
-          <!-- Eliminar Nodo -->
-          <div class="operation-card">
-            <h4>Eliminar Nodo</h4>
-            <input 
-              type="number" 
-              v-model.number="nodoEliminar" 
-              placeholder="Número de nodo"
-              min="1"
-            />
-            <button @click="eliminarNodo">Eliminar</button>
+          <div class="compact-group">
+            <input type="text" v-model="aristaBorrar" placeholder="Borrar arista (ej: 12)" class="input-compact" maxlength="10" />
+            <button @click="borrarArista" class="btn-compact">Borrar</button>
           </div>
-
-          <!-- Borrar Arista -->
-          <div class="operation-card">
-            <h4>Borrar Arista</h4>
-            <input 
-              type="text" 
-              v-model="aristaBorrar" 
-              placeholder="Ej: 12"
-              maxlength="10"
-            />
-            <button @click="borrarArista">Borrar</button>
-          </div>
-
-          <!-- NOTE: Fusionar, Contraer, Grafo Línea y Complemento OMITIDOS según petición -->
         </div>
       </div>
 
@@ -1581,8 +1559,8 @@ h1 {
 
 .operations {
   max-width: 1200px;
-  margin: 2rem auto;
-  padding: 1.5rem;
+  margin: 1rem auto;
+  padding: 1rem;
   border: 1px solid var(--muted-border-color);
   border-radius: 0.5rem;
   background: var(--card-background-color);
@@ -1590,8 +1568,35 @@ h1 {
 
 .operations h3 {
   margin-top: 0;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   text-align: center;
+  font-size: 1.1rem;
+}
+
+.operations-horizontal {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.compact-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-compact {
+  padding: 0.5rem 1rem;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.input-compact {
+  width: 150px;
+  padding: 0.5rem;
+  font-size: 0.9rem;
 }
 
 .operations-grid {

@@ -85,6 +85,12 @@
         <p><strong>Bloques de índices (bi):</strong> {{ bloquesIndices }}</p>
       </div>
 
+      <div class="import-section">
+        <p style="margin: 1rem 0;">O importar estructura existente:</p>
+        <label for="import-file-initial" class="btn-primary" style="cursor: pointer; display: inline-block; padding: 0.65rem 1.5rem;">Abrir Estructura</label>
+        <input id="import-file-initial" type="file" accept=".json" @change="importarEstructura" style="display: none;">
+      </div>
+
       <button @click="crearEstructura">Crear Estructura</button>
     </div>
 
@@ -129,8 +135,11 @@
         </div>
       </div>
 
-      <!-- Botón de reset -->
-      <div class="operations">
+      <!-- Botones de operaciones -->
+      <div class="operations" style="display: flex; gap: 1rem; justify-content: center; align-items: center;">
+        <button @click="exportarEstructura" class="btn-secondary">Guardar Estructura</button>
+        <label for="import-file" class="btn-secondary" style="cursor: pointer; display: inline-block; padding: 0.65rem 1.5rem; margin: 0;">Abrir Estructura</label>
+        <input id="import-file" type="file" accept=".json" @change="importarEstructura" style="display: none;">
         <button @click="mostrarModalReset = true" class="btn-secondary">Resetear Estructura</button>
       </div>
 
@@ -363,6 +372,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { downloadJsonFile } from '../../utils/importExportUtils';
 
 interface Config {
   tipoIndice: 'primario' | 'secundario';
@@ -707,6 +717,125 @@ function confirmarReset() {
 function cancelarReset() {
   mostrarModalReset.value = false;
 }
+
+function exportarEstructura() {
+  if (!estructuraCreada.value) {
+    mensaje.value = "Primero debes crear una estructura para exportar.";
+    setTimeout(() => mensaje.value = '', 3000);
+    return;
+  }
+
+  const exportData = {
+    type: 'indice',
+    version: '1.0',
+    timestamp: new Date().toISOString(),
+    config: {
+      tipoIndice: config.value.tipoIndice,
+      estructura: config.value.estructura,
+      RlDatos: config.value.RlDatos,
+      RlIndice: config.value.RlIndice,
+      B: config.value.B,
+      r: config.value.r
+    },
+    estructura: {
+      bfr: estructura.value.bfr,
+      b: estructura.value.b,
+      Rli: estructura.value.Rli,
+      bfri: estructura.value.bfri,
+      bi: estructura.value.bi,
+      registrosInsertados: estructura.value.registrosInsertados
+    }
+  };
+
+  const tipoStr = config.value.tipoIndice === 'primario' ? 'primario' : 'secundario';
+  const estructuraStr = config.value.estructura === 'simple' ? 'simple' : 'multinivel';
+  const fecha = new Date().toISOString().split('T')[0];
+  const filename = `indice_${tipoStr}_${estructuraStr}_${fecha}.json`;
+  
+  downloadJsonFile(exportData, filename);
+  mensaje.value = "Estructura de índices exportada exitosamente.";
+  setTimeout(() => mensaje.value = '', 3000);
+}
+
+function importarEstructura(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const importData = JSON.parse(e.target?.result as string);
+      
+      // Validaciones básicas
+      if (importData.type !== 'indice') {
+        mensaje.value = "Este archivo no contiene una estructura de índices válida.";
+        setTimeout(() => mensaje.value = '', 3000);
+        return;
+      }
+
+      if (!importData.config || !importData.estructura) {
+        mensaje.value = "El archivo no contiene la configuración completa.";
+        setTimeout(() => mensaje.value = '', 3000);
+        return;
+      }
+
+      // Validar que tenga todos los campos necesarios
+      const configFields = ['tipoIndice', 'estructura', 'RlDatos', 'RlIndice', 'B', 'r'];
+      const missingFields = configFields.filter(field => !(field in importData.config));
+      if (missingFields.length > 0) {
+        mensaje.value = `Faltan campos de configuración: ${missingFields.join(', ')}`;
+        setTimeout(() => mensaje.value = '', 3000);
+        return;
+      }
+
+      // Validar tipos
+      if (!['primario', 'secundario'].includes(importData.config.tipoIndice)) {
+        mensaje.value = "Tipo de índice inválido. Debe ser 'primario' o 'secundario'.";
+        setTimeout(() => mensaje.value = '', 3000);
+        return;
+      }
+
+      if (!['simple', 'multinivel'].includes(importData.config.estructura)) {
+        mensaje.value = "Estructura inválida. Debe ser 'simple' o 'multinivel'.";
+        setTimeout(() => mensaje.value = '', 3000);
+        return;
+      }
+
+      // Validar números positivos
+      if (importData.config.RlDatos <= 0 || importData.config.RlIndice <= 0 || 
+          importData.config.B <= 0 || importData.config.r <= 0) {
+        mensaje.value = "Todos los valores de configuración deben ser números positivos.";
+        setTimeout(() => mensaje.value = '', 3000);
+        return;
+      }
+
+      // Importar configuración
+      config.value.tipoIndice = importData.config.tipoIndice;
+      config.value.estructura = importData.config.estructura;
+      config.value.RlDatos = importData.config.RlDatos;
+      config.value.RlIndice = importData.config.RlIndice;
+      config.value.B = importData.config.B;
+      config.value.r = importData.config.r;
+
+      // Recrear la estructura con la configuración importada
+      crearEstructura();
+      
+      const tipoStr = config.value.tipoIndice === 'primario' ? 'Primario' : 'Secundario';
+      const estructuraStr = config.value.estructura === 'simple' ? 'Simple' : 'Multinivel';
+      mensaje.value = `Estructura importada exitosamente. Tipo: ${tipoStr}, Estructura: ${estructuraStr}, Registros: ${config.value.r}`;
+      setTimeout(() => mensaje.value = '', 5000);
+      
+    } catch (error) {
+      mensaje.value = "Error al leer el archivo. Asegúrate de que sea un JSON válido.";
+      setTimeout(() => mensaje.value = '', 3000);
+    }
+  };
+  
+  reader.readAsText(file);
+  target.value = '';
+}
 </script>
 
 <style scoped>
@@ -726,6 +855,18 @@ h1 {
   border: 1px solid var(--primary);
   border-radius: 0.5rem;
   background: var(--card-background-color);
+}
+
+.import-section {
+  margin-top: 1.5rem;
+  text-align: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.import-section p {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
 }
 
 .config-row {
