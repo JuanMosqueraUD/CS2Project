@@ -70,30 +70,37 @@
         <input id="import-file" type="file" accept=".json" @change="importarGrafo" style="display: none;">
       </div>
 
-      <!-- Crear Aristas -->
+      <!-- Gestión de Aristas -->
       <div class="edge-management">
-        <h3>Crear Aristas</h3>
+        <h3>Gestión de Aristas</h3>
         <div class="edge-controls">
           <input 
             type="text" 
             v-model="aristaInput" 
-            placeholder="Ej: 12 o 1 2 para conectar nodo 1 y 2"
+            placeholder="Ej: 12 para conectar"
             maxlength="10"
             @keyup.enter="agregarArista"
           />
           <input
             type="number"
             v-model.number="pesoArista"
-            placeholder="Peso (entero positivo)"
+            placeholder="Peso"
             step="1"
             min="1"
           />
-          <button @click="agregarArista">Agregar Arista</button>
+          <button @click="agregarArista">Agregar</button>
+          <input 
+            type="text" 
+            v-model="aristaBorrar" 
+            placeholder="Ej: 12 para borrar"
+            maxlength="10"
+          />
+          <button @click="borrarArista">Borrar</button>
         </div>
         <p class="help-text">
           {{ config.esDirigido ? 
-            'Formato: "12" o "1 2" crea arista 1→2 con el peso indicado' : 
-            'Formato: "12" o "1 2" crea arista bidireccional 1↔2 con el peso indicado' 
+            'Formato: "12" o "1 2" para arista 1→2 con peso' : 
+            'Formato: "12" o "1 2" para arista bidireccional 1↔2 con peso' 
           }}
         </p>
       </div>
@@ -202,6 +209,7 @@ const grafo = ref<Grafo>({
 
 const aristaInput = ref('');
 const pesoArista = ref<number | null>(null);
+const aristaBorrar = ref('');
 const mensaje = ref('');
 const esError = ref(false);
 
@@ -393,6 +401,58 @@ function agregarArista() {
   mostrarMensaje(`Arista ${nodo1}${config.value.esDirigido ? '→' : '↔'}${nodo2} agregada con peso ${pesoArista.value}`, false);
   aristaInput.value = '';
   pesoArista.value = null;
+}
+
+function borrarArista() {
+  if (!aristaBorrar.value || aristaBorrar.value.length < 2) {
+    mostrarMensaje('Por favor ingrese una arista para borrar (ej: 12)', true);
+    return;
+  }
+
+  const tokens = aristaBorrar.value.trim().match(/\d+/g) || [];
+  let nodo1: number, nodo2: number;
+
+  if (tokens.length >= 2) {
+    nodo1 = parseInt(tokens[0]!);
+    nodo2 = parseInt(tokens[1]!);
+  } else {
+    const noSpace = aristaBorrar.value.replace(/\s+/g, '');
+    if (!/^\d+$/.test(noSpace) || noSpace.length < 2) {
+      mostrarMensaje('Formato inválido. Use "12" o "1 2"', true);
+      return;
+    }
+    nodo1 = parseInt(noSpace[0]);
+    nodo2 = parseInt(noSpace.substring(1));
+  }
+
+  // Buscar la arista (dirigida o bidireccional)
+  const aristaIndex = grafo.value.aristas.findIndex(
+    (arista: Arista) =>
+      (arista.from === nodo1 && arista.to === nodo2) ||
+      (!config.value.esDirigido && arista.from === nodo2 && arista.to === nodo1)
+  );
+
+  if (aristaIndex === -1) {
+    mostrarMensaje(`Arista ${nodo1}${config.value.esDirigido ? '→' : '↔'}${nodo2} no encontrada`, true);
+    return;
+  }
+
+  // Eliminar arista
+  grafo.value.aristas.splice(aristaIndex, 1);
+
+  // Resetear árbol calculado
+  arbolCalculado.value = false;
+  aristasOriginales.value = [];
+  ramasArbol.value = [];
+  cuerdasArbol.value = [];
+  matrizCortes.value = null;
+  matrizCircuitos.value = null;
+
+  // Actualizar visualización
+  actualizarVisualizacion();
+
+  mostrarMensaje(`Arista ${nodo1}${config.value.esDirigido ? '→' : '↔'}${nodo2} eliminada`, false);
+  aristaBorrar.value = '';
 }
 
 function actualizarVisualizacion() {
@@ -983,8 +1043,8 @@ function mostrarMensaje(msg: string, error: boolean) {
 
 .operations {
   max-width: 1200px;
-  margin: 2rem auto;
-  padding: 1.5rem;
+  margin: 1rem auto;
+  padding: 1rem;
   border: 1px solid var(--muted-border-color);
   border-radius: 0.5rem;
   background: var(--card-background-color);
@@ -992,8 +1052,35 @@ function mostrarMensaje(msg: string, error: boolean) {
 
 .operations h3 {
   margin-top: 0;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
   text-align: center;
+  font-size: 1.1rem;
+}
+
+.operations-horizontal {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+}
+
+.compact-group {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-compact {
+  padding: 0.5rem 1rem;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.input-compact {
+  width: 150px;
+  padding: 0.5rem;
+  font-size: 0.9rem;
 }
 
 .operations-grid {
