@@ -1018,6 +1018,8 @@ function calcularComposicion(): Grafo {
 function cerrarOperacion() {
   operacionActiva.value = '';
   grafoResultado.value = { nodos: [], aristas: [] };
+  // destruir la instancia de vis-network del resultado (si existe) antes de nulificar
+  _networkResultado?.destroy();
   _networkResultado = null;
   nodesDataSetResultado = null;
   edgesDataSetResultado = null;

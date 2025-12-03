@@ -202,7 +202,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, toRaw } from 'vue';
+import { ref, nextTick } from 'vue';
 import { DataSet, Network } from 'vis-network/standalone';
 import 'vis-network/styles/vis-network.css';
 
@@ -756,6 +756,8 @@ function resetearGrafo() {
   if (confirm('¿Estás seguro de que deseas resetear el grafo?')) {
     grafoCreado.value = false;
     grafo.value = { nodos: [], aristas: [] };
+    // destruir instancia de vis-network si existe antes de nulificar
+    network?.destroy();
     network = null;
     nodesDataSet = null;
     edgesDataSet = null;
@@ -864,7 +866,7 @@ function generarGrafoLinea() {
   const nuevasAristas: Arista[] = [];
 
   // Crear nodos a partir de las aristas originales
-  grafo.value.aristas.forEach((arista, index) => {
+  grafo.value.aristas.forEach((arista) => {
     const nuevoId = `${arista.from}${arista.to}`;
     nuevosNodos.push({
       id: nuevoId,

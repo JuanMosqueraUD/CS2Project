@@ -594,6 +594,8 @@ function resetearGrafo() {
 	if (confirm('¿Estás seguro de que deseas resetear el grafo?')) {
 		grafoCreado.value = false;
 		grafo.value = { nodos: [], aristas: [] };
+		// destruir instancia de vis-network si existe antes de nulificar
+		network?.destroy();
 		network = null;
 		nodesDataSet = null;
 		edgesDataSet = null;
