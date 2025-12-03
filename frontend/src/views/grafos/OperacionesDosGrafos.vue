@@ -964,34 +964,33 @@ function calcularComposicion(): Grafo {
         const p = productoNodos[i];
         const q = productoNodos[j];
 
-        // Extraer componentes: p.label = "1A2B1C", q.label = "2A1B1C" (en iteración secuencial)
+        // Extraer componentes: p.label = "1A2B", q.label = "2A1B"
+        // donde la primera parte (1A, 2A) viene de gA y la segunda (2B, 1B) de gB
         const pComps = parseNodoProducto(String(p.label));
         const qComps = parseNodoProducto(String(q.label));
 
-        // El nodo p tiene giA+1 componentes (de giA grafos ya procesados + el nuevo)
-        // Extraer componente A (primeras giA) y componente B (última)
-        const pCompA = pComps.slice(0, giA).join(''); // reagrupar primeras componentes
-        const pCompB = pComps[giA] || '';
-        const qCompA = qComps.slice(0, giA).join('');
-        const qCompB = qComps[giA] || '';
+        // Para dos grafos: pComps[0] es u1, pComps[1] es v1
+        //                  qComps[0] es u2, qComps[1] es v2
+        const pCompA = pComps.slice(0, pComps.length - 1).join(''); // todas menos la última
+        const pCompB = pComps[pComps.length - 1] || ''; // última componente
+        const qCompA = qComps.slice(0, qComps.length - 1).join('');
+        const qCompB = qComps[qComps.length - 1] || '';
 
         // Extraer valores sin letras para comparar en grafos originales
-        const pA_val = stripLetter(pCompA) || '';
-        const pB_val = stripLetter(pCompB) || '';
-        const qA_val = stripLetter(qCompA) || '';
-        const qB_val = stripLetter(qCompB) || '';
+        const pA_val = stripLetter(pCompA) || pCompA;
+        const pB_val = stripLetter(pCompB) || pCompB;
+        const qA_val = stripLetter(qCompA) || qCompA;
+        const qB_val = stripLetter(qCompB) || qCompB;
 
-        // Criterios de conexión:
-        // 1. Ambas componentes conectadas: p_A conectado en gA_original Y p_B conectado en gB_original
-        const cond1 = existeAristaEnOriginal(giA, pA_val, qA_val) && existeAristaEnOriginal(giB, pB_val, qB_val);
+        // Reglas de composición:
+        // Conectar (u1,v1) con (u2,v2) si:
+        // 1. u1 está conectado con u2 en el grafo A (primeras componentes conectadas)
+        // 2. u1 = u2 Y v1 está conectado con v2 en el grafo B
+        
+        const cond1 = existeAristaEnOriginal(giA, pA_val, qA_val);
+        const cond2 = (pA_val === qA_val) && existeAristaEnOriginal(giB, pB_val, qB_val);
 
-        // 2a. Primera componente igual, segunda conectada: p_A == q_A AND p_B-q_B conectados en gB
-        const cond2a = (pA_val === qA_val) && existeAristaEnOriginal(giB, pB_val, qB_val);
-
-        // 2b. Segunda componente igual, primera conectada: p_B == q_B AND p_A-q_A conectados en gA
-        const cond2b = (pB_val === qB_val) && existeAristaEnOriginal(giA, pA_val, qA_val);
-
-        if (cond1 || cond2a || cond2b) {
+        if (cond1 || cond2) {
           const key = [p.id, q.id].sort().join('-');
           if (!seen[key]) {
             seen[key] = true;
