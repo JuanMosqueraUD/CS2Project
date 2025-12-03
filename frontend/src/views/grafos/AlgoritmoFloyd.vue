@@ -43,6 +43,12 @@
       </div>
 
       <button @click="crearGrafo">Crear Grafo</button>
+      
+      <div class="import-section">
+        <p style="margin: 1rem 0;">O importar grafo existente:</p>
+        <label for="import-file-initial" class="btn-primary" style="cursor: pointer; display: inline-block; padding: 0.65rem 1.5rem;">Abrir Grafo</label>
+        <input id="import-file-initial" type="file" accept=".json" @change="importarGrafo" style="display: none;">
+      </div>
     </div>
 
     <!-- Grafo creado -->
@@ -65,6 +71,13 @@
         </div>
       </div>
 
+      <!-- Botones de operaciones -->
+      <div class="operations" style="display: flex; gap: 1rem; justify-content: center; align-items: center; margin-top: 1rem;">
+        <button @click="exportarGrafo" class="btn-secondary">Guardar Grafo</button>
+        <label for="import-file" class="btn-secondary" style="cursor: pointer; display: inline-block; padding: 0.65rem 1.5rem; margin: 0;">Abrir Grafo</label>
+        <input id="import-file" type="file" accept=".json" @change="importarGrafo" style="display: none;">
+      </div>
+
       <!-- Crear Aristas -->
       <div class="edge-management">
         <h3>Crear Aristas</h3>
@@ -80,9 +93,9 @@
             v-if="config.esPonderado"
             type="number" 
             v-model.number="pesoArista" 
-            placeholder="Peso (obligatorio)"
-            step="0.1"
-            min="0"
+            placeholder="Peso (entero positivo)"
+            step="1"
+            min="1"
           />
           <button @click="agregarArista">Agregar Arista</button>
         </div>
@@ -155,6 +168,16 @@
           </div>
         </div>
 
+        <!-- Distancias de Vértices -->
+        <div class="result-section">
+          <h4>Distancia de Vértice</h4>
+          <div class="excentricidades-grid">
+            <div v-for="(dist, idx) in resultadosFloyd.distanciasVertices" :key="'dist-' + idx" class="excentricidad-item">
+              <strong>Vértice {{ idx + 1 }}:</strong> {{ formatearDistancia(dist) }}
+            </div>
+          </div>
+        </div>
+
         <!-- Mediana -->
         <div class="result-section">
           <h4>Mediana (Excentricidad Mínima)</h4>
@@ -165,6 +188,9 @@
               Vértice{{ resultadosFloyd.centros.length > 1 ? 's' : '' }} {{ resultadosFloyd.centros.join(', ') }}
             </span>
           </p>
+          <div class="mediana-visualization">
+            <div id="mediana-container" ref="medianaContainer"></div>
+          </div>
         </div>
 
         <!-- Diámetro -->
@@ -188,6 +214,7 @@
 import { ref, nextTick } from 'vue';
 import { DataSet, Network } from 'vis-network/standalone';
 import 'vis-network/styles/vis-network.css';
+import { downloadJsonFile } from '../../utils/importExportUtils';
 
 interface Config {
   cantidadNodos: number;
@@ -214,6 +241,7 @@ interface Grafo {
 interface ResultadosFloyd {
   matrizDistancias: number[][];
   excentricidades: number[];
+  distanciasVertices: number[];
   mediana: number;
   diametro: number;
   centros: number[];
@@ -236,9 +264,11 @@ const pesoArista = ref<number | null>(null);
 const mensaje = ref('');
 const esError = ref(false);
 const graphContainer = ref<HTMLElement | null>(null);
+const medianaContainer = ref<HTMLElement | null>(null);
 const resultadosFloyd = ref<ResultadosFloyd | null>(null);
 
 let network: Network | null = null;
+let networkMediana: Network | null = null;
 
 function mostrarMensaje(msg: string, error: boolean = false) {
   mensaje.value = msg;
@@ -357,6 +387,11 @@ function agregarArista() {
 
   if (config.value.esPonderado && (pesoArista.value === null || pesoArista.value === undefined)) {
     mostrarMensaje('Por favor ingrese el peso de la arista', true);
+    return;
+  }
+
+  if (config.value.esPonderado && pesoArista.value !== null && (!Number.isInteger(pesoArista.value) || pesoArista.value < 1)) {
+    mostrarMensaje('El peso debe ser un número entero positivo (mayor o igual a 1)', true);
     return;
   }
 
@@ -536,6 +571,18 @@ function calcularDistancias() {
     excentricidades.push(maxDistancia === 0 ? INF : maxDistancia);
   }
   
+  // 3.5. Calcular distancias de vértices (suma de caminos mínimos)
+  const distanciasVertices: number[] = [];
+  for (let i = 0; i < n; i++) {
+    let sumaDistancias = 0;
+    for (let j = 0; j < n; j++) {
+      if (i !== j && matriz[i][j] !== INF) {
+        sumaDistancias += matriz[i][j];
+      }
+    }
+    distanciasVertices.push(sumaDistancias);
+  }
+  
   // 4. Calcular mediana (excentricidad mínima)
   const mediana = Math.min(...excentricidades.filter(e => e !== INF));
   
@@ -554,16 +601,105 @@ function calcularDistancias() {
   resultadosFloyd.value = {
     matrizDistancias: matriz,
     excentricidades: excentricidades,
+    distanciasVertices: distanciasVertices,
     mediana: mediana,
     diametro: diametro,
     centros: centros
   };
   
   mostrarMensaje('Distancias calculadas correctamente', false);
+  
+  // Generar visualización de la mediana
+  nextTick(() => {
+    generarVisualizacionMediana();
+  });
 }
 
 function formatearDistancia(distancia: number): string {
   return distancia === Infinity ? '∞' : distancia.toString();
+}
+
+function generarVisualizacionMediana() {
+  if (!medianaContainer.value || !resultadosFloyd.value) return;
+
+  const centros = resultadosFloyd.value.centros;
+  
+  // Crear nodos para los centros
+  const nodesMediana = new DataSet(
+    centros.map(centroId => ({
+      id: centroId,
+      label: `${centroId}`,
+      color: {
+        background: '#f59e0b',
+        border: '#d97706',
+        highlight: {
+          background: '#fbbf24',
+          border: '#f59e0b'
+        }
+      },
+      font: {
+        color: '#ffffff',
+        size: 14
+      }
+    }))
+  );
+
+  // Si es bicentro, crear arista entre los dos nodos
+  const edgesMediana = new DataSet<any>();
+  if (centros.length === 2) {
+    edgesMediana.add({
+      id: 1,
+      from: centros[0],
+      to: centros[1],
+      color: {
+        color: '#94a3b8',
+        highlight: '#f59e0b'
+      },
+      width: 2
+    });
+  }
+
+  const data = {
+    nodes: nodesMediana,
+    edges: edgesMediana
+  };
+
+  const options = {
+    nodes: {
+      shape: 'circle',
+      size: 20,
+      borderWidth: 2
+    },
+    edges: {
+      width: 2,
+      smooth: false
+    },
+    physics: {
+      enabled: false
+    },
+    interaction: {
+      dragNodes: false,
+      dragView: false,
+      zoomView: false
+    },
+    layout: {
+      hierarchical: false
+    }
+  };
+
+  if (networkMediana) {
+    networkMediana.destroy();
+  }
+  
+  networkMediana = new Network(medianaContainer.value, data, options);
+  
+  // Posicionar nodos manualmente
+  if (centros.length === 1) {
+    networkMediana.moveNode(centros[0], 0, 0);
+  } else if (centros.length === 2) {
+    networkMediana.moveNode(centros[0], -50, 0);
+    networkMediana.moveNode(centros[1], 50, 0);
+  }
 }
 
 function resetearGrafo() {
@@ -577,6 +713,113 @@ function resetearGrafo() {
   mensaje.value = '';
   resultadosFloyd.value = null;
   network = null;
+  
+  if (networkMediana) {
+    networkMediana.destroy();
+    networkMediana = null;
+  }
+}
+
+function exportarGrafo() {
+  if (!grafoCreado.value) {
+    mostrarMensaje("Primero debes crear un grafo para exportar.", true);
+    return;
+  }
+
+  const exportData = {
+    type: 'algoritmo-floyd',
+    version: '1.0',
+    timestamp: new Date().toISOString(),
+    config: {
+      cantidadNodos: config.value.cantidadNodos,
+      esDirigido: config.value.esDirigido,
+      esPonderado: config.value.esPonderado
+    },
+    grafo: {
+      nodos: grafo.value.nodos,
+      aristas: grafo.value.aristas
+    }
+  };
+
+  const tipoStr = config.value.esDirigido ? 'dirigido' : 'no-dirigido';
+  const ponderadoStr = config.value.esPonderado ? 'ponderado' : 'no-ponderado';
+  const fecha = new Date().toISOString().split('T')[0];
+  const filename = `floyd_${tipoStr}_${ponderadoStr}_${fecha}.json`;
+  
+  downloadJsonFile(exportData, filename);
+  mostrarMensaje("Grafo exportado exitosamente.", false);
+}
+
+function importarGrafo(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const importData = JSON.parse(e.target?.result as string);
+      
+      // Validaciones básicas
+      if (importData.type !== 'algoritmo-floyd') {
+        mostrarMensaje("Este archivo no contiene un grafo para el algoritmo de Floyd válido.", true);
+        return;
+      }
+
+      if (!importData.config || !importData.grafo) {
+        mostrarMensaje("El archivo no contiene la configuración completa.", true);
+        return;
+      }
+
+      // Validar que tenga todos los campos necesarios
+      if (typeof importData.config.cantidadNodos !== 'number' || 
+          typeof importData.config.esDirigido !== 'boolean' ||
+          typeof importData.config.esPonderado !== 'boolean') {
+        mostrarMensaje("Configuración inválida en el archivo.", true);
+        return;
+      }
+
+      if (!Array.isArray(importData.grafo.nodos) || !Array.isArray(importData.grafo.aristas)) {
+        mostrarMensaje("Estructura de grafo inválida en el archivo.", true);
+        return;
+      }
+
+      // Validar números positivos
+      if (importData.config.cantidadNodos <= 0) {
+        mostrarMensaje("La cantidad de nodos debe ser un número positivo.", true);
+        return;
+      }
+
+      // Importar configuración
+      config.value.cantidadNodos = importData.config.cantidadNodos;
+      config.value.esDirigido = importData.config.esDirigido;
+      config.value.esPonderado = importData.config.esPonderado;
+
+      // Importar grafo
+      grafo.value.nodos = importData.grafo.nodos;
+      grafo.value.aristas = importData.grafo.aristas;
+      grafoCreado.value = true;
+
+      // Reinicializar visualización
+      nextTick(() => {
+        inicializarVisualizacion();
+      });
+
+      // Reset estados de algoritmos
+      resultadosFloyd.value = null;
+      
+      const tipoStr = config.value.esDirigido ? 'Dirigido' : 'No Dirigido';
+      const ponderadoStr = config.value.esPonderado ? 'Ponderado' : 'No Ponderado';
+      mostrarMensaje(`Grafo importado exitosamente. Tipo: ${tipoStr}, ${ponderadoStr}, Nodos: ${config.value.cantidadNodos}, Aristas: ${grafo.value.aristas.length}`, false);
+      
+    } catch (error) {
+      mostrarMensaje("Error al leer el archivo. Asegúrate de que sea un JSON válido.", true);
+    }
+  };
+  
+  reader.readAsText(file);
+  target.value = '';
 }
 </script>
 
@@ -627,6 +870,13 @@ function resetearGrafo() {
 
 .info-preview p {
   margin: 0.5rem 0;
+}
+
+.import-section {
+  margin-top: 1.5rem;
+  text-align: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
 }
 
 .structure-info {
@@ -805,6 +1055,20 @@ function resetearGrafo() {
 
 .result-section:last-child {
   margin-bottom: 0;
+}
+
+.mediana-visualization {
+  margin-top: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#mediana-container {
+  width: 200px;
+  height: 120px;
+  border: 1px solid var(--muted-border-color);
+  border-radius: 0.25rem;
 }
 
 .result-section h4 {

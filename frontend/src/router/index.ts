@@ -20,11 +20,12 @@ import HashTruncamientoExterno from '../views/external-searches/hash/HashTruncam
 import HashCambioBaseExterno from '../views/external-searches/hash/HashCambioBaseExterno.vue';
 import DinamicaView from '../views/DinamicaView.vue';
 import IndicesView from '../views/external-searches/IndicesView.vue';
-import OperacionesDosGrafos from '../views/grafos/OperacionesDosGrafos.vue';
 
 // Importar vistas de grafos
 import OperacionesUnGrafo from '../views/grafos/OperacionesUnGrafo.vue';
+import OperacionesDosGrafos from '../views/grafos/OperacionesDosGrafos.vue';
 import ArbolesExpansion from '../views/grafos/ArbolesExpansion.vue';
+import DistanciaArbolesExpansion from '../views/grafos/DistanciaArbolesExpansion.vue';
 import AlgoritmoFloyd from '../views/grafos/AlgoritmoFloyd.vue';
 import Matrices from '../views/grafos/Matrices.vue';
 
@@ -65,6 +66,7 @@ const routes = [
   { path: "/grafos/operaciones/un-grafo", name: "grafos-operaciones-un-grafo", component: OperacionesUnGrafo },
   { path: "/grafos/operaciones/entre-grafos", name: "grafos-operaciones-dos-grafos", component: OperacionesDosGrafos },
   { path: "/grafos/arboles/expansion", name: "grafos-arboles-expansion", component: ArbolesExpansion },
+  { path: "/grafos/arboles/distancia", name: "grafos-arboles-distancia", component: DistanciaArbolesExpansion },
   { path: "/grafos/arboles/floyd", name: "grafos-arboles-floyd", component: AlgoritmoFloyd },
   { path: "/grafos/representacion/matriz-adyacencia", name: "grafos-matrices", component: Matrices },
 ]

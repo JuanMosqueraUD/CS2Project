@@ -35,6 +35,12 @@
       </div>
 
       <button @click="crearGrafo">Crear Grafo</button>
+      
+      <div class="import-section">
+        <p style="margin: 1rem 0;">O importar grafo existente:</p>
+        <label for="import-file-initial" class="btn-primary" style="cursor: pointer; display: inline-block; padding: 0.65rem 1.5rem;">Abrir Grafo</label>
+        <input id="import-file-initial" type="file" accept=".json" @change="importarGrafo" style="display: none;">
+      </div>
     </div>
 
     <!-- Grafo creado -->
@@ -57,6 +63,13 @@
         </div>
       </div>
 
+      <!-- Botones de operaciones -->
+      <div class="operations" style="display: flex; gap: 1rem; justify-content: center; align-items: center; margin-top: 1rem;">
+        <button @click="exportarGrafo" class="btn-secondary">Guardar Grafo</button>
+        <label for="import-file" class="btn-secondary" style="cursor: pointer; display: inline-block; padding: 0.65rem 1.5rem; margin: 0;">Abrir Grafo</label>
+        <input id="import-file" type="file" accept=".json" @change="importarGrafo" style="display: none;">
+      </div>
+
       <!-- Crear Aristas -->
       <div class="edge-management">
         <h3>Crear Aristas</h3>
@@ -68,12 +81,12 @@
             maxlength="10"
             @keyup.enter="agregarArista"
           />
-          <input 
-            type="number" 
-            v-model.number="pesoArista" 
-            placeholder="Peso (obligatorio)"
-            step="0.1"
-            min="0"
+          <input
+            type="number"
+            v-model.number="pesoArista"
+            placeholder="Peso (entero positivo)"
+            step="1"
+            min="1"
           />
           <button @click="agregarArista">Agregar Arista</button>
         </div>
@@ -111,13 +124,13 @@
       </div>
 
       <!-- Árbol Complemento (T') - solo visible después de calcular árbol -->
-      <div v-if="arbolCalculado" class="complemento-section">
+      <div v-if="arbolCalculado" class="complemento-section" style="text-align: center;">
         <button @click="generarArbolComplemento" class="outline contrast">
           Generar Árbol Complemento (T')
         </button>
         
         <div v-if="arbolComplemento.mostrado" class="complemento-visualization">
-          <h3>Árbol Complemento (T')</h3>
+          <h3 style="text-align: center;">Árbol Complemento (T')</h3>
           <div id="complemento-container" ref="complementoContainer"></div>
           <div class="set-notation">
             <div class="notation-content">
@@ -149,6 +162,7 @@
 import { ref, nextTick } from 'vue';
 import { DataSet, Network } from 'vis-network/standalone';
 import 'vis-network/styles/vis-network.css';
+import { downloadJsonFile } from '../../utils/importExportUtils';
 
 interface Config {
   cantidadNodos: number;
@@ -243,15 +257,15 @@ function inicializarVisualizacion() {
       id: nodo.id,
       label: nodo.label,
       color: {
-        background: '#1f2937',
-        border: '#374151',
+        background: '#f59e0b',
+        border: '#d97706',
         highlight: {
-          background: '#f59e0b',
-          border: '#d97706'
+          background: '#fbbf24',
+          border: '#f59e0b'
         }
       },
       font: {
-        color: '#e5e7eb',
+        color: '#ffffff',
         size: 16
       }
     }))
@@ -698,6 +712,104 @@ function generarArbolComplemento() {
   });
 }
 
+function exportarGrafo() {
+  if (!grafoCreado.value) {
+    mostrarMensaje("Primero debes crear un grafo para exportar.", true);
+    return;
+  }
+
+  const exportData = {
+    type: 'arbol-expansion',
+    version: '1.0',
+    timestamp: new Date().toISOString(),
+    config: {
+      cantidadNodos: config.value.cantidadNodos,
+      esDirigido: config.value.esDirigido
+    },
+    grafo: {
+      nodos: grafo.value.nodos,
+      aristas: grafo.value.aristas
+    }
+  };
+
+  const tipoStr = config.value.esDirigido ? 'dirigido' : 'no-dirigido';
+  const fecha = new Date().toISOString().split('T')[0];
+  const filename = `arbol_expansion_${tipoStr}_${fecha}.json`;
+  
+  downloadJsonFile(exportData, filename);
+  mostrarMensaje("Grafo exportado exitosamente.", false);
+}
+
+function importarGrafo(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const importData = JSON.parse(e.target?.result as string);
+      
+      // Validaciones básicas
+      if (importData.type !== 'arbol-expansion') {
+        mostrarMensaje("Este archivo no contiene un grafo de árbol de expansión válido.", true);
+        return;
+      }
+
+      if (!importData.config || !importData.grafo) {
+        mostrarMensaje("El archivo no contiene la configuración completa.", true);
+        return;
+      }
+
+      // Validar que tenga todos los campos necesarios
+      if (typeof importData.config.cantidadNodos !== 'number' || 
+          typeof importData.config.esDirigido !== 'boolean') {
+        mostrarMensaje("Configuración inválida en el archivo.", true);
+        return;
+      }
+
+      if (!Array.isArray(importData.grafo.nodos) || !Array.isArray(importData.grafo.aristas)) {
+        mostrarMensaje("Estructura de grafo inválida en el archivo.", true);
+        return;
+      }
+
+      // Validar números positivos
+      if (importData.config.cantidadNodos <= 0) {
+        mostrarMensaje("La cantidad de nodos debe ser un número positivo.", true);
+        return;
+      }
+
+      // Importar configuración
+      config.value.cantidadNodos = importData.config.cantidadNodos;
+      config.value.esDirigido = importData.config.esDirigido;
+
+      // Importar grafo
+      grafo.value.nodos = importData.grafo.nodos;
+      grafo.value.aristas = importData.grafo.aristas;
+      grafoCreado.value = true;
+
+      // Reinicializar visualización
+      nextTick(() => {
+        inicializarVisualizacion();
+      });
+
+      // Reset estados de algoritmos
+      arbolCalculado.value = false;
+      arbolComplemento.value.mostrado = false;
+      
+      const tipoStr = config.value.esDirigido ? 'Dirigido' : 'No Dirigido';
+      mostrarMensaje(`Grafo importado exitosamente. Tipo: ${tipoStr}, Nodos: ${config.value.cantidadNodos}, Aristas: ${grafo.value.aristas.length}`, false);
+      
+    } catch (error) {
+      mostrarMensaje("Error al leer el archivo. Asegúrate de que sea un JSON válido.", true);
+    }
+  };
+  
+  reader.readAsText(file);
+  target.value = '';
+}
+
 function mostrarMensaje(msg: string, error: boolean) {
   mensaje.value = msg;
   esError.value = error;
@@ -763,6 +875,13 @@ function mostrarMensaje(msg: string, error: boolean) {
 .info-preview p {
   margin: 0.5rem 0;
   font-family: monospace;
+}
+
+.import-section {
+  margin-top: 1.5rem;
+  text-align: center;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
 }
 
 .structure-info {
@@ -961,6 +1080,28 @@ function mostrarMensaje(msg: string, error: boolean) {
 }
 
 #graph-container {
+  width: 100%;
+  height: 600px;
+  border: 2px solid var(--muted-border-color);
+  border-radius: 0.5rem;
+  background: #1e3a5f;
+}
+
+.complemento-visualization {
+  max-width: 1400px;
+  margin: 2rem auto;
+  padding: 1.5rem;
+  border: 1px solid var(--muted-border-color);
+  border-radius: 0.5rem;
+  background: var(--card-background-color);
+}
+
+.complemento-visualization h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+#complemento-container {
   width: 100%;
   height: 600px;
   border: 2px solid var(--muted-border-color);

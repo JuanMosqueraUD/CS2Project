@@ -147,12 +147,15 @@ provide(NavigationKey, { navigateTo });
     </div>
   </nav>
 
-  <!-- Nivel: Grafos (Operaciones/Árboles/Representación) -->
+  <!-- Nivel: Grafos (Operaciones/Grafos Árboles/Floyd/Representación) -->
   <nav v-if="currentLevel === 'grafos'" id="subnav">
     <button @click="goBack()" class="btn-back outline">← Volver</button>
     <div id="general-nav">
       <button @click="navigateTo('graphOperations')" class="outline contrast">Operaciones con Grafos</button>
-      <button @click="navigateTo('graphTrees')" class="outline contrast">Árboles</button>
+      <button @click="navigateTo('graphTrees')" class="outline contrast">Grafos Árboles</button>
+      <button class="outline contrast">
+        <router-link to="/grafos/arboles/floyd" class="outline contrast">Algoritmo de Floyd</router-link>
+      </button>
       <button @click="navigateTo('graphRepresentation')" class="outline contrast">Representación de Grafos</button>
     </div>
   </nav>
@@ -173,7 +176,7 @@ provide(NavigationKey, { navigateTo });
     </div>
   </nav>
 
-  <!-- Nivel: Árboles -->
+  <!-- Nivel: Grafos Árboles -->
   <nav v-if="currentLevel === 'graphTrees'" id="subnav">
     <button @click="goBack()" class="btn-back outline">← Volver</button>
     <div id="general-nav">
@@ -181,7 +184,7 @@ provide(NavigationKey, { navigateTo });
         <router-link to="/grafos/arboles/expansion" class="outline contrast">Árboles de Expansión</router-link>
       </button>
       <button class="outline contrast">
-        <router-link to="/grafos/arboles/floyd" class="outline contrast">Algoritmo de Floyd</router-link>
+        <router-link to="/grafos/arboles/distancia" class="outline contrast">Distancia de Árboles de Expansión</router-link>
       </button>
     </div>
   </nav>

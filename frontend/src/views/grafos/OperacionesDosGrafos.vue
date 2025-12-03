@@ -6,7 +6,7 @@
 
     <!-- Botón Importar Grafos (siempre visible) -->
     <div class="import-section">
-      <button @click="triggerFileInput" class="btn-import">📥 Importar Grafos</button>
+      <button @click="triggerFileInput" class="btn-import"> Importar Grafos</button>
       <input
         ref="fileInput"
         type="file"
@@ -233,7 +233,7 @@
       <!-- Botón de reseteo y guardado -->
       <div class="reset-section">
         <button @click="resetearGrafos" class="btn-danger">Resetear Grafos</button>
-        <button @click="guardarGrafos" class="btn-save">💾 Guardar Grafos</button>
+        <button @click="guardarGrafos" class="btn-save">Guardar Grafos</button>
       </div>
     </div>
   </div>
