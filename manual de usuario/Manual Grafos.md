@@ -1,6 +1,6 @@
 # Manual de Usuario - Grafos
 
-Este documento agrupa las vistas relacionadas con grafos del proyecto. Cada sección sigue la misma plantilla: descripción, creación, gestión de aristas/nodos, importación/guardado, ejecución de algoritmos (si aplica), interpretación de resultados, reinicio y resumen de botones con los textos exactos de la interfaz.
+Esta seccion del documento agrupa las vistas relacionadas con grafos del proyecto. Cada sección sigue la misma plantilla: descripción, creación, gestión de aristas/nodos, importación/guardado, ejecución de algoritmos (si aplica), interpretación de resultados, reinicio y resumen de botones con los textos exactos de la interfaz.
 
 ---
 

@@ -1,6 +1,6 @@
-# Manual de Usuario - Manual Internas
+# Manual de Usuario - Manual Búsquedas Internas
 
-Este documento contiene los manuales de usuario internos para las vistas y módulos del aplicativo. Cada sección replica exactamente la estructura y profundidad del manual de `AlgoritmoFloyd.md` y está adaptada a la funcionalidad de cada módulo. Las secciones aparecen secuencialmente y están pensadas para un usuario sin conocimientos previos de algoritmos.
+Esta seccion del documento contiene los manuales de usuario internos para las vistas y módulos del aplicativo. Cada sección replica exactamente la estructura y profundidad del manual de `AlgoritmoFloyd.md` y está adaptada a la funcionalidad de cada módulo. Las secciones aparecen secuencialmente y están pensadas para un usuario sin conocimientos previos de algoritmos.
 
 ---
 
